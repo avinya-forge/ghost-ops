@@ -5,6 +5,11 @@
 ## In-Progress
 
 ## Done
+- [x] Create Dockerfile for multi-stage build <!-- id: 11 -->
+- [x] Implement basic CLI structure in `cmd/ghost-ops/main.go` <!-- id: 12 -->
+- [x] Implement `FileIntentSource` (reading blueprints from file) <!-- id: 13 -->
+- [x] Implement `MockEvolutionEngine` (returning pre-compiled or dummy WASM) <!-- id: 14 -->
+- [x] Implement `WazeroRuntimeHost` (using wazero for WASM execution) <!-- id: 15 -->
 - [x] Initialize Go module `go mod init ghost-ops` <!-- id: 1 -->
 - [x] Create project structure: `cmd/`, `internal/`, `pkg/`, `generated/` <!-- id: 2 -->
 - [x] Define `IntentSource` interface in `pkg/protocol/intent.go` <!-- id: 3 -->
