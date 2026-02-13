@@ -1,0 +1,13 @@
+# Go
+bin/
+dist/
+*.exe
+*.test
+*.out
+vendor/
+
+# WASM
+*.wasm
+
+# OS
+.DS_Store
