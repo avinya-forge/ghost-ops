@@ -171,80 +171,96 @@ func (h *WazeroRuntimeHost) Invoke(ctx context.Context, serviceID, method string
 		return nil, fmt.Errorf("function %s not exported", method)
 	}
 
-	// Call the function.
-	// We need to handle arguments passing if the function expects them.
-	// For now, assuming the function takes pointer/length for payload and returns pointer/length for result?
-	// The interface Invoke(payload []byte) -> []byte implies we need an ABI for invoking functions too.
-	//
-	// However, existing Invoke implementation was:
-	// results, err := fn.Call(ctx)
-	//
-	// This assumes 0 arguments.
-	// If we want to support passing payload, we need to allocate memory in module, write payload, pass ptr/len.
-	//
-	// Since I am implementing host functions "kv_get" and "rpc", I should probably update Invoke to support this ABI as well?
-	// But "Invoke" is called by the Go Orchestrator (API).
-	// The WASM module must export a function that accepts ptr/len if it wants input.
-	//
-	// For this task, I will leave Invoke as is regarding arguments (calls with 0 args),
-	// unless the "Done" task "Implement WazeroRuntimeHost" implied it was fully working.
-	// The existing implementation passed 0 args.
-	//
-	// If I change Invoke now, I might break existing assumptions (though there are no real modules yet).
-	//
-	// Let's keep Invoke simple for now: it calls the function.
-	// If the function needs arguments, we need to know the signature.
-	// `fn.Definition().ParamTypes()`
-	//
-	// I'll stick to the plan: Implement kv_get and rpc. Invoke remains as is (calls with 0 args).
-	// If the module function requires args, `fn.Call(ctx)` will fail with mismatched args count.
-	//
-	// Wait, if `rpc` calls `Invoke`, and `rpc` passes payload...
-	// `rpc` implementation calls `h.Invoke(..., payload)`.
-	// `h.Invoke` ignores payload and calls `fn.Call(ctx)`.
-	// So payload is lost!
-	//
-	// This is a problem. `Invoke` must handle payload.
-	// To handle payload:
-	// 1. Allocate memory in module for payload. (Need `malloc` exported by module? or `wasi`?)
-	// 2. Write payload.
-	// 3. Call function with (ptr, len).
-	// 4. Read result (ptr, len) or (ptr) -> (ptr, len) if using stack return?
-	//
-	// This is getting complicated.
-	// For MVP, maybe we assume the invoked function uses `kv_get` to get its input?
-	// No, `rpc` passes payload.
-	//
-	// Let's update `Invoke` to check if function takes 2 args (ptr, len). If so, pass payload.
-	// If it takes 0 args, ignore payload.
-	//
-	// How to allocate memory?
-	// If the module exports `malloc` or similar, use it.
-	// If not, we can't safely write to memory without potentially overwriting something.
-	//
-	// Alternative: Just implement `kv_get` and `rpc` for now, and note `Invoke` limitation in comments.
-	// The user asked to "Deliver high-significance... code batches".
-	// Implementing `kv_get` is high significance.
-	// `rpc` depends on `Invoke` working correctly.
-	//
-	// I will improve `Invoke` slightly:
-	// Check param count. If 2, try to pass payload. But we need memory.
-	// If we can't allocate, we fail?
-	//
-	// Let's assume for now that `Invoke` just calls the function.
-	// I will document the limitation or TODO.
+	paramTypes := fn.Definition().ParamTypes()
 
-	results, err := fn.Call(ctx)
-	if err != nil {
-		return nil, fmt.Errorf("function call failed: %w", err)
+	var results []uint64
+	var errCall error
+
+	if len(paramTypes) == 0 {
+		// Legacy support: 0 arguments
+		results, errCall = fn.Call(ctx)
+	} else if len(paramTypes) == 2 {
+		// Payload passing support: (ptr, len)
+		// We expect both parameters to be i32.
+		if paramTypes[0] != api.ValueTypeI32 || paramTypes[1] != api.ValueTypeI32 {
+			return nil, fmt.Errorf("function %s has 2 parameters but they are not (i32, i32)", method)
+		}
+
+		// We need to allocate memory in the module.
+		malloc := mod.ExportedFunction("malloc")
+		if malloc == nil {
+			return nil, fmt.Errorf("function %s requires payload but module does not export malloc", method)
+		}
+
+		payloadLen := uint64(len(payload))
+		// Call malloc(size) -> ptr
+		res, err := malloc.Call(ctx, payloadLen)
+		if err != nil {
+			return nil, fmt.Errorf("malloc failed: %w", err)
+		}
+		if len(res) == 0 {
+			return nil, fmt.Errorf("malloc returned no result")
+		}
+		ptr := res[0]
+
+		// Write payload to memory
+		if !mod.Memory().Write(uint32(ptr), payload) {
+			return nil, fmt.Errorf("failed to write payload to memory at %d", ptr)
+		}
+
+		// Call function(ptr, len)
+		results, errCall = fn.Call(ctx, ptr, payloadLen)
+
+		// Free input memory if free is exported
+		free := mod.ExportedFunction("free")
+		if free != nil {
+			if _, err := free.Call(ctx, ptr); err != nil {
+				return nil, fmt.Errorf("failed to free input memory: %w", err)
+			}
+		}
+	} else {
+		return nil, fmt.Errorf("function %s has unsupported parameter count: %d (expected 0 or 2)", method, len(paramTypes))
+	}
+
+	if errCall != nil {
+		return nil, fmt.Errorf("function call failed: %w", errCall)
 	}
 
 	// Handle return values.
-	// If function returns 1 value (i64 or i32), maybe it's a pointer to result?
-	// Or returns (ptr, len).
-	//
-	// The current implementation returns `nil` for results.
-	_ = results
+	// Expecting 1 result: i64 (packed ptr/len)
+	// high 32 = len, low 32 = ptr
+	if len(results) == 1 {
+		val := results[0]
+		// Assuming i64 packed: ptr | (len << 32)
+		// Note: This assumes Little Endian packing logic or standard bitwise ops.
+		// If the WASM returns i64, it's just a value.
+		resPtr := uint32(val)
+		resLen := uint32(val >> 32)
+
+		if resLen == 0 {
+			return nil, nil
+		}
+
+		bytes, ok := mod.Memory().Read(resPtr, resLen)
+		if !ok {
+			return nil, fmt.Errorf("failed to read result from memory at %d len %d", resPtr, resLen)
+		}
+
+		// Return a copy
+		out := make([]byte, len(bytes))
+		copy(out, bytes)
+
+		// Free result memory if free is exported
+		free := mod.ExportedFunction("free")
+		if free != nil && resPtr != 0 {
+			if _, err := free.Call(ctx, uint64(resPtr)); err != nil {
+				return nil, fmt.Errorf("failed to free result memory: %w", err)
+			}
+		}
+
+		return out, nil
+	}
+
 	return nil, nil
 }
 

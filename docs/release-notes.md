@@ -10,3 +10,4 @@
 - Implemented Service Registry for lifecycle management.
 - Implemented HTTP API Server for external interaction.
 - Integrated all core components in the main CLI.
+- Added support for payload passing and memory management in WASM host runtime.
