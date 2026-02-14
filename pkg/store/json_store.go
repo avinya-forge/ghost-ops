@@ -16,6 +16,11 @@ type JSONFileStore struct {
 	mu   sync.RWMutex
 }
 
+type storeData struct {
+	Services map[string]protocol.ServiceRecord `json:"services"`
+	KV       map[string][]byte                 `json:"kv"`
+}
+
 // NewJSONFileStore creates a new JSONFileStore.
 func NewJSONFileStore(path string) (*JSONFileStore, error) {
 	// Check if file exists, if not create empty
@@ -29,23 +34,60 @@ func NewJSONFileStore(path string) (*JSONFileStore, error) {
 	}, nil
 }
 
-func (s *JSONFileStore) load() (map[string]protocol.ServiceRecord, error) {
+func (s *JSONFileStore) load() (*storeData, error) {
 	data, err := os.ReadFile(s.path)
 	if err != nil {
 		return nil, err
 	}
 	if len(data) == 0 {
-		return make(map[string]protocol.ServiceRecord), nil
+		return &storeData{
+			Services: make(map[string]protocol.ServiceRecord),
+			KV:       make(map[string][]byte),
+		}, nil
 	}
-	var records map[string]protocol.ServiceRecord
-	if err := json.Unmarshal(data, &records); err != nil {
+
+	// Detect format
+	var raw map[string]json.RawMessage
+	if err := json.Unmarshal(data, &raw); err != nil {
 		return nil, err
 	}
-	return records, nil
+
+	sd := &storeData{
+		Services: make(map[string]protocol.ServiceRecord),
+		KV:       make(map[string][]byte),
+	}
+
+	_, hasServices := raw["services"]
+	_, hasKV := raw["kv"]
+
+	if hasServices || hasKV {
+		// New format
+		if err := json.Unmarshal(data, sd); err != nil {
+			return nil, err
+		}
+	} else {
+		// Old format (map of services) or empty
+		var services map[string]protocol.ServiceRecord
+		if err := json.Unmarshal(data, &services); err != nil {
+			return nil, err
+		}
+		if services != nil {
+			sd.Services = services
+		}
+	}
+
+	if sd.Services == nil {
+		sd.Services = make(map[string]protocol.ServiceRecord)
+	}
+	if sd.KV == nil {
+		sd.KV = make(map[string][]byte)
+	}
+
+	return sd, nil
 }
 
-func (s *JSONFileStore) save(records map[string]protocol.ServiceRecord) error {
-	data, err := json.MarshalIndent(records, "", "  ")
+func (s *JSONFileStore) save(sd *storeData) error {
+	data, err := json.MarshalIndent(sd, "", "  ")
 	if err != nil {
 		return err
 	}
@@ -57,12 +99,12 @@ func (s *JSONFileStore) GetService(ctx context.Context, serviceID string) (*prot
 	s.mu.RLock()
 	defer s.mu.RUnlock()
 
-	records, err := s.load()
+	sd, err := s.load()
 	if err != nil {
 		return nil, err
 	}
 
-	if record, ok := records[serviceID]; ok {
+	if record, ok := sd.Services[serviceID]; ok {
 		return &record, nil
 	}
 	return nil, nil // Not found
@@ -73,13 +115,13 @@ func (s *JSONFileStore) UpdateService(ctx context.Context, record protocol.Servi
 	s.mu.Lock()
 	defer s.mu.Unlock()
 
-	records, err := s.load()
+	sd, err := s.load()
 	if err != nil {
 		return err
 	}
 
-	records[record.ServiceID] = record
-	return s.save(records)
+	sd.Services[record.ServiceID] = record
+	return s.save(sd)
 }
 
 // ListServices returns all services.
@@ -87,14 +129,45 @@ func (s *JSONFileStore) ListServices(ctx context.Context) ([]protocol.ServiceRec
 	s.mu.RLock()
 	defer s.mu.RUnlock()
 
-	records, err := s.load()
+	sd, err := s.load()
 	if err != nil {
 		return nil, err
 	}
 
-	list := make([]protocol.ServiceRecord, 0, len(records))
-	for _, r := range records {
+	list := make([]protocol.ServiceRecord, 0, len(sd.Services))
+	for _, r := range sd.Services {
 		list = append(list, r)
 	}
 	return list, nil
+}
+
+// Get retrieves a value by key.
+func (s *JSONFileStore) Get(ctx context.Context, key string) ([]byte, error) {
+	s.mu.RLock()
+	defer s.mu.RUnlock()
+
+	sd, err := s.load()
+	if err != nil {
+		return nil, err
+	}
+
+	val, ok := sd.KV[key]
+	if !ok {
+		return nil, fmt.Errorf("key not found: %s", key)
+	}
+	return val, nil
+}
+
+// Set stores a value by key.
+func (s *JSONFileStore) Set(ctx context.Context, key string, value []byte) error {
+	s.mu.Lock()
+	defer s.mu.Unlock()
+
+	sd, err := s.load()
+	if err != nil {
+		return err
+	}
+
+	sd.KV[key] = value
+	return s.save(sd)
 }

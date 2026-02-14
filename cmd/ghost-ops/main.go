@@ -49,20 +49,20 @@ func main() {
 	// Initialize Evolution Engine
 	engine := evolution.NewMockEvolutionEngine(*wasmPath)
 
-	// Initialize Runtime Host
-	host, err := runtime.NewWazeroRuntimeHost(ctx)
-	if err != nil {
-		slog.Error("Failed to initialize runtime", "error", err)
-		os.Exit(1)
-	}
-	defer host.Close(ctx)
-
 	// Initialize State Store
 	stateStore, err := store.NewJSONFileStore(*storePath)
 	if err != nil {
 		slog.Error("Failed to initialize state store", "path", *storePath, "error", err)
 		os.Exit(1)
 	}
+
+	// Initialize Runtime Host
+	host, err := runtime.NewWazeroRuntimeHost(ctx, stateStore)
+	if err != nil {
+		slog.Error("Failed to initialize runtime", "error", err)
+		os.Exit(1)
+	}
+	defer host.Close(ctx)
 
 	// Initialize Registry
 	reg := registry.NewRegistry(stateStore, engine, source, host)

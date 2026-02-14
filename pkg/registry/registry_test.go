@@ -28,6 +28,12 @@ func (m *MockStateStore) ListServices(ctx context.Context) ([]protocol.ServiceRe
 	}
 	return list, nil
 }
+func (m *MockStateStore) Get(ctx context.Context, key string) ([]byte, error) {
+	return nil, nil
+}
+func (m *MockStateStore) Set(ctx context.Context, key string, val []byte) error {
+	return nil
+}
 
 // MockIntentSource
 type MockIntentSource struct {
