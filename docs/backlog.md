@@ -1,6 +1,11 @@
 # Backlog
 
 ## Todo
+- [ ] Implement `JSONFileStore` in `pkg/store` implementing `StateStore` interface <!-- id: 16 -->
+- [ ] Implement `ServiceRegistry` in `pkg/registry` to orchestrate service lifecycle <!-- id: 17 -->
+- [ ] Implement `APIServer` in `pkg/api` to expose `/services` and `/reconcile` endpoints <!-- id: 18 -->
+- [ ] Update CLI in `cmd/ghost-ops/main.go` to include `-store` and `-http` flags and wire components <!-- id: 19 -->
+- [ ] Add Integration Test for full flow <!-- id: 20 -->
 
 ## In-Progress
 
