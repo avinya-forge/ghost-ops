@@ -24,10 +24,15 @@ func main() {
 	wasmPath := flag.String("wasm", "", "Path to mock WASM binary (optional)")
 	storePath := flag.String("store", "store.json", "Path to state store file")
 	httpAddr := flag.String("http", ":8080", "HTTP server address")
+	debug := flag.Bool("debug", false, "Enable debug logging")
 	flag.Parse()
 
 	// Initialize structured logging
-	logging.InitLogger()
+	logLevel := slog.LevelInfo
+	if *debug {
+		logLevel = slog.LevelDebug
+	}
+	logging.InitLogger(logLevel)
 
 	ctx, cancel := context.WithCancel(context.Background())
 	defer cancel()
@@ -79,8 +84,17 @@ func main() {
 	}()
 
 	// Initial Reconciliation
-	if err := reg.Reconcile(ctx); err != nil {
-		slog.Error("Initial reconciliation failed", "error", err)
+	for {
+		processed, err := reg.Reconcile(ctx)
+		if err != nil {
+			slog.Error("Initial reconciliation failed", "error", err)
+			// Decide whether to exit or continue. For now, we continue but log error.
+			// Maybe break if critical?
+			break
+		}
+		if !processed {
+			break
+		}
 	}
 
 	// Wait for shutdown signal

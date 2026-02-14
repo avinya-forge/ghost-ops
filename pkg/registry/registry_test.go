@@ -79,8 +79,13 @@ func TestRegistry_Reconcile(t *testing.T) {
 	reg := NewRegistry(store, engine, source, runtime)
 	ctx := context.Background()
 
-	if err := reg.Reconcile(ctx); err != nil {
+	// First call should process one blueprint
+	processed, err := reg.Reconcile(ctx)
+	if err != nil {
 		t.Fatalf("Reconcile failed: %v", err)
+	}
+	if !processed {
+		t.Fatal("Expected Reconcile to return true for processed blueprint")
 	}
 
 	// Verify Store
@@ -95,5 +100,14 @@ func TestRegistry_Reconcile(t *testing.T) {
 	// Verify Runtime
 	if _, ok := runtime.modules["svc-1"]; !ok {
 		t.Fatal("Service not found in runtime")
+	}
+
+	// Second call should find no more blueprints
+	processed, err = reg.Reconcile(ctx)
+	if err != nil {
+		t.Fatalf("Reconcile failed: %v", err)
+	}
+	if processed {
+		t.Fatal("Expected Reconcile to return false for no more blueprints")
 	}
 }
