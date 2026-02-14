@@ -3,11 +3,14 @@ package runtime
 import (
 	"context"
 	"testing"
+
+	"ghost-ops/pkg/protocol"
 )
 
 func TestWazeroRuntimeHost(t *testing.T) {
 	ctx := context.Background()
-	host, err := NewWazeroRuntimeHost(ctx)
+	store := protocol.NewInMemoryStateStore()
+	host, err := NewWazeroRuntimeHost(ctx, store)
 	if err != nil {
 		t.Fatalf("Failed to create host: %v", err)
 	}

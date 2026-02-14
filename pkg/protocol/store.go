@@ -32,4 +32,10 @@ type StateStore interface {
 
 	// ListServices returns all services.
 	ListServices(ctx context.Context) ([]ServiceRecord, error)
+
+	// Get retrieves a value by key.
+	Get(ctx context.Context, key string) ([]byte, error)
+
+	// Set stores a value by key.
+	Set(ctx context.Context, key string, value []byte) error
 }

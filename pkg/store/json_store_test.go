@@ -59,4 +59,31 @@ func TestJSONFileStore(t *testing.T) {
 	if len(list) != 1 {
 		t.Errorf("Expected 1 service, got %d", len(list))
 	}
+
+	// Test Set
+	if err := store.Set(ctx, "config-key", []byte("config-value")); err != nil {
+		t.Fatalf("Set failed: %v", err)
+	}
+
+	// Test Get
+	val, err := store.Get(ctx, "config-key")
+	if err != nil {
+		t.Fatalf("Get failed: %v", err)
+	}
+	if string(val) != "config-value" {
+		t.Errorf("Expected 'config-value', got '%s'", string(val))
+	}
+
+	// Test persistence (reload store)
+	store2, err := NewJSONFileStore(tmpFile.Name())
+	if err != nil {
+		t.Fatalf("Failed to create store2: %v", err)
+	}
+	val2, err := store2.Get(ctx, "config-key")
+	if err != nil {
+		t.Fatalf("Get from new store instance failed: %v", err)
+	}
+	if string(val2) != "config-value" {
+		t.Errorf("Expected 'config-value' from new store, got '%s'", string(val2))
+	}
 }
