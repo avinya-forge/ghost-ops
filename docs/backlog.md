@@ -1,6 +1,11 @@
 # Backlog
 
 ## Todo
+- [ ] Implement Structured Logging (slog) in `pkg/logging` and `cmd/ghost-ops/main.go` <!-- id: 16 -->
+- [ ] Implement `JSONFileStore` for persistent state in `pkg/store/json_store.go` <!-- id: 17 -->
+- [ ] Implement `ServiceRegistry` to manage service lifecycle in `pkg/registry` <!-- id: 18 -->
+- [ ] Implement HTTP API Server in `pkg/api/server.go` <!-- id: 19 -->
+- [ ] Integrate API, Registry, and Store in `cmd/ghost-ops/main.go` <!-- id: 20 -->
 
 ## In-Progress
 

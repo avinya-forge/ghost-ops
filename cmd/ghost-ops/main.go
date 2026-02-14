@@ -3,26 +3,42 @@ package main
 import (
 	"context"
 	"flag"
-	"log"
+	"log/slog"
+	"net/http"
+	"os"
+	"os/signal"
+	"syscall"
+	"time"
 
+	"ghost-ops/pkg/api"
 	"ghost-ops/pkg/evolution"
 	"ghost-ops/pkg/intent"
+	"ghost-ops/pkg/logging"
+	"ghost-ops/pkg/registry"
 	"ghost-ops/pkg/runtime"
+	"ghost-ops/pkg/store"
 )
 
 func main() {
 	blueprintsPath := flag.String("blueprints", "blueprints.json", "Path to blueprints file")
 	wasmPath := flag.String("wasm", "", "Path to mock WASM binary (optional)")
+	storePath := flag.String("store", "store.json", "Path to state store file")
+	httpAddr := flag.String("http", ":8080", "HTTP server address")
 	flag.Parse()
 
-	ctx := context.Background()
+	// Initialize structured logging
+	logging.InitLogger()
 
-	log.Println("GhostOps starting...")
+	ctx, cancel := context.WithCancel(context.Background())
+	defer cancel()
+
+	slog.Info("GhostOps starting...")
 
 	// Initialize Intent Source
 	source, err := intent.NewFileIntentSource(*blueprintsPath)
 	if err != nil {
-		log.Fatalf("Failed to initialize intent source from %s: %v", *blueprintsPath, err)
+		slog.Error("Failed to initialize intent source", "path", *blueprintsPath, "error", err)
+		os.Exit(1)
 	}
 
 	// Initialize Evolution Engine
@@ -31,41 +47,56 @@ func main() {
 	// Initialize Runtime Host
 	host, err := runtime.NewWazeroRuntimeHost(ctx)
 	if err != nil {
-		log.Fatalf("Failed to initialize runtime: %v", err)
+		slog.Error("Failed to initialize runtime", "error", err)
+		os.Exit(1)
 	}
 	defer host.Close(ctx)
 
-	// Processing loop
-	count := 0
-	for {
-		bp, err := source.GetNextBlueprint(ctx)
-		if err != nil {
-			log.Printf("Error getting blueprint: %v", err)
-			continue
-		}
-		if bp == nil {
-			log.Println("No more blueprints.")
-			break
-		}
-
-		log.Printf("Processing blueprint for service: %s", bp.ServiceID)
-
-		// Evolve
-		wasmBytes, err := engine.Evolve(ctx, *bp)
-		if err != nil {
-			log.Printf("Failed to evolve service %s: %v", bp.ServiceID, err)
-			continue
-		}
-
-		// Deploy/Load
-		if err := host.LoadModule(ctx, bp.ServiceID, wasmBytes); err != nil {
-			log.Printf("Failed to load module for service %s: %v", bp.ServiceID, err)
-			continue
-		}
-
-		log.Printf("Service %s loaded successfully.", bp.ServiceID)
-		count++
+	// Initialize State Store
+	stateStore, err := store.NewJSONFileStore(*storePath)
+	if err != nil {
+		slog.Error("Failed to initialize state store", "path", *storePath, "error", err)
+		os.Exit(1)
 	}
 
-	log.Printf("GhostOps finished. Processed %d blueprints.", count)
+	// Initialize Registry
+	reg := registry.NewRegistry(stateStore, engine, source, host)
+
+	// Initialize API Server
+	srv := api.NewServer(reg)
+	httpServer := &http.Server{
+		Addr:    *httpAddr,
+		Handler: srv,
+	}
+
+	// Start API Server
+	go func() {
+		slog.Info("Starting HTTP server", "addr", *httpAddr)
+		if err := httpServer.ListenAndServe(); err != nil && err != http.ErrServerClosed {
+			slog.Error("HTTP server failed", "error", err)
+			os.Exit(1)
+		}
+	}()
+
+	// Initial Reconciliation
+	if err := reg.Reconcile(ctx); err != nil {
+		slog.Error("Initial reconciliation failed", "error", err)
+	}
+
+	// Wait for shutdown signal
+	sigChan := make(chan os.Signal, 1)
+	signal.Notify(sigChan, syscall.SIGINT, syscall.SIGTERM)
+	<-sigChan
+
+	slog.Info("Shutting down...")
+
+	// Graceful shutdown
+	shutdownCtx, shutdownCancel := context.WithTimeout(context.Background(), 5*time.Second)
+	defer shutdownCancel()
+
+	if err := httpServer.Shutdown(shutdownCtx); err != nil {
+		slog.Error("HTTP server shutdown failed", "error", err)
+	}
+
+	slog.Info("GhostOps stopped")
 }
