@@ -58,10 +58,16 @@ func (s *Server) handleReconcile(w http.ResponseWriter, r *http.Request) {
 		return
 	}
 
-	if err := s.registry.Reconcile(r.Context()); err != nil {
-		slog.Error("Failed to reconcile", "error", err)
-		http.Error(w, "Internal server error", http.StatusInternalServerError)
-		return
+	for {
+		processed, err := s.registry.Reconcile(r.Context())
+		if err != nil {
+			slog.Error("Failed to reconcile", "error", err)
+			http.Error(w, "Internal server error", http.StatusInternalServerError)
+			return
+		}
+		if !processed {
+			break
+		}
 	}
 
 	w.WriteHeader(http.StatusOK)
