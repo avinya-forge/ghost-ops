@@ -1,11 +1,11 @@
 # Backlog
 
 ## Todo
-- [ ] Implement Go Guest SDK for WASM Services <!-- id: 23 -->
 
 ## In-Progress
 
 ## Done
+- [x] Implement Go Guest SDK for WASM Services <!-- id: 23 -->
 - [x] Implement Go Compiler Evolution Engine `pkg/evolution/go_compiler.go` <!-- id: 22 -->
 - [x] Implement payload passing in `WazeroRuntimeHost.Invoke` <!-- id: 21 -->
 - [x] Implement Structured Logging (slog) in `pkg/logging` and `cmd/ghost-ops/main.go` <!-- id: 16 -->
