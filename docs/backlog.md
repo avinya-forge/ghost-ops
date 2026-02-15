@@ -1,6 +1,7 @@
 # Backlog
 
 ## Todo
+- [ ] Implement Go Guest SDK for WASM Services <!-- id: 23 -->
 
 ## In-Progress
 
