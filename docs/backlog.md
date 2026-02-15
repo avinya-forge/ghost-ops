@@ -5,6 +5,7 @@
 ## In-Progress
 
 ## Done
+- [x] Implement Go Compiler Evolution Engine `pkg/evolution/go_compiler.go` <!-- id: 22 -->
 - [x] Implement payload passing in `WazeroRuntimeHost.Invoke` <!-- id: 21 -->
 - [x] Implement Structured Logging (slog) in `pkg/logging` and `cmd/ghost-ops/main.go` <!-- id: 16 -->
 - [x] Implement `JSONFileStore` for persistent state in `pkg/store/json_store.go` <!-- id: 17 -->
