@@ -3,6 +3,7 @@ package runtime
 import (
 	"context"
 	"fmt"
+	"log/slog"
 	"sync"
 
 	"github.com/tetratelabs/wazero"
@@ -12,11 +13,26 @@ import (
 	"ghost-ops/pkg/protocol"
 )
 
+// Request represents a pending invocation.
+type Request struct {
+	method     string
+	payload    []byte
+	responseCh chan Response
+}
+
+// Response represents the result of an invocation.
+type Response struct {
+	payload []byte
+	err     error
+}
+
 // WazeroRuntimeHost implements RuntimeHost using wazero.
 type WazeroRuntimeHost struct {
-	runtime wazero.Runtime
-	modules map[string]api.Module
-	mu      sync.RWMutex
+	runtime    wazero.Runtime
+	modules    map[string]api.Module
+	requests   map[string]chan Request
+	currentReq map[string]Request
+	mu         sync.RWMutex
 }
 
 // NewWazeroRuntimeHost creates a new WazeroRuntimeHost.
@@ -29,95 +45,150 @@ func NewWazeroRuntimeHost(ctx context.Context, store protocol.StateStore) (*Waze
 	}
 
 	h := &WazeroRuntimeHost{
-		runtime: r,
-		modules: make(map[string]api.Module),
+		runtime:    r,
+		modules:    make(map[string]api.Module),
+		requests:   make(map[string]chan Request),
+		currentReq: make(map[string]Request),
 	}
 
 	// Define kv_get host function
-	// kv_get(keyPtr, keyLen, valPtr, valLen) -> valLen (or 0 if error/not found)
 	kvGet := func(ctx context.Context, m api.Module, keyPtr, keyLen, valPtr, valLen uint32) uint32 {
-		// Read key from memory
 		keyBytes, ok := m.Memory().Read(keyPtr, keyLen)
 		if !ok {
 			return 0
 		}
 		key := string(keyBytes)
 
-		// Get value from store
 		val, err := store.Get(ctx, key)
 		if err != nil {
-			return 0 // Return 0 on error or not found
+			return 0
 		}
 
-		// Write value to memory
-		toWrite := val
 		if uint32(len(val)) > valLen {
-			toWrite = val[:valLen]
-		}
-		if !m.Memory().Write(valPtr, toWrite) {
-			return 0
+			if !m.Memory().Write(valPtr, val[:valLen]) {
+				return 0
+			}
+		} else {
+			if !m.Memory().Write(valPtr, val) {
+				return 0
+			}
 		}
 
 		return uint32(len(val))
 	}
 
 	// Define rpc host function
-	// rpc(svcPtr, svcLen, methPtr, methLen, payPtr, payLen, outPtr, outLen) -> outLen
 	rpc := func(ctx context.Context, m api.Module, svcPtr, svcLen, methPtr, methLen, payPtr, payLen, outPtr, outLen uint32) uint32 {
 		mem := m.Memory()
-
-		// Read Service ID
 		svcBytes, ok := mem.Read(svcPtr, svcLen)
-		if !ok {
-			return 0
-		}
+		if !ok { return 0 }
 		serviceID := string(svcBytes)
 
-		// Read Method
 		methBytes, ok := mem.Read(methPtr, methLen)
-		if !ok {
-			return 0
-		}
+		if !ok { return 0 }
 		method := string(methBytes)
 
-		// Read Payload
 		payload, ok := mem.Read(payPtr, payLen)
-		if !ok {
-			return 0
-		}
-		// Make a copy of payload since we pass it to Invoke and memory might change?
-		// Invoke takes []byte. It should be fine to pass the slice directly if Invoke uses it immediately.
-		// However, to be safe, copy it.
+		if !ok { return 0 }
 		payloadCopy := make([]byte, len(payload))
 		copy(payloadCopy, payload)
 
-		// Invoke
-		// Note: We use the context from the call, which should have the timeout/cancel from the original request.
 		result, err := h.Invoke(ctx, serviceID, method, payloadCopy)
-		if err != nil {
-			return 0
-		}
+		if err != nil { return 0 }
 
-		// Write result
-		toWrite := result
 		if uint32(len(result)) > outLen {
-			toWrite = result[:outLen]
-		}
-		if !mem.Write(outPtr, toWrite) {
-			return 0
+			if !mem.Write(outPtr, result[:outLen]) { return 0 }
+		} else {
+			if !mem.Write(outPtr, result) { return 0 }
 		}
 
 		return uint32(len(result))
 	}
 
+	// Define next_command host function
+	nextCommand := func(ctx context.Context, m api.Module, methPtr, methCap uint32) uint64 {
+		serviceID := m.Name()
+
+		h.mu.Lock()
+		if _, known := h.modules[serviceID]; !known {
+			h.modules[serviceID] = m
+		}
+		reqCh, ok := h.requests[serviceID]
+		h.mu.Unlock()
+
+		if !ok {
+			return 0
+		}
+
+		select {
+		case req := <-reqCh:
+			h.mu.Lock()
+			h.currentReq[serviceID] = req
+			h.mu.Unlock()
+
+			methBytes := []byte(req.method)
+			if uint32(len(methBytes)) > methCap {
+				methBytes = methBytes[:methCap]
+			}
+			m.Memory().Write(methPtr, methBytes)
+
+			return (uint64(len(req.payload)) << 32) | uint64(len(methBytes))
+
+		case <-ctx.Done():
+			return 0
+		}
+	}
+
+	// Define read_payload host function
+	readPayload := func(ctx context.Context, m api.Module, ptr, cap uint32) {
+		serviceID := m.Name()
+		h.mu.RLock()
+		req, ok := h.currentReq[serviceID]
+		h.mu.RUnlock()
+		if !ok { return }
+
+		if uint32(len(req.payload)) > cap {
+			m.Memory().Write(ptr, req.payload[:cap])
+		} else {
+			m.Memory().Write(ptr, req.payload)
+		}
+	}
+
+	// Define submit_result host function
+	submitResult := func(ctx context.Context, m api.Module, ptr, len uint32) {
+		serviceID := m.Name()
+		h.mu.RLock()
+		req, ok := h.currentReq[serviceID]
+		h.mu.RUnlock()
+		if !ok { return }
+
+		var res []byte
+		if len > 0 {
+			resBytes, ok := m.Memory().Read(ptr, len)
+			if ok {
+				res = make([]byte, len)
+				copy(res, resBytes)
+			}
+		}
+
+		// Cleanup before sending response
+		h.mu.Lock()
+		delete(h.currentReq, serviceID)
+		h.mu.Unlock()
+
+		select {
+		case req.responseCh <- Response{payload: res}:
+		default:
+		}
+	}
+
 	// Instantiate host module
 	_, err := r.NewHostModuleBuilder("ghost_ops").
-		NewFunctionBuilder().
-		WithFunc(kvGet).
-		Export("kv_get").
-		NewFunctionBuilder().
-		WithFunc(rpc).
-		Export("rpc").
+		NewFunctionBuilder().WithFunc(kvGet).Export("kv_get").
+		NewFunctionBuilder().WithFunc(rpc).Export("rpc").
+		NewFunctionBuilder().WithFunc(nextCommand).Export("next_command").
+		NewFunctionBuilder().WithFunc(readPayload).Export("read_payload").
+		NewFunctionBuilder().WithFunc(submitResult).Export("submit_result").
 		Instantiate(ctx)
 
 	if err != nil {
@@ -130,138 +201,61 @@ func NewWazeroRuntimeHost(ctx context.Context, store protocol.StateStore) (*Waze
 // LoadModule loads a WASM binary with a unique service ID.
 func (h *WazeroRuntimeHost) LoadModule(ctx context.Context, serviceID string, wasmBytes []byte) error {
 	h.mu.Lock()
-	defer h.mu.Unlock()
-
 	if _, exists := h.modules[serviceID]; exists {
+		h.mu.Unlock()
 		return fmt.Errorf("module %s already loaded", serviceID)
 	}
 
-	// Compile the module first.
+	h.requests[serviceID] = make(chan Request)
+	h.mu.Unlock()
+
 	compiled, err := h.runtime.CompileModule(ctx, wasmBytes)
 	if err != nil {
 		return fmt.Errorf("failed to compile module: %w", err)
 	}
-	// Note: We might want to close 'compiled' if we don't plan to re-instantiate it,
-	// but wazero manages cache. Explicit close is good practice if we want to release memory,
-	// but keeping it cached is also fine. For now, let's keep it simple.
 
-	// Instantiate with the service ID as the module name.
-	config := wazero.NewModuleConfig().WithName(serviceID)
-	mod, err := h.runtime.InstantiateModule(ctx, compiled, config)
-	if err != nil {
-		return fmt.Errorf("failed to instantiate module: %w", err)
-	}
+	// Instantiate in goroutine
+	go func() {
+		config := wazero.NewModuleConfig().WithName(serviceID)
+		_, err := h.runtime.InstantiateModule(ctx, compiled, config)
+		if err != nil {
+			slog.Error("Failed to instantiate module", "service_id", serviceID, "error", err)
+		}
+	}()
 
-	h.modules[serviceID] = mod
 	return nil
 }
 
 // Invoke calls a function on the loaded module.
 func (h *WazeroRuntimeHost) Invoke(ctx context.Context, serviceID, method string, payload []byte) ([]byte, error) {
 	h.mu.RLock()
-	mod, exists := h.modules[serviceID]
+	reqCh, exists := h.requests[serviceID]
 	h.mu.RUnlock()
 
 	if !exists {
-		return nil, fmt.Errorf("module %s not found", serviceID)
+		return nil, fmt.Errorf("module %s not found or not ready", serviceID)
 	}
 
-	fn := mod.ExportedFunction(method)
-	if fn == nil {
-		return nil, fmt.Errorf("function %s not exported", method)
+	responseCh := make(chan Response, 1) // Buffered
+	req := Request{
+		method:     method,
+		payload:    payload,
+		responseCh: responseCh,
 	}
 
-	paramTypes := fn.Definition().ParamTypes()
-
-	var results []uint64
-	var errCall error
-
-	if len(paramTypes) == 0 {
-		// Legacy support: 0 arguments
-		results, errCall = fn.Call(ctx)
-	} else if len(paramTypes) == 2 {
-		// Payload passing support: (ptr, len)
-		// We expect both parameters to be i32.
-		if paramTypes[0] != api.ValueTypeI32 || paramTypes[1] != api.ValueTypeI32 {
-			return nil, fmt.Errorf("function %s has 2 parameters but they are not (i32, i32)", method)
-		}
-
-		// We need to allocate memory in the module.
-		malloc := mod.ExportedFunction("malloc")
-		if malloc == nil {
-			return nil, fmt.Errorf("function %s requires payload but module does not export malloc", method)
-		}
-
-		payloadLen := uint64(len(payload))
-		// Call malloc(size) -> ptr
-		res, err := malloc.Call(ctx, payloadLen)
-		if err != nil {
-			return nil, fmt.Errorf("malloc failed: %w", err)
-		}
-		if len(res) == 0 {
-			return nil, fmt.Errorf("malloc returned no result")
-		}
-		ptr := res[0]
-
-		// Write payload to memory
-		if !mod.Memory().Write(uint32(ptr), payload) {
-			return nil, fmt.Errorf("failed to write payload to memory at %d", ptr)
-		}
-
-		// Call function(ptr, len)
-		results, errCall = fn.Call(ctx, ptr, payloadLen)
-
-		// Free input memory if free is exported
-		free := mod.ExportedFunction("free")
-		if free != nil {
-			if _, err := free.Call(ctx, ptr); err != nil {
-				return nil, fmt.Errorf("failed to free input memory: %w", err)
-			}
-		}
-	} else {
-		return nil, fmt.Errorf("function %s has unsupported parameter count: %d (expected 0 or 2)", method, len(paramTypes))
+	select {
+	case reqCh <- req:
+		// Request sent
+	case <-ctx.Done():
+		return nil, ctx.Err()
 	}
 
-	if errCall != nil {
-		return nil, fmt.Errorf("function call failed: %w", errCall)
+	select {
+	case res := <-responseCh:
+		return res.payload, res.err
+	case <-ctx.Done():
+		return nil, ctx.Err()
 	}
-
-	// Handle return values.
-	// Expecting 1 result: i64 (packed ptr/len)
-	// high 32 = len, low 32 = ptr
-	if len(results) == 1 {
-		val := results[0]
-		// Assuming i64 packed: ptr | (len << 32)
-		// Note: This assumes Little Endian packing logic or standard bitwise ops.
-		// If the WASM returns i64, it's just a value.
-		resPtr := uint32(val)
-		resLen := uint32(val >> 32)
-
-		if resLen == 0 {
-			return nil, nil
-		}
-
-		bytes, ok := mod.Memory().Read(resPtr, resLen)
-		if !ok {
-			return nil, fmt.Errorf("failed to read result from memory at %d len %d", resPtr, resLen)
-		}
-
-		// Return a copy
-		out := make([]byte, len(bytes))
-		copy(out, bytes)
-
-		// Free result memory if free is exported
-		free := mod.ExportedFunction("free")
-		if free != nil && resPtr != 0 {
-			if _, err := free.Call(ctx, uint64(resPtr)); err != nil {
-				return nil, fmt.Errorf("failed to free result memory: %w", err)
-			}
-		}
-
-		return out, nil
-	}
-
-	return nil, nil
 }
 
 // UnloadModule removes a module.
@@ -269,16 +263,20 @@ func (h *WazeroRuntimeHost) UnloadModule(ctx context.Context, serviceID string) 
 	h.mu.Lock()
 	defer h.mu.Unlock()
 
-	mod, exists := h.modules[serviceID]
-	if !exists {
-		return fmt.Errorf("module %s not found", serviceID)
-	}
-
-	if err := mod.Close(ctx); err != nil {
-		return fmt.Errorf("failed to close module: %w", err)
+	// Ensure module is closed using runtime reference if possible
+	if mod := h.runtime.Module(serviceID); mod != nil {
+		if err := mod.Close(ctx); err != nil {
+			slog.Warn("Failed to close module via runtime", "service_id", serviceID, "error", err)
+		}
+	} else if mod, exists := h.modules[serviceID]; exists {
+		// Fallback
+		mod.Close(ctx)
 	}
 
 	delete(h.modules, serviceID)
+	delete(h.requests, serviceID)
+	delete(h.currentReq, serviceID)
+
 	return nil
 }
 

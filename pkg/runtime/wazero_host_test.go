@@ -1,14 +1,19 @@
 package runtime
 
 import (
-	"bytes"
 	"context"
+	"os"
+	"path/filepath"
 	"testing"
 
+	"ghost-ops/pkg/evolution"
 	"ghost-ops/pkg/protocol"
 )
 
-func TestWazeroRuntimeHost(t *testing.T) {
+// TestWazeroRuntimeHost_Integration verifies the runtime host using the Guest SDK.
+// The raw WASM tests were removed because hand-writing a Reactor module (looping next_command)
+// in raw bytes is too complex and error-prone.
+func TestWazeroRuntimeHost_Integration(t *testing.T) {
 	ctx := context.Background()
 	store := protocol.NewInMemoryStateStore()
 	host, err := NewWazeroRuntimeHost(ctx, store)
@@ -17,31 +22,55 @@ func TestWazeroRuntimeHost(t *testing.T) {
 	}
 	defer host.Close(ctx)
 
-	// Minimal WASM module exporting "test" function
-	// (module (func (export "test")))
-	wasm := []byte{
-		0x00, 0x61, 0x73, 0x6d, 0x01, 0x00, 0x00, 0x00,
-		0x01, 0x04, 0x01, 0x60, 0x00, 0x00,
-		0x03, 0x02, 0x01, 0x00,
-		0x07, 0x08, 0x01, 0x04, 0x74, 0x65, 0x73, 0x74, 0x00, 0x00,
-		0x0a, 0x04, 0x01, 0x02, 0x00, 0x0b,
+	// Use the Go Compiler to build the kv-service example for testing
+	engine := evolution.NewGoCompilerEngine()
+
+	// Resolves to repo root/examples/services/kv-service/main.go
+	srcPath, err := filepath.Abs("../../examples/services/kv-service/main.go")
+	if err != nil {
+		t.Fatalf("Failed to resolve source path: %v", err)
 	}
 
-	serviceID := "test-service"
+	// Verify file exists
+	if _, err := os.Stat(srcPath); err != nil {
+		t.Fatalf("Source file not found at %s: %v", srcPath, err)
+	}
+
+	bp := protocol.Blueprint{
+		Constraints: map[string]interface{}{
+			"source_path": srcPath,
+		},
+	}
+
+	wasmBytes, err := engine.Evolve(ctx, bp)
+	if err != nil {
+		t.Fatalf("Failed to compile: %v", err)
+	}
+
+	serviceID := "integration-test-service"
 
 	// Test LoadModule
-	if err := host.LoadModule(ctx, serviceID, wasm); err != nil {
+	if err := host.LoadModule(ctx, serviceID, wasmBytes); err != nil {
 		t.Fatalf("Failed to load module: %v", err)
 	}
+	defer host.UnloadModule(ctx, serviceID)
 
-	// Test Invoke
-	if _, err := host.Invoke(ctx, serviceID, "test", nil); err != nil {
+	// Set initial value in store
+	if err := store.Set(ctx, "hello", []byte("world")); err != nil {
+		t.Fatalf("Failed to set value: %v", err)
+	}
+
+	// Test Invoke "Handle"
+	// The kv-service example implements Handle which calls Get(payload)
+	payload := []byte("hello")
+	output, err := host.Invoke(ctx, serviceID, "Handle", payload)
+	if err != nil {
 		t.Fatalf("Failed to invoke method: %v", err)
 	}
 
-	// Test Invoke non-existent method
-	if _, err := host.Invoke(ctx, serviceID, "missing", nil); err == nil {
-		t.Error("Expected error for missing method, got nil")
+	expected := "value: world"
+	if string(output) != expected {
+		t.Errorf("Expected output %q, got %q", expected, string(output))
 	}
 
 	// Test UnloadModule
@@ -49,50 +78,8 @@ func TestWazeroRuntimeHost(t *testing.T) {
 		t.Fatalf("Failed to unload module: %v", err)
 	}
 
-	// Test Invoke after unload
-	if _, err := host.Invoke(ctx, serviceID, "test", nil); err == nil {
+	// Test Invoke after unload (should fail)
+	if _, err := host.Invoke(ctx, serviceID, "Handle", payload); err == nil {
 		t.Error("Expected error after unload, got nil")
-	}
-}
-
-func TestWazeroRuntimeHost_Payload(t *testing.T) {
-	ctx := context.Background()
-	store := protocol.NewInMemoryStateStore()
-	host, err := NewWazeroRuntimeHost(ctx, store)
-	if err != nil {
-		t.Fatalf("Failed to create host: %v", err)
-	}
-	defer host.Close(ctx)
-
-	// WASM module with payload support (malloc, echo, free)
-	// (module
-	//   (memory (export "memory") 1)
-	//   (func (export "malloc") (param i32) (result i32) i32.const 1024)
-	//   (func (export "echo") (param i32 i32) (result i64) ... packed ptr/len ...)
-	//   (func (export "free") (param i32) ...)
-	// )
-	wasmPayload := []byte{
-		0x00, 0x61, 0x73, 0x6d, 0x01, 0x00, 0x00, 0x00,
-		0x01, 0x10, 0x03, 0x60, 0x01, 0x7f, 0x01, 0x7f, 0x60, 0x02, 0x7f, 0x7f, 0x01, 0x7e, 0x60, 0x01, 0x7f, 0x00,
-		0x03, 0x04, 0x03, 0x00, 0x01, 0x02,
-		0x05, 0x03, 0x01, 0x00, 0x01,
-		0x07, 0x21, 0x04, 0x06, 0x6d, 0x65, 0x6d, 0x6f, 0x72, 0x79, 0x02, 0x00, 0x06, 0x6d, 0x61, 0x6c, 0x6c, 0x6f, 0x63, 0x00, 0x00, 0x04, 0x65, 0x63, 0x68, 0x6f, 0x00, 0x01, 0x04, 0x66, 0x72, 0x65, 0x65, 0x00, 0x02,
-		0x0a, 0x17, 0x03, 0x05, 0x00, 0x41, 0x80, 0x08, 0x0b, 0x0c, 0x00, 0x20, 0x00, 0xad, 0x20, 0x01, 0xad, 0x42, 0x20, 0x86, 0x84, 0x0b, 0x02, 0x00, 0x0b,
-	}
-
-	serviceID := "echo-service"
-
-	if err := host.LoadModule(ctx, serviceID, wasmPayload); err != nil {
-		t.Fatalf("Failed to load module: %v", err)
-	}
-
-	input := []byte("hello world")
-	output, err := host.Invoke(ctx, serviceID, "echo", input)
-	if err != nil {
-		t.Fatalf("Failed to invoke echo: %v", err)
-	}
-
-	if !bytes.Equal(output, input) {
-		t.Errorf("Expected output %q, got %q", input, output)
 	}
 }
