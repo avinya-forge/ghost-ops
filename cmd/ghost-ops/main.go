@@ -14,6 +14,7 @@ import (
 	"ghost-ops/pkg/evolution"
 	"ghost-ops/pkg/intent"
 	"ghost-ops/pkg/logging"
+	"ghost-ops/pkg/protocol"
 	"ghost-ops/pkg/registry"
 	"ghost-ops/pkg/runtime"
 	"ghost-ops/pkg/store"
@@ -24,6 +25,7 @@ func main() {
 	wasmPath := flag.String("wasm", "", "Path to mock WASM binary (optional)")
 	storePath := flag.String("store", "store.json", "Path to state store file")
 	httpAddr := flag.String("http", ":8080", "HTTP server address")
+	engineType := flag.String("engine", "mock", "Evolution engine to use (mock, compiler)")
 	debug := flag.Bool("debug", false, "Enable debug logging")
 	flag.Parse()
 
@@ -47,7 +49,18 @@ func main() {
 	}
 
 	// Initialize Evolution Engine
-	engine := evolution.NewMockEvolutionEngine(*wasmPath)
+	var engine protocol.EvolutionEngine
+	switch *engineType {
+	case "compiler":
+		engine = evolution.NewGoCompilerEngine()
+		slog.Info("Using Go Compiler Evolution Engine")
+	case "mock":
+		engine = evolution.NewMockEvolutionEngine(*wasmPath)
+		slog.Info("Using Mock Evolution Engine", "wasm_path", *wasmPath)
+	default:
+		slog.Error("Invalid engine type", "type", *engineType)
+		os.Exit(1)
+	}
 
 	// Initialize State Store
 	stateStore, err := store.NewJSONFileStore(*storePath)

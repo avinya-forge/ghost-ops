@@ -1,0 +1,9 @@
+[
+  {
+    "service_id": "hello-compiler",
+    "intent": "Print hello world",
+    "constraints": {
+      "source_code": "package main\nimport \"fmt\"\nfunc main() {\n\tfmt.Println(\"Hello from Compiler Engine!\")\n}"
+    }
+  }
+]
