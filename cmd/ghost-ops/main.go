@@ -19,6 +19,7 @@ import (
 	"ghost-ops/pkg/registry"
 	"ghost-ops/pkg/runtime"
 	"ghost-ops/pkg/store"
+	"ghost-ops/pkg/telemetry"
 )
 
 func main() {
@@ -83,8 +84,11 @@ func main() {
 		os.Exit(1)
 	}
 
+	// Initialize Telemetry Collector
+	collector := telemetry.NewInMemoryCollector()
+
 	// Initialize Runtime Host
-	host, err := runtime.NewWazeroRuntimeHost(ctx, stateStore)
+	host, err := runtime.NewWazeroRuntimeHost(ctx, stateStore, collector)
 	if err != nil {
 		slog.Error("Failed to initialize runtime", "error", err)
 		os.Exit(1)
@@ -92,10 +96,10 @@ func main() {
 	defer host.Close(ctx)
 
 	// Initialize Registry
-	reg := registry.NewRegistry(stateStore, engine, source, host)
+	reg := registry.NewRegistry(stateStore, engine, source, host, collector)
 
 	// Initialize API Server
-	srv := api.NewServer(reg)
+	srv := api.NewServer(reg, collector)
 	httpServer := &http.Server{
 		Addr:    *httpAddr,
 		Handler: srv,

@@ -5,25 +5,29 @@ import (
 	"log/slog"
 	"net/http"
 
+	"ghost-ops/pkg/protocol"
 	"ghost-ops/pkg/registry"
 )
 
 // Server handles HTTP requests.
 type Server struct {
-	registry *registry.Registry
-	mux      *http.ServeMux
+	registry  *registry.Registry
+	collector protocol.MetricsCollector
+	mux       *http.ServeMux
 }
 
 // NewServer creates a new API server.
-func NewServer(r *registry.Registry) *Server {
+func NewServer(r *registry.Registry, c protocol.MetricsCollector) *Server {
 	mux := http.NewServeMux()
 	s := &Server{
-		registry: r,
-		mux:      mux,
+		registry:  r,
+		collector: c,
+		mux:       mux,
 	}
 
 	mux.HandleFunc("/services", s.handleListServices)
 	mux.HandleFunc("/reconcile", s.handleReconcile)
+	mux.HandleFunc("/metrics", s.handleMetrics)
 
 	return s
 }
@@ -72,4 +76,27 @@ func (s *Server) handleReconcile(w http.ResponseWriter, r *http.Request) {
 
 	w.WriteHeader(http.StatusOK)
 	w.Write([]byte("Reconciliation completed"))
+}
+
+func (s *Server) handleMetrics(w http.ResponseWriter, r *http.Request) {
+	if r.Method != http.MethodGet {
+		http.Error(w, "Method not allowed", http.StatusMethodNotAllowed)
+		return
+	}
+
+	type snapshotter interface {
+		Snapshot() map[string]interface{}
+	}
+
+	var metrics map[string]interface{}
+	if s, ok := s.collector.(snapshotter); ok {
+		metrics = s.Snapshot()
+	} else {
+		metrics = map[string]interface{}{"error": "collector does not support snapshot"}
+	}
+
+	w.Header().Set("Content-Type", "application/json")
+	if err := json.NewEncoder(w).Encode(metrics); err != nil {
+		slog.Error("Failed to encode metrics", "error", err)
+	}
 }

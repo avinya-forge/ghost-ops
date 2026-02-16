@@ -8,6 +8,7 @@ import (
 
 	"ghost-ops/pkg/evolution"
 	"ghost-ops/pkg/protocol"
+	"ghost-ops/pkg/telemetry"
 )
 
 // TestWazeroRuntimeHost_Integration verifies the runtime host using the Guest SDK.
@@ -16,7 +17,8 @@ import (
 func TestWazeroRuntimeHost_Integration(t *testing.T) {
 	ctx := context.Background()
 	store := protocol.NewInMemoryStateStore()
-	host, err := NewWazeroRuntimeHost(ctx, store)
+	collector := telemetry.NewInMemoryCollector()
+	host, err := NewWazeroRuntimeHost(ctx, store, collector)
 	if err != nil {
 		t.Fatalf("Failed to create host: %v", err)
 	}

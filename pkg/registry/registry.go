@@ -13,10 +13,11 @@ import (
 
 // Registry orchestrates the lifecycle of services.
 type Registry struct {
-	store   protocol.StateStore
-	engine  protocol.EvolutionEngine
-	source  protocol.IntentSource
-	runtime protocol.RuntimeHost
+	store     protocol.StateStore
+	engine    protocol.EvolutionEngine
+	source    protocol.IntentSource
+	runtime   protocol.RuntimeHost
+	collector protocol.MetricsCollector
 }
 
 // NewRegistry creates a new Registry.
@@ -25,12 +26,14 @@ func NewRegistry(
 	engine protocol.EvolutionEngine,
 	source protocol.IntentSource,
 	runtime protocol.RuntimeHost,
+	collector protocol.MetricsCollector,
 ) *Registry {
 	return &Registry{
-		store:   store,
-		engine:  engine,
-		source:  source,
-		runtime: runtime,
+		store:     store,
+		engine:    engine,
+		source:    source,
+		runtime:   runtime,
+		collector: collector,
 	}
 }
 
@@ -55,6 +58,7 @@ func (r *Registry) Reconcile(ctx context.Context) (bool, error) {
 	wasmBytes, err := r.engine.Evolve(ctx, *bp)
 	if err != nil {
 		slog.Error("Failed to evolve service", "service_id", bp.ServiceID, "error", err)
+		r.collector.Counter("reconcile_failure", 1, map[string]string{"phase": "evolve", "service_id": bp.ServiceID})
 		return true, nil // Return true to continue processing next blueprint even if this one failed
 	}
 
@@ -80,6 +84,7 @@ func (r *Registry) Reconcile(ctx context.Context) (bool, error) {
 	// Load Module
 	if err := r.runtime.LoadModule(ctx, bp.ServiceID, wasmBytes); err != nil {
 		slog.Error("Failed to load module", "service_id", bp.ServiceID, "error", err)
+		r.collector.Counter("reconcile_failure", 1, map[string]string{"phase": "load_module", "service_id": bp.ServiceID})
 		return true, nil
 	}
 
@@ -94,10 +99,19 @@ func (r *Registry) Reconcile(ctx context.Context) (bool, error) {
 	if err := r.store.UpdateService(ctx, record); err != nil {
 		slog.Error("Failed to update store", "service_id", bp.ServiceID, "error", err)
 		// Should we unload if store update fails? Probably not for MVP.
+		r.collector.Counter("reconcile_failure", 1, map[string]string{"phase": "update_store", "service_id": bp.ServiceID})
 		return true, nil
 	}
 
 	slog.Info("Service reconciled successfully", "service_id", bp.ServiceID)
+	r.collector.Counter("reconcile_success", 1, map[string]string{"service_id": bp.ServiceID})
+
+	// Update active services gauge
+	services, err := r.store.ListServices(ctx)
+	if err == nil {
+		r.collector.Gauge("active_services", float64(len(services)), nil)
+	}
+
 	return true, nil
 }
 

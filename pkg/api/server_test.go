@@ -8,6 +8,7 @@ import (
 
 	"ghost-ops/pkg/protocol"
 	"ghost-ops/pkg/registry"
+	"ghost-ops/pkg/telemetry"
 )
 
 // MockStateStore
@@ -78,8 +79,9 @@ func TestServer_Services(t *testing.T) {
 	store := &MockStateStore{records: map[string]protocol.ServiceRecord{
 		"svc-1": {ServiceID: "svc-1"},
 	}}
-	reg := registry.NewRegistry(store, &MockEvolutionEngine{}, &MockIntentSource{}, &MockRuntimeHost{})
-	server := NewServer(reg)
+	collector := telemetry.NewInMemoryCollector()
+	reg := registry.NewRegistry(store, &MockEvolutionEngine{}, &MockIntentSource{}, &MockRuntimeHost{}, collector)
+	server := NewServer(reg, collector)
 
 	req := httptest.NewRequest(http.MethodGet, "/services", nil)
 	w := httptest.NewRecorder()
@@ -94,8 +96,9 @@ func TestServer_Services(t *testing.T) {
 
 func TestServer_Reconcile(t *testing.T) {
 	store := &MockStateStore{records: make(map[string]protocol.ServiceRecord)}
-	reg := registry.NewRegistry(store, &MockEvolutionEngine{}, &MockIntentSource{}, &MockRuntimeHost{modules: make(map[string][]byte)})
-	server := NewServer(reg)
+	collector := telemetry.NewInMemoryCollector()
+	reg := registry.NewRegistry(store, &MockEvolutionEngine{}, &MockIntentSource{}, &MockRuntimeHost{modules: make(map[string][]byte)}, collector)
+	server := NewServer(reg, collector)
 
 	req := httptest.NewRequest(http.MethodPost, "/reconcile", nil)
 	w := httptest.NewRecorder()
@@ -104,5 +107,29 @@ func TestServer_Reconcile(t *testing.T) {
 
 	if w.Code != http.StatusOK {
 		t.Errorf("Expected status 200, got %d", w.Code)
+	}
+}
+
+func TestServer_Metrics(t *testing.T) {
+	store := &MockStateStore{records: make(map[string]protocol.ServiceRecord)}
+	collector := telemetry.NewInMemoryCollector()
+	// Increment a counter
+	collector.Counter("test_counter", 1, nil)
+
+	reg := registry.NewRegistry(store, &MockEvolutionEngine{}, &MockIntentSource{}, &MockRuntimeHost{}, collector)
+	server := NewServer(reg, collector)
+
+	req := httptest.NewRequest(http.MethodGet, "/metrics", nil)
+	w := httptest.NewRecorder()
+
+	server.ServeHTTP(w, req)
+
+	if w.Code != http.StatusOK {
+		t.Errorf("Expected status 200, got %d", w.Code)
+	}
+
+	body := w.Body.String()
+	if body == "" {
+		t.Error("Expected body, got empty")
 	}
 }

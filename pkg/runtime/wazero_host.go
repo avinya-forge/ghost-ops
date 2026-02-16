@@ -5,6 +5,7 @@ import (
 	"fmt"
 	"log/slog"
 	"sync"
+	"time"
 
 	"github.com/tetratelabs/wazero"
 	"github.com/tetratelabs/wazero/api"
@@ -33,10 +34,11 @@ type WazeroRuntimeHost struct {
 	requests   map[string]chan Request
 	currentReq map[string]Request
 	mu         sync.RWMutex
+	collector  protocol.MetricsCollector
 }
 
 // NewWazeroRuntimeHost creates a new WazeroRuntimeHost.
-func NewWazeroRuntimeHost(ctx context.Context, store protocol.StateStore) (*WazeroRuntimeHost, error) {
+func NewWazeroRuntimeHost(ctx context.Context, store protocol.StateStore, collector protocol.MetricsCollector) (*WazeroRuntimeHost, error) {
 	r := wazero.NewRuntime(ctx)
 
 	// Instantiate WASI, as many modules might need it.
@@ -49,6 +51,7 @@ func NewWazeroRuntimeHost(ctx context.Context, store protocol.StateStore) (*Waze
 		modules:    make(map[string]api.Module),
 		requests:   make(map[string]chan Request),
 		currentReq: make(map[string]Request),
+		collector:  collector,
 	}
 
 	// Define kv_get host function
@@ -220,6 +223,9 @@ func (h *WazeroRuntimeHost) LoadModule(ctx context.Context, serviceID string, wa
 		_, err := h.runtime.InstantiateModule(ctx, compiled, config)
 		if err != nil {
 			slog.Error("Failed to instantiate module", "service_id", serviceID, "error", err)
+			h.collector.Counter("module_load_failure", 1, map[string]string{"service_id": serviceID})
+		} else {
+			h.collector.Counter("module_load_success", 1, map[string]string{"service_id": serviceID})
 		}
 	}()
 
@@ -228,11 +234,18 @@ func (h *WazeroRuntimeHost) LoadModule(ctx context.Context, serviceID string, wa
 
 // Invoke calls a function on the loaded module.
 func (h *WazeroRuntimeHost) Invoke(ctx context.Context, serviceID, method string, payload []byte) ([]byte, error) {
+	start := time.Now()
+	defer func() {
+		duration := time.Since(start).Seconds()
+		h.collector.Histogram("invoke_duration_seconds", duration, map[string]string{"service_id": serviceID, "method": method})
+	}()
+
 	h.mu.RLock()
 	reqCh, exists := h.requests[serviceID]
 	h.mu.RUnlock()
 
 	if !exists {
+		h.collector.Counter("invoke_error", 1, map[string]string{"service_id": serviceID, "type": "not_found"})
 		return nil, fmt.Errorf("module %s not found or not ready", serviceID)
 	}
 
@@ -247,13 +260,20 @@ func (h *WazeroRuntimeHost) Invoke(ctx context.Context, serviceID, method string
 	case reqCh <- req:
 		// Request sent
 	case <-ctx.Done():
+		h.collector.Counter("invoke_error", 1, map[string]string{"service_id": serviceID, "type": "context_cancelled"})
 		return nil, ctx.Err()
 	}
 
 	select {
 	case res := <-responseCh:
+		if res.err != nil {
+			h.collector.Counter("invoke_error", 1, map[string]string{"service_id": serviceID, "type": "execution_error"})
+		} else {
+			h.collector.Counter("invoke_success", 1, map[string]string{"service_id": serviceID})
+		}
 		return res.payload, res.err
 	case <-ctx.Done():
+		h.collector.Counter("invoke_error", 1, map[string]string{"service_id": serviceID, "type": "timeout"})
 		return nil, ctx.Err()
 	}
 }

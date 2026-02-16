@@ -9,6 +9,7 @@ import (
 	"ghost-ops/pkg/evolution"
 	"ghost-ops/pkg/protocol"
 	"ghost-ops/pkg/runtime"
+	"ghost-ops/pkg/telemetry"
 )
 
 func TestGuestRPC(t *testing.T) {
@@ -85,7 +86,8 @@ func main() {
 	// Setup Host
 	// Use InMemoryStateStore from protocol package
 	st := protocol.NewInMemoryStateStore()
-	host, err := runtime.NewWazeroRuntimeHost(ctx, st)
+	collector := telemetry.NewInMemoryCollector()
+	host, err := runtime.NewWazeroRuntimeHost(ctx, st, collector)
 	if err != nil {
 		t.Fatalf("Failed to create host: %v", err)
 	}
