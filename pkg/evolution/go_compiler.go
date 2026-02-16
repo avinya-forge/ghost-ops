@@ -4,8 +4,6 @@ import (
 	"context"
 	"fmt"
 	"os"
-	"os/exec"
-	"path/filepath"
 
 	"ghost-ops/pkg/protocol"
 )
@@ -29,43 +27,16 @@ func (e *GoCompilerEngine) Evolve(ctx context.Context, blueprint protocol.Bluepr
 		return nil, fmt.Errorf("blueprint constraints must contain 'source_code' or 'source_path'")
 	}
 
-	// Create temp dir
-	tmpDir, err := os.MkdirTemp("", "ghost-ops-build-*")
-	if err != nil {
-		return nil, fmt.Errorf("failed to create temp dir: %w", err)
-	}
-	defer os.RemoveAll(tmpDir)
-
-	var inputFile string
 	if hasSource {
-		inputFile = filepath.Join(tmpDir, "main.go")
-		if err := os.WriteFile(inputFile, []byte(sourceCode), 0644); err != nil {
-			return nil, fmt.Errorf("failed to write source code: %w", err)
-		}
-	} else {
-		// Verify source path exists
-		if _, err := os.Stat(sourcePath); err != nil {
-			return nil, fmt.Errorf("failed to access source path: %w", err)
-		}
-		inputFile = sourcePath
+		return CompileGo(ctx, sourceCode)
 	}
 
-	outputFile := filepath.Join(tmpDir, "output.wasm")
-
-	// Run go build
-	cmd := exec.CommandContext(ctx, "go", "build", "-o", outputFile, inputFile)
-	cmd.Env = append(os.Environ(), "GOOS=wasip1", "GOARCH=wasm")
-
-	// Capture output for debugging
-	if output, err := cmd.CombinedOutput(); err != nil {
-		return nil, fmt.Errorf("compilation failed: %v, output: %s", err, string(output))
-	}
-
-	// Read output WASM
-	wasmBytes, err := os.ReadFile(outputFile)
+	// Handle source_path case
+	// Read the file content and use CompileGo
+	codeBytes, err := os.ReadFile(sourcePath)
 	if err != nil {
-		return nil, fmt.Errorf("failed to read output WASM: %w", err)
+		return nil, fmt.Errorf("failed to read source path: %w", err)
 	}
 
-	return wasmBytes, nil
+	return CompileGo(ctx, string(codeBytes))
 }
