@@ -5,6 +5,7 @@ import (
 	"testing"
 
 	"ghost-ops/pkg/protocol"
+	"ghost-ops/pkg/telemetry"
 )
 
 // MockStateStore
@@ -81,8 +82,9 @@ func TestRegistry_Reconcile(t *testing.T) {
 		},
 	}
 	runtime := &MockRuntimeHost{modules: make(map[string][]byte)}
+	collector := telemetry.NewInMemoryCollector()
 
-	reg := NewRegistry(store, engine, source, runtime)
+	reg := NewRegistry(store, engine, source, runtime, collector)
 	ctx := context.Background()
 
 	// First call should process one blueprint
