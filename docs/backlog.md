@@ -3,8 +3,14 @@
 ## Todo
 
 ## In-Progress
+- [ ] Integrate AI Engine into CLI <!-- id: 29 -->
 
 ## Done
+- [x] Refactor `GoCompilerEngine` logic into a reusable function <!-- id: 25 -->
+- [x] Define `LLMProvider` interface <!-- id: 26 -->
+- [x] Implement `MockLLMProvider` <!-- id: 27 -->
+- [x] Implement `AIEvolutionEngine` <!-- id: 28 -->
+- [x] Implement AI Evolution Engine Components <!-- id: 24 -->
 - [x] Implement Go Guest SDK for WASM Services <!-- id: 23 -->
 - [x] Implement Go Compiler Evolution Engine `pkg/evolution/go_compiler.go` <!-- id: 22 -->
 - [x] Implement payload passing in `WazeroRuntimeHost.Invoke` <!-- id: 21 -->
@@ -28,3 +34,5 @@
 - [x] Implement `InMemoryStateStore` for testing <!-- id: 8 -->
 - [x] Set up basic CI/CD pipeline (GitHub Actions) <!-- id: 9 -->
 - [x] Create a "Hello World" WASM module to test runtime <!-- id: 10 -->
+
+## Alpha Phase
