@@ -1,11 +1,15 @@
 # Backlog
 
 ## Todo
+- [ ] Implement Telemetry Collection (runtime metrics) <!-- id: 30 -->
+- [ ] Implement Real LLM Provider (OpenAI) <!-- id: 31 -->
+- [ ] Implement Service Versioning Strategy <!-- id: 32 -->
+- [ ] Enhance Reconcile Loop for Continuous Evolution <!-- id: 33 -->
 
 ## In-Progress
-- [ ] Integrate AI Engine into CLI <!-- id: 29 -->
 
 ## Done
+- [x] Integrate AI Engine into CLI <!-- id: 29 -->
 - [x] Refactor `GoCompilerEngine` logic into a reusable function <!-- id: 25 -->
 - [x] Define `LLMProvider` interface <!-- id: 26 -->
 - [x] Implement `MockLLMProvider` <!-- id: 27 -->

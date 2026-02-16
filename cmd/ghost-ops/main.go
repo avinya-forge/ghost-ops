@@ -13,6 +13,7 @@ import (
 	"ghost-ops/pkg/api"
 	"ghost-ops/pkg/evolution"
 	"ghost-ops/pkg/intent"
+	"ghost-ops/pkg/llm"
 	"ghost-ops/pkg/logging"
 	"ghost-ops/pkg/protocol"
 	"ghost-ops/pkg/registry"
@@ -25,7 +26,8 @@ func main() {
 	wasmPath := flag.String("wasm", "", "Path to mock WASM binary (optional)")
 	storePath := flag.String("store", "store.json", "Path to state store file")
 	httpAddr := flag.String("http", ":8080", "HTTP server address")
-	engineType := flag.String("engine", "mock", "Evolution engine to use (mock, compiler)")
+	engineType := flag.String("engine", "mock", "Evolution engine to use (mock, compiler, ai)")
+	llmProvider := flag.String("llm", "mock", "LLM provider to use (mock)")
 	debug := flag.Bool("debug", false, "Enable debug logging")
 	flag.Parse()
 
@@ -57,6 +59,18 @@ func main() {
 	case "mock":
 		engine = evolution.NewMockEvolutionEngine(*wasmPath)
 		slog.Info("Using Mock Evolution Engine", "wasm_path", *wasmPath)
+	case "ai":
+		var provider protocol.LLMProvider
+		switch *llmProvider {
+		case "mock":
+			provider = &llm.MockLLMProvider{}
+			slog.Info("Using Mock LLM Provider")
+		default:
+			slog.Error("Invalid LLM provider", "provider", *llmProvider)
+			os.Exit(1)
+		}
+		engine = evolution.NewAIEvolutionEngine(provider)
+		slog.Info("Using AI Evolution Engine")
 	default:
 		slog.Error("Invalid engine type", "type", *engineType)
 		os.Exit(1)
