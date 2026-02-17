@@ -17,6 +17,7 @@ const (
 // ServiceRecord represents a row in the Services table.
 type ServiceRecord struct {
 	ServiceID          string       `json:"service_id"`
+	Version            int          `json:"version"`
 	WASMHash           string       `json:"wasm_hash"`
 	CurrentState       ServiceState `json:"current_state"`
 	SynthesisTimestamp time.Time    `json:"synthesis_timestamp"`
