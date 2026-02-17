@@ -55,16 +55,12 @@ func (r *Registry) Reconcile(ctx context.Context) (bool, error) {
 	slog.Info("Processing blueprint", "service_id", bp.ServiceID)
 
 	// Evolve
-	wasmBytes, err := r.engine.Evolve(ctx, *bp)
+	wasmBytes, hashStr, err := r.evolveService(ctx, bp)
 	if err != nil {
 		slog.Error("Failed to evolve service", "service_id", bp.ServiceID, "error", err)
 		r.collector.Counter("reconcile_failure", 1, map[string]string{"phase": "evolve", "service_id": bp.ServiceID})
 		return true, nil // Return true to continue processing next blueprint even if this one failed
 	}
-
-	// Calculate hash
-	hash := sha256.Sum256(wasmBytes)
-	hashStr := hex.EncodeToString(hash[:])
 
 	// Check if service already exists
 	existing, err := r.store.GetService(ctx, bp.ServiceID)
@@ -73,35 +69,22 @@ func (r *Registry) Reconcile(ctx context.Context) (bool, error) {
 		return true, nil
 	}
 
+	// Calculate new version
 	var newVersion = 1
 	if existing != nil {
 		newVersion = existing.Version + 1
-		// Unload if exists
-		slog.Info("Service exists, unloading first", "service_id", bp.ServiceID, "version", existing.Version)
-		if err := r.runtime.UnloadModule(ctx, bp.ServiceID); err != nil {
-			slog.Warn("Failed to unload module (might not be loaded)", "service_id", bp.ServiceID, "error", err)
-		}
 	}
 
-	// Load Module
-	if err := r.runtime.LoadModule(ctx, bp.ServiceID, wasmBytes); err != nil {
+	// Deploy to Runtime
+	if err := r.deployToRuntime(ctx, bp.ServiceID, existing, wasmBytes); err != nil {
 		slog.Error("Failed to load module", "service_id", bp.ServiceID, "error", err)
 		r.collector.Counter("reconcile_failure", 1, map[string]string{"phase": "load_module", "service_id": bp.ServiceID})
 		return true, nil
 	}
 
 	// Update Store
-	record := protocol.ServiceRecord{
-		ServiceID:          bp.ServiceID,
-		Version:            newVersion,
-		WASMHash:           hashStr,
-		CurrentState:       protocol.StateActive,
-		SynthesisTimestamp: time.Now().UTC(),
-	}
-
-	if err := r.store.UpdateService(ctx, record); err != nil {
+	if err := r.updateStore(ctx, bp.ServiceID, newVersion, hashStr); err != nil {
 		slog.Error("Failed to update store", "service_id", bp.ServiceID, "error", err)
-		// Should we unload if store update fails? Probably not for MVP.
 		r.collector.Counter("reconcile_failure", 1, map[string]string{"phase": "update_store", "service_id": bp.ServiceID})
 		return true, nil
 	}
@@ -109,13 +92,53 @@ func (r *Registry) Reconcile(ctx context.Context) (bool, error) {
 	slog.Info("Service reconciled successfully", "service_id", bp.ServiceID)
 	r.collector.Counter("reconcile_success", 1, map[string]string{"service_id": bp.ServiceID})
 
-	// Update active services gauge
+	// Refresh Metrics
+	r.refreshMetrics(ctx)
+
+	return true, nil
+}
+
+func (r *Registry) evolveService(ctx context.Context, bp *protocol.Blueprint) ([]byte, string, error) {
+	wasmBytes, err := r.engine.Evolve(ctx, *bp)
+	if err != nil {
+		return nil, "", err
+	}
+
+	// Calculate hash
+	hash := sha256.Sum256(wasmBytes)
+	hashStr := hex.EncodeToString(hash[:])
+	return wasmBytes, hashStr, nil
+}
+
+func (r *Registry) deployToRuntime(ctx context.Context, serviceID string, existing *protocol.ServiceRecord, wasmBytes []byte) error {
+	if existing != nil {
+		// Unload if exists
+		slog.Info("Service exists, unloading first", "service_id", serviceID, "version", existing.Version)
+		if err := r.runtime.UnloadModule(ctx, serviceID); err != nil {
+			slog.Warn("Failed to unload module (might not be loaded)", "service_id", serviceID, "error", err)
+		}
+	}
+
+	return r.runtime.LoadModule(ctx, serviceID, wasmBytes)
+}
+
+func (r *Registry) updateStore(ctx context.Context, serviceID string, version int, hashStr string) error {
+	record := protocol.ServiceRecord{
+		ServiceID:          serviceID,
+		Version:            version,
+		WASMHash:           hashStr,
+		CurrentState:       protocol.StateActive,
+		SynthesisTimestamp: time.Now().UTC(),
+	}
+
+	return r.store.UpdateService(ctx, record)
+}
+
+func (r *Registry) refreshMetrics(ctx context.Context) {
 	services, err := r.store.ListServices(ctx)
 	if err == nil {
 		r.collector.Gauge("active_services", float64(len(services)), nil)
 	}
-
-	return true, nil
 }
 
 // ListServices returns all services from the store.
