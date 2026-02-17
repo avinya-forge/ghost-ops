@@ -6,6 +6,7 @@
 - Added `OpenAIProvider` for real code generation from intents.
 - Refactored `GoCompilerEngine` to use shared compilation logic.
 - Implemented Service Versioning Strategy (incrementing version on evolution).
+- Enhanced Reconcile Loop to support continuous evolution by reloading blueprints when the file changes.
 
 ## v0.1.0 (Upcoming)
 - Initial project setup.

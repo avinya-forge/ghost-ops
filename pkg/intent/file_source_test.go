@@ -5,6 +5,7 @@ import (
 	"encoding/json"
 	"os"
 	"testing"
+	"time"
 
 	"ghost-ops/pkg/protocol"
 )
@@ -64,5 +65,78 @@ func TestFileIntentSource(t *testing.T) {
 	}
 	if bp != nil {
 		t.Errorf("Expected nil (end of list), got %v", bp)
+	}
+}
+
+func TestFileIntentSource_Reload(t *testing.T) {
+	// Create a temporary file
+	tmpfile, err := os.CreateTemp("", "blueprints-reload-*.json")
+	if err != nil {
+		t.Fatal(err)
+	}
+	defer os.Remove(tmpfile.Name())
+
+	blueprints1 := []protocol.Blueprint{
+		{ServiceID: "svc-1", Intent: "intent-1"},
+	}
+
+	data1, _ := json.Marshal(blueprints1)
+	if err := os.WriteFile(tmpfile.Name(), data1, 0644); err != nil {
+		t.Fatal(err)
+	}
+
+	source, err := NewFileIntentSource(tmpfile.Name())
+	if err != nil {
+		t.Fatalf("Failed to create source: %v", err)
+	}
+
+	ctx := context.Background()
+
+	// Read first blueprint
+	bp, err := source.GetNextBlueprint(ctx)
+	if err != nil {
+		t.Fatalf("Unexpected error: %v", err)
+	}
+	if bp == nil || bp.ServiceID != "svc-1" {
+		t.Errorf("Expected svc-1, got %v", bp)
+	}
+
+	// Read end (should be nil)
+	bp, err = source.GetNextBlueprint(ctx)
+	if err != nil {
+		t.Fatalf("Unexpected error: %v", err)
+	}
+	if bp != nil {
+		t.Errorf("Expected nil, got %v", bp)
+	}
+
+	// Update file with new blueprints
+	// Ensure sufficient time passes for ModTime to change
+	time.Sleep(1100 * time.Millisecond)
+
+	blueprints2 := []protocol.Blueprint{
+		{ServiceID: "svc-2", Intent: "intent-2"},
+	}
+	data2, _ := json.Marshal(blueprints2)
+	if err := os.WriteFile(tmpfile.Name(), data2, 0644); err != nil {
+		t.Fatal(err)
+	}
+
+	// Read next blueprint (should be svc-2 after reload)
+	bp, err = source.GetNextBlueprint(ctx)
+	if err != nil {
+		t.Fatalf("Unexpected error: %v", err)
+	}
+	if bp == nil || bp.ServiceID != "svc-2" {
+		t.Errorf("Expected svc-2 after reload, got %v", bp)
+	}
+
+	// Read end again
+	bp, err = source.GetNextBlueprint(ctx)
+	if err != nil {
+		t.Fatalf("Unexpected error: %v", err)
+	}
+	if bp != nil {
+		t.Errorf("Expected nil, got %v", bp)
 	}
 }

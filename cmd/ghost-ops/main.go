@@ -123,19 +123,27 @@ func main() {
 		}
 	}()
 
-	// Initial Reconciliation
-	for {
-		processed, err := reg.Reconcile(ctx)
-		if err != nil {
-			slog.Error("Initial reconciliation failed", "error", err)
-			// Decide whether to exit or continue. For now, we continue but log error.
-			// Maybe break if critical?
-			break
+	// Continuous Reconciliation Loop
+	go func() {
+		slog.Info("Starting reconciliation loop")
+		for {
+			select {
+			case <-ctx.Done():
+				return
+			default:
+				processed, err := reg.Reconcile(ctx)
+				if err != nil {
+					slog.Error("Reconciliation error", "error", err)
+					time.Sleep(5 * time.Second) // Backoff on error
+					continue
+				}
+				if !processed {
+					// No pending blueprints, sleep before checking again
+					time.Sleep(2 * time.Second)
+				}
+			}
 		}
-		if !processed {
-			break
-		}
-	}
+	}()
 
 	// Wait for shutdown signal
 	sigChan := make(chan os.Signal, 1)
@@ -143,6 +151,7 @@ func main() {
 	<-sigChan
 
 	slog.Info("Shutting down...")
+	cancel() // Signal loop to stop
 
 	// Graceful shutdown
 	shutdownCtx, shutdownCancel := context.WithTimeout(context.Background(), 5*time.Second)
