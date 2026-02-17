@@ -66,6 +66,15 @@ func main() {
 		case "mock":
 			provider = &llm.MockLLMProvider{}
 			slog.Info("Using Mock LLM Provider")
+		case "openai":
+			apiKey := os.Getenv("OPENAI_API_KEY")
+			if apiKey == "" {
+				slog.Error("OPENAI_API_KEY environment variable is required for openai provider")
+				os.Exit(1)
+			}
+			model := os.Getenv("OPENAI_MODEL")
+			provider = llm.NewOpenAIProvider(apiKey, model)
+			slog.Info("Using OpenAI LLM Provider", "model", model)
 		default:
 			slog.Error("Invalid LLM provider", "provider", *llmProvider)
 			os.Exit(1)

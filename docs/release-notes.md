@@ -1,8 +1,9 @@
 # Release Notes
 
 ## v0.2.0 (Alpha) - In Development
-- Implemented `AIEvolutionEngine` to support generating WASM from natural language intent (using Mock LLM for now).
+- Implemented `AIEvolutionEngine` to support generating WASM from natural language intent (using Mock LLM or OpenAI).
 - Added `LLMProvider` interface and `MockLLMProvider`.
+- Added `OpenAIProvider` for real code generation from intents.
 - Refactored `GoCompilerEngine` to use shared compilation logic.
 
 ## v0.1.0 (Upcoming)
