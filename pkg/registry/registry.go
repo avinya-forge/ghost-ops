@@ -73,9 +73,11 @@ func (r *Registry) Reconcile(ctx context.Context) (bool, error) {
 		return true, nil
 	}
 
+	var newVersion = 1
 	if existing != nil {
+		newVersion = existing.Version + 1
 		// Unload if exists
-		slog.Info("Service exists, unloading first", "service_id", bp.ServiceID)
+		slog.Info("Service exists, unloading first", "service_id", bp.ServiceID, "version", existing.Version)
 		if err := r.runtime.UnloadModule(ctx, bp.ServiceID); err != nil {
 			slog.Warn("Failed to unload module (might not be loaded)", "service_id", bp.ServiceID, "error", err)
 		}
@@ -91,6 +93,7 @@ func (r *Registry) Reconcile(ctx context.Context) (bool, error) {
 	// Update Store
 	record := protocol.ServiceRecord{
 		ServiceID:          bp.ServiceID,
+		Version:            newVersion,
 		WASMHash:           hashStr,
 		CurrentState:       protocol.StateActive,
 		SynthesisTimestamp: time.Now().UTC(),

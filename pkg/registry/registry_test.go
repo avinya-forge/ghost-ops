@@ -119,3 +119,47 @@ func TestRegistry_Reconcile(t *testing.T) {
 		t.Fatal("Expected Reconcile to return false for no more blueprints")
 	}
 }
+
+func TestRegistry_Reconcile_Versioning(t *testing.T) {
+	store := &MockStateStore{records: make(map[string]protocol.ServiceRecord)}
+	engine := &MockEvolutionEngine{}
+	source := &MockIntentSource{
+		blueprints: []protocol.Blueprint{
+			{ServiceID: "svc-1", Intent: "v1"},
+			{ServiceID: "svc-1", Intent: "v2"},
+		},
+	}
+	runtime := &MockRuntimeHost{modules: make(map[string][]byte)}
+	collector := telemetry.NewInMemoryCollector()
+
+	reg := NewRegistry(store, engine, source, runtime, collector)
+	ctx := context.Background()
+
+	// First call - Version 1
+	processed, err := reg.Reconcile(ctx)
+	if err != nil {
+		t.Fatalf("Reconcile 1 failed: %v", err)
+	}
+	if !processed {
+		t.Fatal("Expected processed")
+	}
+
+	rec, _ := store.GetService(ctx, "svc-1")
+	if rec.Version != 1 {
+		t.Errorf("Expected version 1, got %d", rec.Version)
+	}
+
+	// Second call - Version 2
+	processed, err = reg.Reconcile(ctx)
+	if err != nil {
+		t.Fatalf("Reconcile 2 failed: %v", err)
+	}
+	if !processed {
+		t.Fatal("Expected processed")
+	}
+
+	rec, _ = store.GetService(ctx, "svc-1")
+	if rec.Version != 2 {
+		t.Errorf("Expected version 2, got %d", rec.Version)
+	}
+}

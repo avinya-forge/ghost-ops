@@ -5,6 +5,7 @@
 - Added `LLMProvider` interface and `MockLLMProvider`.
 - Added `OpenAIProvider` for real code generation from intents.
 - Refactored `GoCompilerEngine` to use shared compilation logic.
+- Implemented Service Versioning Strategy (incrementing version on evolution).
 
 ## v0.1.0 (Upcoming)
 - Initial project setup.
