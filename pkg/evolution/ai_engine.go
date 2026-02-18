@@ -22,7 +22,7 @@ func NewAIEvolutionEngine(llm protocol.LLMProvider) *AIEvolutionEngine {
 // Evolve generates a WASM binary from the given blueprint using AI.
 func (e *AIEvolutionEngine) Evolve(ctx context.Context, blueprint protocol.Blueprint) ([]byte, error) {
 	// 1. Generate Source Code from Intent
-	sourceCode, err := e.llm.GenerateCode(ctx, blueprint.Intent)
+	sourceCode, err := e.llm.GenerateCode(ctx, blueprint)
 	if err != nil {
 		return nil, fmt.Errorf("failed to generate code from intent: %w", err)
 	}

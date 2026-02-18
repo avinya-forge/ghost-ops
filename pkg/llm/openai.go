@@ -8,6 +8,8 @@ import (
 	"io"
 	"net/http"
 	"strings"
+
+	"ghost-ops/pkg/protocol"
 )
 
 const (
@@ -64,7 +66,7 @@ type apiError struct {
 }
 
 // GenerateCode calls OpenAI Chat Completion API to generate Go code based on intent.
-func (p *OpenAIProvider) GenerateCode(ctx context.Context, intent string) (string, error) {
+func (p *OpenAIProvider) GenerateCode(ctx context.Context, blueprint protocol.Blueprint) (string, error) {
 	if p.APIKey == "" {
 		return "", fmt.Errorf("OpenAI API key is missing")
 	}
@@ -76,11 +78,19 @@ Do not include any markdown formatting (e.g. triple backticks).
 Output ONLY the raw Go source code.
 Ensure the code imports necessary packages and handles errors gracefully.`
 
+	userContent := blueprint.Intent
+	if len(blueprint.Constraints) > 0 {
+		constraintsJSON, err := json.Marshal(blueprint.Constraints)
+		if err == nil {
+			userContent += fmt.Sprintf("\n\nConstraints: %s", string(constraintsJSON))
+		}
+	}
+
 	reqBody := chatCompletionRequest{
 		Model: p.Model,
 		Messages: []message{
 			{Role: "system", Content: systemPrompt},
-			{Role: "user", Content: intent},
+			{Role: "user", Content: userContent},
 		},
 		Temperature: 0.2, // Low temperature for deterministic code generation
 	}
