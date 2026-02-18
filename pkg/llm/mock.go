@@ -2,6 +2,8 @@ package llm
 
 import (
 	"context"
+
+	"ghost-ops/pkg/protocol"
 )
 
 // MockLLMProvider is a mock implementation of LLMProvider.
@@ -12,7 +14,7 @@ type MockLLMProvider struct {
 }
 
 // GenerateCode returns a hardcoded Go service code.
-func (m *MockLLMProvider) GenerateCode(ctx context.Context, intent string) (string, error) {
+func (m *MockLLMProvider) GenerateCode(ctx context.Context, blueprint protocol.Blueprint) (string, error) {
 	if m.Response != "" {
 		return m.Response, nil
 	}
