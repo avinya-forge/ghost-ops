@@ -7,6 +7,7 @@
 - Refactored `GoCompilerEngine` to use shared compilation logic.
 - Implemented Service Versioning Strategy (incrementing version on evolution).
 - Enhanced Reconcile Loop to support continuous evolution by reloading blueprints when the file changes.
+- Enhanced AI Evolution Engine to support constraint-aware synthesis by passing full blueprints (intents + constraints) to the LLM.
 
 ## v0.1.0 (Upcoming)
 - Initial project setup.

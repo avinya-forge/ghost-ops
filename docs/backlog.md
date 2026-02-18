@@ -5,6 +5,7 @@
 ## In-Progress
 
 ## Done
+- [x] Implement Constraint-Aware Synthesis (Pass Blueprint to LLM) <!-- id: 34 -->
 - [x] Enhance Reconcile Loop for Continuous Evolution <!-- id: 33 -->
 
 ## Done

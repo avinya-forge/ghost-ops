@@ -7,6 +7,8 @@ import (
 	"net/http/httptest"
 	"strings"
 	"testing"
+
+	"ghost-ops/pkg/protocol"
 )
 
 func TestOpenAIProvider_GenerateCode_Success(t *testing.T) {
@@ -68,13 +70,71 @@ func main() {
 	provider := NewOpenAIProvider("test-key", "gpt-4o")
 	provider.BaseURL = ts.URL // Override BaseURL for testing
 
-	code, err := provider.GenerateCode(context.Background(), "hello")
+	blueprint := protocol.Blueprint{
+		Intent: "hello",
+	}
+
+	code, err := provider.GenerateCode(context.Background(), blueprint)
 	if err != nil {
 		t.Fatalf("GenerateCode failed: %v", err)
 	}
 
 	if code != expectedCode {
 		t.Errorf("expected code:\n%s\ngot:\n%s", expectedCode, code)
+	}
+}
+
+func TestOpenAIProvider_GenerateCode_WithConstraints(t *testing.T) {
+	expectedCode := `package main`
+	ts := httptest.NewServer(http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
+		var req struct {
+			Messages []struct {
+				Role    string `json:"role"`
+				Content string `json:"content"`
+			} `json:"messages"`
+		}
+		if err := json.NewDecoder(r.Body).Decode(&req); err != nil {
+			t.Errorf("failed to decode request body: %v", err)
+		}
+
+		userMsg := req.Messages[1].Content
+		if !strings.Contains(userMsg, "hello") {
+			t.Errorf("expected user message to contain 'hello', got %s", userMsg)
+		}
+		if !strings.Contains(userMsg, "Constraints:") {
+			t.Errorf("expected user message to contain 'Constraints:', got %s", userMsg)
+		}
+		if !strings.Contains(userMsg, `"p99":50`) {
+			t.Errorf("expected user message to contain '\"p99\":50', got %s", userMsg)
+		}
+
+		resp := map[string]interface{}{
+			"choices": []map[string]interface{}{
+				{
+					"message": map[string]interface{}{
+						"role":    "assistant",
+						"content": "```go\n" + expectedCode + "\n```",
+					},
+				},
+			},
+		}
+		json.NewEncoder(w).Encode(resp)
+	}))
+	defer ts.Close()
+
+	provider := NewOpenAIProvider("test-key", "gpt-4o")
+	provider.BaseURL = ts.URL
+
+	blueprint := protocol.Blueprint{
+		Intent: "hello",
+		Constraints: map[string]interface{}{
+			"p99": 50,
+		},
+	}
+
+	_, err := provider.GenerateCode(context.Background(), blueprint)
+	if err != nil {
+		t.Fatalf("GenerateCode failed: %v", err)
 	}
 }
 
@@ -93,7 +153,8 @@ func TestOpenAIProvider_GenerateCode_APIError(t *testing.T) {
 	provider := NewOpenAIProvider("test-key", "gpt-4o")
 	provider.BaseURL = ts.URL
 
-	_, err := provider.GenerateCode(context.Background(), "hello")
+	blueprint := protocol.Blueprint{Intent: "hello"}
+	_, err := provider.GenerateCode(context.Background(), blueprint)
 	if err == nil {
 		t.Fatal("expected error, got nil")
 	}
@@ -104,7 +165,8 @@ func TestOpenAIProvider_GenerateCode_APIError(t *testing.T) {
 
 func TestOpenAIProvider_GenerateCode_MissingKey(t *testing.T) {
 	provider := NewOpenAIProvider("", "gpt-4o")
-	_, err := provider.GenerateCode(context.Background(), "hello")
+	blueprint := protocol.Blueprint{Intent: "hello"}
+	_, err := provider.GenerateCode(context.Background(), blueprint)
 	if err == nil {
 		t.Fatal("expected error for missing API key, got nil")
 	}
