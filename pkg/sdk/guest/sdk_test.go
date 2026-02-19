@@ -63,8 +63,12 @@ func TestGuestSDK(t *testing.T) {
 
 	// Load Module
 	svcID := "kv-service"
-	if err := host.LoadModule(ctx, svcID, wasmBytes); err != nil {
+	version := "v1"
+	if err := host.LoadModule(ctx, svcID, version, wasmBytes); err != nil {
 		t.Fatalf("Failed to load module: %v", err)
+	}
+	if err := host.SetActiveVersion(ctx, svcID, version); err != nil {
+		t.Fatalf("Failed to set active version: %v", err)
 	}
 
 	// Invoke

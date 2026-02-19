@@ -22,6 +22,9 @@ func (m *MockStateStore) GetService(ctx context.Context, id string) (*protocol.S
 	return nil, nil
 }
 func (m *MockStateStore) UpdateService(ctx context.Context, r protocol.ServiceRecord) error {
+	if m.records == nil {
+		m.records = make(map[string]protocol.ServiceRecord)
+	}
 	m.records[r.ServiceID] = r
 	return nil
 }
@@ -63,15 +66,26 @@ func (m *MockEvolutionEngine) Evolve(ctx context.Context, bp protocol.Blueprint)
 type MockRuntimeHost struct {
 	modules map[string][]byte
 }
-func (m *MockRuntimeHost) LoadModule(ctx context.Context, id string, b []byte) error {
-	m.modules[id] = b
+func (m *MockRuntimeHost) LoadModule(ctx context.Context, id, version string, b []byte) error {
+	if m.modules == nil {
+		m.modules = make(map[string][]byte)
+	}
+	m.modules[id + "-" + version] = b
 	return nil
 }
 func (m *MockRuntimeHost) Invoke(ctx context.Context, id, method string, p []byte) ([]byte, error) {
 	return nil, nil
 }
-func (m *MockRuntimeHost) UnloadModule(ctx context.Context, id string) error {
-	delete(m.modules, id)
+func (m *MockRuntimeHost) SetActiveVersion(ctx context.Context, id, version string) error {
+	return nil
+}
+func (m *MockRuntimeHost) UnloadVersion(ctx context.Context, id, version string) error {
+	if m.modules != nil {
+		delete(m.modules, id + "-" + version)
+	}
+	return nil
+}
+func (m *MockRuntimeHost) Close(ctx context.Context) error {
 	return nil
 }
 
