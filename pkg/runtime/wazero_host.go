@@ -14,15 +14,15 @@ import (
 	"ghost-ops/pkg/protocol"
 )
 
-// Request represents a pending invocation.
-type Request struct {
+// request represents a pending invocation.
+type request struct {
 	method     string
 	payload    []byte
-	responseCh chan Response
+	responseCh chan response
 }
 
-// Response represents the result of an invocation.
-type Response struct {
+// response represents the result of an invocation.
+type response struct {
 	payload []byte
 	err     error
 }
@@ -31,8 +31,8 @@ type Response struct {
 type WazeroRuntimeHost struct {
 	runtime        wazero.Runtime
 	modules        map[string]api.Module        // Key: uniqueName (serviceID-version)
-	requests       map[string]chan Request      // Key: uniqueName
-	currentReq     map[string]Request           // Key: uniqueName
+	requests       map[string]chan request      // Key: uniqueName
+	currentReq     map[string]request           // Key: uniqueName
 	activeVersions map[string]string            // Key: serviceID, Value: uniqueName
 	shadowVersions map[string]string            // Key: serviceID, Value: uniqueName
 	mu             sync.RWMutex
@@ -51,8 +51,8 @@ func NewWazeroRuntimeHost(ctx context.Context, store protocol.StateStore, collec
 	h := &WazeroRuntimeHost{
 		runtime:        r,
 		modules:        make(map[string]api.Module),
-		requests:       make(map[string]chan Request),
-		currentReq:     make(map[string]Request),
+		requests:       make(map[string]chan request),
+		currentReq:     make(map[string]request),
 		activeVersions: make(map[string]string),
 		shadowVersions: make(map[string]string),
 		collector:      collector,
@@ -184,7 +184,7 @@ func NewWazeroRuntimeHost(ctx context.Context, store protocol.StateStore, collec
 		h.mu.Unlock()
 
 		select {
-		case req.responseCh <- Response{payload: res}:
+		case req.responseCh <- response{payload: res}:
 		default:
 		}
 	}
@@ -220,11 +220,14 @@ func (h *WazeroRuntimeHost) LoadModule(ctx context.Context, serviceID, version s
 		return fmt.Errorf("request channel for %s already exists", uniqueName)
 	}
 
-	h.requests[uniqueName] = make(chan Request)
+	h.requests[uniqueName] = make(chan request)
 	h.mu.Unlock()
 
 	compiled, err := h.runtime.CompileModule(ctx, wasmBytes)
 	if err != nil {
+		h.mu.Lock()
+		delete(h.requests, uniqueName)
+		h.mu.Unlock()
 		return fmt.Errorf("failed to compile module: %w", err)
 	}
 
@@ -306,7 +309,7 @@ func (h *WazeroRuntimeHost) Invoke(ctx context.Context, serviceID, method string
 	}
 
 	reqCh, exists := h.requests[uniqueName]
-	var shadowReqCh chan Request
+	var shadowReqCh chan request
 	if shadow {
 		shadowReqCh = h.requests[shadowName]
 	}
@@ -323,12 +326,12 @@ func (h *WazeroRuntimeHost) Invoke(ctx context.Context, serviceID, method string
 			shadowCtx, cancel := context.WithTimeout(context.Background(), 30*time.Second)
 			defer cancel()
 
-			sResponseCh := make(chan Response, 1)
+			sResponseCh := make(chan response, 1)
 			// Clone payload to avoid data race
 			payloadCopy := make([]byte, len(payload))
 			copy(payloadCopy, payload)
 
-			sReq := Request{
+			sReq := request{
 				method:     method,
 				payload:    payloadCopy,
 				responseCh: sResponseCh,
@@ -355,8 +358,8 @@ func (h *WazeroRuntimeHost) Invoke(ctx context.Context, serviceID, method string
 		}()
 	}
 
-	responseCh := make(chan Response, 1) // Buffered
-	req := Request{
+	responseCh := make(chan response, 1) // Buffered
+	req := request{
 		method:     method,
 		payload:    payload,
 		responseCh: responseCh,

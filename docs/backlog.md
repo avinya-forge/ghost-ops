@@ -1,12 +1,12 @@
 # Backlog
 
 ## Todo
-- [ ] Implement Shadow Mode Support <!-- id: 36 -->
 
 ## In-Progress
 - [ ] Implement Zero-Downtime Deployment (Blue/Green) <!-- id: 35 -->
 
 ## Done
+- [x] Implement Shadow Mode Support (verified and robust) <!-- id: 36 -->
 - [x] Implement Constraint-Aware Synthesis (Pass Blueprint to LLM) <!-- id: 34 -->
 - [x] Enhance Reconcile Loop for Continuous Evolution <!-- id: 33 -->
 
