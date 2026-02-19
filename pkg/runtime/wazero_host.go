@@ -29,12 +29,13 @@ type Response struct {
 
 // WazeroRuntimeHost implements RuntimeHost using wazero.
 type WazeroRuntimeHost struct {
-	runtime    wazero.Runtime
-	modules    map[string]api.Module
-	requests   map[string]chan Request
-	currentReq map[string]Request
-	mu         sync.RWMutex
-	collector  protocol.MetricsCollector
+	runtime        wazero.Runtime
+	modules        map[string]api.Module        // Key: uniqueName (serviceID-version)
+	requests       map[string]chan Request      // Key: uniqueName
+	currentReq     map[string]Request           // Key: uniqueName
+	activeVersions map[string]string            // Key: serviceID, Value: uniqueName
+	mu             sync.RWMutex
+	collector      protocol.MetricsCollector
 }
 
 // NewWazeroRuntimeHost creates a new WazeroRuntimeHost.
@@ -47,11 +48,12 @@ func NewWazeroRuntimeHost(ctx context.Context, store protocol.StateStore, collec
 	}
 
 	h := &WazeroRuntimeHost{
-		runtime:    r,
-		modules:    make(map[string]api.Module),
-		requests:   make(map[string]chan Request),
-		currentReq: make(map[string]Request),
-		collector:  collector,
+		runtime:        r,
+		modules:        make(map[string]api.Module),
+		requests:       make(map[string]chan Request),
+		currentReq:     make(map[string]Request),
+		activeVersions: make(map[string]string),
+		collector:      collector,
 	}
 
 	// Define kv_get host function
@@ -85,7 +87,7 @@ func NewWazeroRuntimeHost(ctx context.Context, store protocol.StateStore, collec
 		mem := m.Memory()
 		svcBytes, ok := mem.Read(svcPtr, svcLen)
 		if !ok { return 0 }
-		serviceID := string(svcBytes)
+		targetServiceID := string(svcBytes)
 
 		methBytes, ok := mem.Read(methPtr, methLen)
 		if !ok { return 0 }
@@ -96,7 +98,7 @@ func NewWazeroRuntimeHost(ctx context.Context, store protocol.StateStore, collec
 		payloadCopy := make([]byte, len(payload))
 		copy(payloadCopy, payload)
 
-		result, err := h.Invoke(ctx, serviceID, method, payloadCopy)
+		result, err := h.Invoke(ctx, targetServiceID, method, payloadCopy)
 		if err != nil { return 0 }
 
 		if uint32(len(result)) > outLen {
@@ -110,13 +112,13 @@ func NewWazeroRuntimeHost(ctx context.Context, store protocol.StateStore, collec
 
 	// Define next_command host function
 	nextCommand := func(ctx context.Context, m api.Module, methPtr, methCap uint32) uint64 {
-		serviceID := m.Name()
+		moduleName := m.Name()
 
 		h.mu.Lock()
-		if _, known := h.modules[serviceID]; !known {
-			h.modules[serviceID] = m
+		if _, known := h.modules[moduleName]; !known {
+			h.modules[moduleName] = m
 		}
-		reqCh, ok := h.requests[serviceID]
+		reqCh, ok := h.requests[moduleName]
 		h.mu.Unlock()
 
 		if !ok {
@@ -126,7 +128,7 @@ func NewWazeroRuntimeHost(ctx context.Context, store protocol.StateStore, collec
 		select {
 		case req := <-reqCh:
 			h.mu.Lock()
-			h.currentReq[serviceID] = req
+			h.currentReq[moduleName] = req
 			h.mu.Unlock()
 
 			methBytes := []byte(req.method)
@@ -144,9 +146,9 @@ func NewWazeroRuntimeHost(ctx context.Context, store protocol.StateStore, collec
 
 	// Define read_payload host function
 	readPayload := func(ctx context.Context, m api.Module, ptr, cap uint32) {
-		serviceID := m.Name()
+		moduleName := m.Name()
 		h.mu.RLock()
-		req, ok := h.currentReq[serviceID]
+		req, ok := h.currentReq[moduleName]
 		h.mu.RUnlock()
 		if !ok { return }
 
@@ -159,9 +161,9 @@ func NewWazeroRuntimeHost(ctx context.Context, store protocol.StateStore, collec
 
 	// Define submit_result host function
 	submitResult := func(ctx context.Context, m api.Module, ptr, len uint32) {
-		serviceID := m.Name()
+		moduleName := m.Name()
 		h.mu.RLock()
-		req, ok := h.currentReq[serviceID]
+		req, ok := h.currentReq[moduleName]
 		h.mu.RUnlock()
 		if !ok { return }
 
@@ -176,7 +178,7 @@ func NewWazeroRuntimeHost(ctx context.Context, store protocol.StateStore, collec
 
 		// Cleanup before sending response
 		h.mu.Lock()
-		delete(h.currentReq, serviceID)
+		delete(h.currentReq, moduleName)
 		h.mu.Unlock()
 
 		select {
@@ -201,15 +203,22 @@ func NewWazeroRuntimeHost(ctx context.Context, store protocol.StateStore, collec
 	return h, nil
 }
 
-// LoadModule loads a WASM binary with a unique service ID.
-func (h *WazeroRuntimeHost) LoadModule(ctx context.Context, serviceID string, wasmBytes []byte) error {
+// LoadModule loads a WASM binary for a specific version.
+func (h *WazeroRuntimeHost) LoadModule(ctx context.Context, serviceID, version string, wasmBytes []byte) error {
+	uniqueName := fmt.Sprintf("%s-%s", serviceID, version)
+
 	h.mu.Lock()
-	if _, exists := h.modules[serviceID]; exists {
+	if _, exists := h.modules[uniqueName]; exists {
 		h.mu.Unlock()
-		return fmt.Errorf("module %s already loaded", serviceID)
+		return fmt.Errorf("module %s already loaded", uniqueName)
+	}
+	// Also check if channel exists
+	if _, exists := h.requests[uniqueName]; exists {
+		h.mu.Unlock()
+		return fmt.Errorf("request channel for %s already exists", uniqueName)
 	}
 
-	h.requests[serviceID] = make(chan Request)
+	h.requests[uniqueName] = make(chan Request)
 	h.mu.Unlock()
 
 	compiled, err := h.runtime.CompileModule(ctx, wasmBytes)
@@ -219,20 +228,36 @@ func (h *WazeroRuntimeHost) LoadModule(ctx context.Context, serviceID string, wa
 
 	// Instantiate in goroutine
 	go func() {
-		config := wazero.NewModuleConfig().WithName(serviceID)
+		config := wazero.NewModuleConfig().WithName(uniqueName)
 		_, err := h.runtime.InstantiateModule(ctx, compiled, config)
 		if err != nil {
-			slog.Error("Failed to instantiate module", "service_id", serviceID, "error", err)
-			h.collector.Counter("module_load_failure", 1, map[string]string{"service_id": serviceID})
+			slog.Error("Failed to instantiate module", "unique_name", uniqueName, "error", err)
+			h.collector.Counter("module_load_failure", 1, map[string]string{"service_id": serviceID, "version": version})
 		} else {
-			h.collector.Counter("module_load_success", 1, map[string]string{"service_id": serviceID})
+			h.collector.Counter("module_load_success", 1, map[string]string{"service_id": serviceID, "version": version})
 		}
 	}()
 
 	return nil
 }
 
-// Invoke calls a function on the loaded module.
+// SetActiveVersion updates the routing to point to a specific version.
+func (h *WazeroRuntimeHost) SetActiveVersion(ctx context.Context, serviceID, version string) error {
+	uniqueName := fmt.Sprintf("%s-%s", serviceID, version)
+
+	h.mu.Lock()
+	defer h.mu.Unlock()
+
+	if _, ok := h.requests[uniqueName]; !ok {
+		return fmt.Errorf("version %s of service %s is not loaded", version, serviceID)
+	}
+
+	h.activeVersions[serviceID] = uniqueName
+	slog.Info("Switched active version", "service_id", serviceID, "version", version, "unique_name", uniqueName)
+	return nil
+}
+
+// Invoke calls a function on the loaded module of the active version.
 func (h *WazeroRuntimeHost) Invoke(ctx context.Context, serviceID, method string, payload []byte) ([]byte, error) {
 	start := time.Now()
 	defer func() {
@@ -241,12 +266,19 @@ func (h *WazeroRuntimeHost) Invoke(ctx context.Context, serviceID, method string
 	}()
 
 	h.mu.RLock()
-	reqCh, exists := h.requests[serviceID]
+	uniqueName, active := h.activeVersions[serviceID]
+	if !active {
+		h.mu.RUnlock()
+		h.collector.Counter("invoke_error", 1, map[string]string{"service_id": serviceID, "type": "no_active_version"})
+		return nil, fmt.Errorf("service %s has no active version", serviceID)
+	}
+
+	reqCh, exists := h.requests[uniqueName]
 	h.mu.RUnlock()
 
 	if !exists {
 		h.collector.Counter("invoke_error", 1, map[string]string{"service_id": serviceID, "type": "not_found"})
-		return nil, fmt.Errorf("module %s not found or not ready", serviceID)
+		return nil, fmt.Errorf("module %s not found or not ready", uniqueName)
 	}
 
 	responseCh := make(chan Response, 1) // Buffered
@@ -278,24 +310,32 @@ func (h *WazeroRuntimeHost) Invoke(ctx context.Context, serviceID, method string
 	}
 }
 
-// UnloadModule removes a module.
-func (h *WazeroRuntimeHost) UnloadModule(ctx context.Context, serviceID string) error {
+// UnloadVersion removes a specific version of a module.
+func (h *WazeroRuntimeHost) UnloadVersion(ctx context.Context, serviceID, version string) error {
+	uniqueName := fmt.Sprintf("%s-%s", serviceID, version)
+
 	h.mu.Lock()
 	defer h.mu.Unlock()
 
+	// Check if it's the active version
+	if active, ok := h.activeVersions[serviceID]; ok && active == uniqueName {
+		slog.Warn("Unloading active version", "service_id", serviceID, "version", version)
+		delete(h.activeVersions, serviceID)
+	}
+
 	// Ensure module is closed using runtime reference if possible
-	if mod := h.runtime.Module(serviceID); mod != nil {
+	if mod := h.runtime.Module(uniqueName); mod != nil {
 		if err := mod.Close(ctx); err != nil {
-			slog.Warn("Failed to close module via runtime", "service_id", serviceID, "error", err)
+			slog.Warn("Failed to close module via runtime", "unique_name", uniqueName, "error", err)
 		}
-	} else if mod, exists := h.modules[serviceID]; exists {
+	} else if mod, exists := h.modules[uniqueName]; exists {
 		// Fallback
 		mod.Close(ctx)
 	}
 
-	delete(h.modules, serviceID)
-	delete(h.requests, serviceID)
-	delete(h.currentReq, serviceID)
+	delete(h.modules, uniqueName)
+	delete(h.requests, uniqueName)
+	delete(h.currentReq, uniqueName)
 
 	return nil
 }

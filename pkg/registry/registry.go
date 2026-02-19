@@ -76,7 +76,7 @@ func (r *Registry) Reconcile(ctx context.Context) (bool, error) {
 	}
 
 	// Deploy to Runtime
-	if err := r.deployToRuntime(ctx, bp.ServiceID, existing, wasmBytes); err != nil {
+	if err := r.deployToRuntime(ctx, bp.ServiceID, existing, newVersion, wasmBytes); err != nil {
 		slog.Error("Failed to load module", "service_id", bp.ServiceID, "error", err)
 		r.collector.Counter("reconcile_failure", 1, map[string]string{"phase": "load_module", "service_id": bp.ServiceID})
 		return true, nil
@@ -110,16 +110,34 @@ func (r *Registry) evolveService(ctx context.Context, bp *protocol.Blueprint) ([
 	return wasmBytes, hashStr, nil
 }
 
-func (r *Registry) deployToRuntime(ctx context.Context, serviceID string, existing *protocol.ServiceRecord, wasmBytes []byte) error {
+func (r *Registry) deployToRuntime(ctx context.Context, serviceID string, existing *protocol.ServiceRecord, newVersion int, wasmBytes []byte) error {
+	versionStr := fmt.Sprintf("%d", newVersion)
+
+	// 1. Load new version
+	if err := r.runtime.LoadModule(ctx, serviceID, versionStr, wasmBytes); err != nil {
+		return fmt.Errorf("failed to load module: %w", err)
+	}
+
+	// 2. Set active version (Promote)
+	if err := r.runtime.SetActiveVersion(ctx, serviceID, versionStr); err != nil {
+		// Rollback? Unload new version
+		_ = r.runtime.UnloadVersion(ctx, serviceID, versionStr)
+		return fmt.Errorf("failed to set active version: %w", err)
+	}
+
+	// 3. Unload old version if exists
 	if existing != nil {
-		// Unload if exists
-		slog.Info("Service exists, unloading first", "service_id", serviceID, "version", existing.Version)
-		if err := r.runtime.UnloadModule(ctx, serviceID); err != nil {
-			slog.Warn("Failed to unload module (might not be loaded)", "service_id", serviceID, "error", err)
+		oldVersionStr := fmt.Sprintf("%d", existing.Version)
+		// Check if old version is different from new version
+		if oldVersionStr != versionStr {
+			slog.Info("Unloading old version", "service_id", serviceID, "old_version", oldVersionStr)
+			if err := r.runtime.UnloadVersion(ctx, serviceID, oldVersionStr); err != nil {
+				slog.Warn("Failed to unload old version", "service_id", serviceID, "version", oldVersionStr, "error", err)
+			}
 		}
 	}
 
-	return r.runtime.LoadModule(ctx, serviceID, wasmBytes)
+	return nil
 }
 
 func (r *Registry) updateStore(ctx context.Context, serviceID string, version int, hashStr string) error {

@@ -69,6 +69,7 @@ func main() {
 	}
 
 	// Compile using source_path constraint
+	// Evolve returns (wasmBytes, error)
 	calleeWasm, err := engine.Evolve(ctx, protocol.Blueprint{
 		Constraints: map[string]interface{}{"source_path": calleeFile},
 	})
@@ -94,11 +95,19 @@ func main() {
 	defer host.Close(ctx)
 
 	// Load Services
-	if err := host.LoadModule(ctx, "Callee", calleeWasm); err != nil {
+	version := "v1"
+	if err := host.LoadModule(ctx, "Callee", version, calleeWasm); err != nil {
 		t.Fatalf("Failed to load Callee: %v", err)
 	}
-	if err := host.LoadModule(ctx, "Caller", callerWasm); err != nil {
+	if err := host.SetActiveVersion(ctx, "Callee", version); err != nil {
+		t.Fatalf("Failed to activate Callee: %v", err)
+	}
+
+	if err := host.LoadModule(ctx, "Caller", version, callerWasm); err != nil {
 		t.Fatalf("Failed to load Caller: %v", err)
+	}
+	if err := host.SetActiveVersion(ctx, "Caller", version); err != nil {
+		t.Fatalf("Failed to activate Caller: %v", err)
 	}
 
 	// Invoke Caller

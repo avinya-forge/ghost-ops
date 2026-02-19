@@ -2,6 +2,7 @@ package registry
 
 import (
 	"context"
+	"fmt"
 	"testing"
 
 	"ghost-ops/pkg/protocol"
@@ -19,6 +20,9 @@ func (m *MockStateStore) GetService(ctx context.Context, id string) (*protocol.S
 	return nil, nil
 }
 func (m *MockStateStore) UpdateService(ctx context.Context, r protocol.ServiceRecord) error {
+	if m.records == nil {
+		m.records = make(map[string]protocol.ServiceRecord)
+	}
 	m.records[r.ServiceID] = r
 	return nil
 }
@@ -58,17 +62,33 @@ func (m *MockEvolutionEngine) Evolve(ctx context.Context, bp protocol.Blueprint)
 
 // MockRuntimeHost
 type MockRuntimeHost struct {
-	modules map[string][]byte
+	modules        map[string][]byte
+	activeVersions map[string]string
 }
-func (m *MockRuntimeHost) LoadModule(ctx context.Context, id string, b []byte) error {
-	m.modules[id] = b
+func (m *MockRuntimeHost) LoadModule(ctx context.Context, id, version string, b []byte) error {
+	if m.modules == nil {
+		m.modules = make(map[string][]byte)
+	}
+	uniqueName := fmt.Sprintf("%s-%s", id, version)
+	m.modules[uniqueName] = b
 	return nil
 }
 func (m *MockRuntimeHost) Invoke(ctx context.Context, id, method string, p []byte) ([]byte, error) {
 	return nil, nil
 }
-func (m *MockRuntimeHost) UnloadModule(ctx context.Context, id string) error {
-	delete(m.modules, id)
+func (m *MockRuntimeHost) SetActiveVersion(ctx context.Context, id, version string) error {
+	if m.activeVersions == nil {
+		m.activeVersions = make(map[string]string)
+	}
+	m.activeVersions[id] = version
+	return nil
+}
+func (m *MockRuntimeHost) UnloadVersion(ctx context.Context, id, version string) error {
+	uniqueName := fmt.Sprintf("%s-%s", id, version)
+	delete(m.modules, uniqueName)
+	return nil
+}
+func (m *MockRuntimeHost) Close(ctx context.Context) error {
 	return nil
 }
 
@@ -81,7 +101,10 @@ func TestRegistry_Reconcile(t *testing.T) {
 			{ServiceID: "svc-1", Intent: "do something"},
 		},
 	}
-	runtime := &MockRuntimeHost{modules: make(map[string][]byte)}
+	runtime := &MockRuntimeHost{
+		modules: make(map[string][]byte),
+		activeVersions: make(map[string]string),
+	}
 	collector := telemetry.NewInMemoryCollector()
 
 	reg := NewRegistry(store, engine, source, runtime, collector)
@@ -105,9 +128,13 @@ func TestRegistry_Reconcile(t *testing.T) {
 		t.Errorf("Expected Active, got %s", rec.CurrentState)
 	}
 
-	// Verify Runtime
-	if _, ok := runtime.modules["svc-1"]; !ok {
-		t.Fatal("Service not found in runtime")
+	// Verify Runtime - Version 1 should be loaded
+	if _, ok := runtime.modules["svc-1-1"]; !ok {
+		t.Errorf("Service version 1 not found in runtime modules: %v", runtime.modules)
+	}
+	// Verify Active Version
+	if ver, ok := runtime.activeVersions["svc-1"]; !ok || ver != "1" {
+		t.Errorf("Service active version mismatch: got %v, want 1", ver)
 	}
 
 	// Second call should find no more blueprints
@@ -129,7 +156,10 @@ func TestRegistry_Reconcile_Versioning(t *testing.T) {
 			{ServiceID: "svc-1", Intent: "v2"},
 		},
 	}
-	runtime := &MockRuntimeHost{modules: make(map[string][]byte)}
+	runtime := &MockRuntimeHost{
+		modules: make(map[string][]byte),
+		activeVersions: make(map[string]string),
+	}
 	collector := telemetry.NewInMemoryCollector()
 
 	reg := NewRegistry(store, engine, source, runtime, collector)
@@ -161,5 +191,16 @@ func TestRegistry_Reconcile_Versioning(t *testing.T) {
 	rec, _ = store.GetService(ctx, "svc-1")
 	if rec.Version != 2 {
 		t.Errorf("Expected version 2, got %d", rec.Version)
+	}
+
+	// Verify Runtime: Version 2 should be active, Version 1 unloaded
+	if _, ok := runtime.modules["svc-1-2"]; !ok {
+		t.Errorf("Service version 2 not found in runtime")
+	}
+	if _, ok := runtime.modules["svc-1-1"]; ok {
+		t.Errorf("Service version 1 should be unloaded")
+	}
+	if ver, ok := runtime.activeVersions["svc-1"]; !ok || ver != "2" {
+		t.Errorf("Service active version mismatch: got %v, want 2", ver)
 	}
 }
