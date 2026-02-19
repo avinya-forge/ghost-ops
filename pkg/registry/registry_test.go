@@ -64,6 +64,7 @@ func (m *MockEvolutionEngine) Evolve(ctx context.Context, bp protocol.Blueprint)
 type MockRuntimeHost struct {
 	modules        map[string][]byte
 	activeVersions map[string]string
+	shadowVersions map[string]string
 }
 func (m *MockRuntimeHost) LoadModule(ctx context.Context, id, version string, b []byte) error {
 	if m.modules == nil {
@@ -81,6 +82,19 @@ func (m *MockRuntimeHost) SetActiveVersion(ctx context.Context, id, version stri
 		m.activeVersions = make(map[string]string)
 	}
 	m.activeVersions[id] = version
+	return nil
+}
+func (m *MockRuntimeHost) SetShadowVersion(ctx context.Context, id, version string) error {
+	if m.shadowVersions == nil {
+		m.shadowVersions = make(map[string]string)
+	}
+	m.shadowVersions[id] = version
+	return nil
+}
+func (m *MockRuntimeHost) UnsetShadowVersion(ctx context.Context, id string) error {
+	if m.shadowVersions != nil {
+		delete(m.shadowVersions, id)
+	}
 	return nil
 }
 func (m *MockRuntimeHost) UnloadVersion(ctx context.Context, id, version string) error {
@@ -203,4 +217,68 @@ func TestRegistry_Reconcile_Versioning(t *testing.T) {
 	if ver, ok := runtime.activeVersions["svc-1"]; !ok || ver != "2" {
 		t.Errorf("Service active version mismatch: got %v, want 2", ver)
 	}
+}
+
+func TestRegistry_Reconcile_ShadowMode(t *testing.T) {
+	store := &MockStateStore{records: make(map[string]protocol.ServiceRecord)}
+	engine := &MockEvolutionEngine{}
+	source := &MockIntentSource{
+		blueprints: []protocol.Blueprint{
+			{ServiceID: "svc-1", Intent: "v1"},
+			{ServiceID: "svc-1", Intent: "v2", Constraints: map[string]interface{}{"shadow_mode": true}},
+		},
+	}
+	runtime := &MockRuntimeHost{
+		modules: make(map[string][]byte),
+		activeVersions: make(map[string]string),
+		shadowVersions: make(map[string]string),
+	}
+	collector := telemetry.NewInMemoryCollector()
+
+	reg := NewRegistry(store, engine, source, runtime, collector)
+	ctx := context.Background()
+
+	// 1. Deploy Active (v1)
+	processed, err := reg.Reconcile(ctx)
+	if err != nil { t.Fatalf("Reconcile 1 failed: %v", err) }
+	if !processed { t.Fatal("Expected processed") }
+
+	rec, _ := store.GetService(ctx, "svc-1")
+	if rec.ActiveVersion != 1 {
+		t.Errorf("Expected ActiveVersion 1, got %d", rec.ActiveVersion)
+	}
+	if rec.ShadowVersion != 0 {
+		t.Errorf("Expected ShadowVersion 0, got %d", rec.ShadowVersion)
+	}
+	if rec.CurrentState != protocol.StateActive {
+		t.Errorf("Expected StateActive, got %s", rec.CurrentState)
+	}
+
+	// 2. Deploy Shadow (v2)
+	processed, err = reg.Reconcile(ctx)
+	if err != nil { t.Fatalf("Reconcile 2 failed: %v", err) }
+	if !processed { t.Fatal("Expected processed") }
+
+	rec, _ = store.GetService(ctx, "svc-1")
+	if rec.ActiveVersion != 1 {
+		t.Errorf("Expected ActiveVersion 1 to persist, got %d", rec.ActiveVersion)
+	}
+	if rec.ShadowVersion != 2 {
+		t.Errorf("Expected ShadowVersion 2, got %d", rec.ShadowVersion)
+	}
+	if rec.CurrentState != protocol.StateShadow {
+		t.Errorf("Expected StateShadow, got %s", rec.CurrentState)
+	}
+
+	// Verify Runtime
+	if ver, ok := runtime.activeVersions["svc-1"]; !ok || ver != "1" {
+		t.Errorf("Runtime active version mismatch: got %v, want 1", ver)
+	}
+	if ver, ok := runtime.shadowVersions["svc-1"]; !ok || ver != "2" {
+		t.Errorf("Runtime shadow version mismatch: got %v, want 2", ver)
+	}
+
+	// Verify both modules are loaded
+	if _, ok := runtime.modules["svc-1-1"]; !ok { t.Error("v1 module missing") }
+	if _, ok := runtime.modules["svc-1-2"]; !ok { t.Error("v2 module missing") }
 }

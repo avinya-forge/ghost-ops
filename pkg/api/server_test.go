@@ -79,6 +79,12 @@ func (m *MockRuntimeHost) Invoke(ctx context.Context, id, method string, p []byt
 func (m *MockRuntimeHost) SetActiveVersion(ctx context.Context, id, version string) error {
 	return nil
 }
+func (m *MockRuntimeHost) SetShadowVersion(ctx context.Context, id, version string) error {
+	return nil
+}
+func (m *MockRuntimeHost) UnsetShadowVersion(ctx context.Context, id string) error {
+	return nil
+}
 func (m *MockRuntimeHost) UnloadVersion(ctx context.Context, id, version string) error {
 	if m.modules != nil {
 		delete(m.modules, id + "-" + version)

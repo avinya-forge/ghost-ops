@@ -13,6 +13,12 @@ type RuntimeHost interface {
 	// SetActiveVersion updates the routing to point to a specific version.
 	SetActiveVersion(ctx context.Context, serviceID, version string) error
 
+	// SetShadowVersion activates a specific version as a shadow deployment.
+	SetShadowVersion(ctx context.Context, serviceID, version string) error
+
+	// UnsetShadowVersion removes the shadow deployment for a service without unloading the module.
+	UnsetShadowVersion(ctx context.Context, serviceID string) error
+
 	// UnloadVersion removes a specific version of a module.
 	UnloadVersion(ctx context.Context, serviceID, version string) error
 

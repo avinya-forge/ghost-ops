@@ -19,6 +19,10 @@ type ServiceRecord struct {
 	ServiceID          string       `json:"service_id"`
 	Version            int          `json:"version"`
 	WASMHash           string       `json:"wasm_hash"`
+	ActiveVersion      int          `json:"active_version"`
+	ActiveWASMHash     string       `json:"active_wasm_hash"`
+	ShadowVersion      int          `json:"shadow_version"`
+	ShadowWASMHash     string       `json:"shadow_wasm_hash"`
 	CurrentState       ServiceState `json:"current_state"`
 	SynthesisTimestamp time.Time    `json:"synthesis_timestamp"`
 }
