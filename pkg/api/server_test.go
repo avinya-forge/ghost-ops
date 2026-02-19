@@ -153,3 +153,24 @@ func TestServer_Metrics(t *testing.T) {
 		t.Error("Expected body, got empty")
 	}
 }
+
+func TestServer_Healthz(t *testing.T) {
+	store := &MockStateStore{records: make(map[string]protocol.ServiceRecord)}
+	collector := telemetry.NewInMemoryCollector()
+	reg := registry.NewRegistry(store, &MockEvolutionEngine{}, &MockIntentSource{}, &MockRuntimeHost{}, collector)
+	server := NewServer(reg, collector)
+
+	req := httptest.NewRequest(http.MethodGet, "/healthz", nil)
+	w := httptest.NewRecorder()
+
+	server.ServeHTTP(w, req)
+
+	if w.Code != http.StatusOK {
+		t.Errorf("Expected status 200, got %d", w.Code)
+	}
+
+	body := w.Body.String()
+	if body != "OK" {
+		t.Errorf("Expected 'OK', got '%s'", body)
+	}
+}

@@ -28,6 +28,7 @@ func NewServer(r *registry.Registry, c protocol.MetricsCollector) *Server {
 	mux.HandleFunc("/services", s.handleListServices)
 	mux.HandleFunc("/reconcile", s.handleReconcile)
 	mux.HandleFunc("/metrics", s.handleMetrics)
+	mux.HandleFunc("/healthz", s.handleHealthz)
 
 	return s
 }
@@ -99,4 +100,9 @@ func (s *Server) handleMetrics(w http.ResponseWriter, r *http.Request) {
 	if err := json.NewEncoder(w).Encode(metrics); err != nil {
 		slog.Error("Failed to encode metrics", "error", err)
 	}
+}
+
+func (s *Server) handleHealthz(w http.ResponseWriter, r *http.Request) {
+	w.WriteHeader(http.StatusOK)
+	w.Write([]byte("OK"))
 }
