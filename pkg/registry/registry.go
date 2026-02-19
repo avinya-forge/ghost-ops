@@ -76,14 +76,14 @@ func (r *Registry) Reconcile(ctx context.Context) (bool, error) {
 	}
 
 	// Deploy to Runtime
-	if err := r.deployToRuntime(ctx, bp.ServiceID, existing, newVersion, wasmBytes); err != nil {
+	if err := r.deployToRuntime(ctx, bp.ServiceID, existing, newVersion, wasmBytes, bp.Constraints); err != nil {
 		slog.Error("Failed to load module", "service_id", bp.ServiceID, "error", err)
 		r.collector.Counter("reconcile_failure", 1, map[string]string{"phase": "load_module", "service_id": bp.ServiceID})
 		return true, nil
 	}
 
 	// Update Store
-	if err := r.updateStore(ctx, bp.ServiceID, newVersion, hashStr); err != nil {
+	if err := r.updateStore(ctx, bp.ServiceID, newVersion, hashStr, existing, bp.Constraints); err != nil {
 		slog.Error("Failed to update store", "service_id", bp.ServiceID, "error", err)
 		r.collector.Counter("reconcile_failure", 1, map[string]string{"phase": "update_store", "service_id": bp.ServiceID})
 		return true, nil
@@ -110,29 +110,73 @@ func (r *Registry) evolveService(ctx context.Context, bp *protocol.Blueprint) ([
 	return wasmBytes, hashStr, nil
 }
 
-func (r *Registry) deployToRuntime(ctx context.Context, serviceID string, existing *protocol.ServiceRecord, newVersion int, wasmBytes []byte) error {
+func (r *Registry) deployToRuntime(ctx context.Context, serviceID string, existing *protocol.ServiceRecord, newVersion int, wasmBytes []byte, constraints map[string]interface{}) error {
 	versionStr := fmt.Sprintf("%d", newVersion)
+
+	// Check shadow mode
+	shadowMode := false
+	if val, ok := constraints["shadow_mode"]; ok {
+		if b, ok := val.(bool); ok && b {
+			shadowMode = true
+		}
+	}
 
 	// 1. Load new version
 	if err := r.runtime.LoadModule(ctx, serviceID, versionStr, wasmBytes); err != nil {
 		return fmt.Errorf("failed to load module: %w", err)
 	}
 
-	// 2. Set active version (Promote)
-	if err := r.runtime.SetActiveVersion(ctx, serviceID, versionStr); err != nil {
-		// Rollback? Unload new version
-		_ = r.runtime.UnloadVersion(ctx, serviceID, versionStr)
-		return fmt.Errorf("failed to set active version: %w", err)
-	}
+	if shadowMode {
+		// Set Shadow Version
+		if err := r.runtime.SetShadowVersion(ctx, serviceID, versionStr); err != nil {
+			_ = r.runtime.UnloadVersion(ctx, serviceID, versionStr)
+			return fmt.Errorf("failed to set shadow version: %w", err)
+		}
 
-	// 3. Unload old version if exists
-	if existing != nil {
-		oldVersionStr := fmt.Sprintf("%d", existing.Version)
-		// Check if old version is different from new version
-		if oldVersionStr != versionStr {
-			slog.Info("Unloading old version", "service_id", serviceID, "old_version", oldVersionStr)
-			if err := r.runtime.UnloadVersion(ctx, serviceID, oldVersionStr); err != nil {
-				slog.Warn("Failed to unload old version", "service_id", serviceID, "version", oldVersionStr, "error", err)
+		// Unload OLD Shadow Version if exists and different
+		if existing != nil && existing.ShadowVersion > 0 {
+			oldShadowVer := fmt.Sprintf("%d", existing.ShadowVersion)
+			if oldShadowVer != versionStr {
+				_ = r.runtime.UnloadVersion(ctx, serviceID, oldShadowVer)
+			}
+		}
+	} else {
+		// 2. Set active version (Promote)
+		if err := r.runtime.SetActiveVersion(ctx, serviceID, versionStr); err != nil {
+			// Rollback? Unload new version
+			_ = r.runtime.UnloadVersion(ctx, serviceID, versionStr)
+			return fmt.Errorf("failed to set active version: %w", err)
+		}
+
+		// 3. Unload old version if exists
+		if existing != nil {
+			// Unload old active
+			// Fallback: use existing.Version as old active if ActiveVersion is 0 (legacy)
+			oldActive := existing.ActiveVersion
+			if oldActive == 0 {
+				oldActive = existing.Version
+			}
+
+			if oldActive > 0 {
+				oldActiveStr := fmt.Sprintf("%d", oldActive)
+				if oldActiveStr != versionStr {
+					slog.Info("Unloading old version", "service_id", serviceID, "old_version", oldActiveStr)
+					if err := r.runtime.UnloadVersion(ctx, serviceID, oldActiveStr); err != nil {
+						slog.Warn("Failed to unload old version", "service_id", serviceID, "version", oldActiveStr, "error", err)
+					}
+				}
+			}
+
+			// Also unload shadow if any, since we are promoting/deploying new active
+			if existing.ShadowVersion > 0 {
+				oldShadowVer := fmt.Sprintf("%d", existing.ShadowVersion)
+				if oldShadowVer != versionStr {
+					_ = r.runtime.UnloadVersion(ctx, serviceID, oldShadowVer)
+				} else {
+					// If the shadow version is the one being promoted, just unset it as shadow
+					// The module remains loaded and is now Active (from SetActiveVersion above)
+					_ = r.runtime.UnsetShadowVersion(ctx, serviceID)
+				}
 			}
 		}
 	}
@@ -140,13 +184,43 @@ func (r *Registry) deployToRuntime(ctx context.Context, serviceID string, existi
 	return nil
 }
 
-func (r *Registry) updateStore(ctx context.Context, serviceID string, version int, hashStr string) error {
+func (r *Registry) updateStore(ctx context.Context, serviceID string, version int, hashStr string, existing *protocol.ServiceRecord, constraints map[string]interface{}) error {
+	shadowMode := false
+	if val, ok := constraints["shadow_mode"]; ok {
+		if b, ok := val.(bool); ok && b {
+			shadowMode = true
+		}
+	}
+
 	record := protocol.ServiceRecord{
 		ServiceID:          serviceID,
 		Version:            version,
 		WASMHash:           hashStr,
-		CurrentState:       protocol.StateActive,
 		SynthesisTimestamp: time.Now().UTC(),
+	}
+
+	if existing != nil {
+		// Preserve Active fields
+		record.ActiveVersion = existing.ActiveVersion
+		record.ActiveWASMHash = existing.ActiveWASMHash
+
+		// Migration for legacy records where Version was Active
+		if record.ActiveVersion == 0 && existing.Version > 0 {
+			record.ActiveVersion = existing.Version
+			record.ActiveWASMHash = existing.WASMHash
+		}
+	}
+
+	if shadowMode {
+		record.ShadowVersion = version
+		record.ShadowWASMHash = hashStr
+		record.CurrentState = protocol.StateShadow
+	} else {
+		record.ActiveVersion = version
+		record.ActiveWASMHash = hashStr
+		record.ShadowVersion = 0
+		record.ShadowWASMHash = ""
+		record.CurrentState = protocol.StateActive
 	}
 
 	return r.store.UpdateService(ctx, record)

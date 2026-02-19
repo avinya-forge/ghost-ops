@@ -34,6 +34,7 @@ type WazeroRuntimeHost struct {
 	requests       map[string]chan Request      // Key: uniqueName
 	currentReq     map[string]Request           // Key: uniqueName
 	activeVersions map[string]string            // Key: serviceID, Value: uniqueName
+	shadowVersions map[string]string            // Key: serviceID, Value: uniqueName
 	mu             sync.RWMutex
 	collector      protocol.MetricsCollector
 }
@@ -53,6 +54,7 @@ func NewWazeroRuntimeHost(ctx context.Context, store protocol.StateStore, collec
 		requests:       make(map[string]chan Request),
 		currentReq:     make(map[string]Request),
 		activeVersions: make(map[string]string),
+		shadowVersions: make(map[string]string),
 		collector:      collector,
 	}
 
@@ -257,6 +259,34 @@ func (h *WazeroRuntimeHost) SetActiveVersion(ctx context.Context, serviceID, ver
 	return nil
 }
 
+// SetShadowVersion activates a specific version as a shadow deployment.
+func (h *WazeroRuntimeHost) SetShadowVersion(ctx context.Context, serviceID, version string) error {
+	uniqueName := fmt.Sprintf("%s-%s", serviceID, version)
+
+	h.mu.Lock()
+	defer h.mu.Unlock()
+
+	if _, ok := h.requests[uniqueName]; !ok {
+		return fmt.Errorf("version %s of service %s is not loaded", version, serviceID)
+	}
+
+	h.shadowVersions[serviceID] = uniqueName
+	slog.Info("Switched shadow version", "service_id", serviceID, "version", version, "unique_name", uniqueName)
+	return nil
+}
+
+// UnsetShadowVersion removes the shadow deployment for a service without unloading the module.
+func (h *WazeroRuntimeHost) UnsetShadowVersion(ctx context.Context, serviceID string) error {
+	h.mu.Lock()
+	defer h.mu.Unlock()
+
+	if _, ok := h.shadowVersions[serviceID]; ok {
+		delete(h.shadowVersions, serviceID)
+		slog.Info("Unset shadow version", "service_id", serviceID)
+	}
+	return nil
+}
+
 // Invoke calls a function on the loaded module of the active version.
 func (h *WazeroRuntimeHost) Invoke(ctx context.Context, serviceID, method string, payload []byte) ([]byte, error) {
 	start := time.Now()
@@ -267,6 +297,8 @@ func (h *WazeroRuntimeHost) Invoke(ctx context.Context, serviceID, method string
 
 	h.mu.RLock()
 	uniqueName, active := h.activeVersions[serviceID]
+	shadowName, shadow := h.shadowVersions[serviceID]
+
 	if !active {
 		h.mu.RUnlock()
 		h.collector.Counter("invoke_error", 1, map[string]string{"service_id": serviceID, "type": "no_active_version"})
@@ -274,11 +306,53 @@ func (h *WazeroRuntimeHost) Invoke(ctx context.Context, serviceID, method string
 	}
 
 	reqCh, exists := h.requests[uniqueName]
+	var shadowReqCh chan Request
+	if shadow {
+		shadowReqCh = h.requests[shadowName]
+	}
 	h.mu.RUnlock()
 
 	if !exists {
 		h.collector.Counter("invoke_error", 1, map[string]string{"service_id": serviceID, "type": "not_found"})
 		return nil, fmt.Errorf("module %s not found or not ready", uniqueName)
+	}
+
+	// Shadow Invocation
+	if shadow && shadowReqCh != nil {
+		go func() {
+			shadowCtx, cancel := context.WithTimeout(context.Background(), 30*time.Second)
+			defer cancel()
+
+			sResponseCh := make(chan Response, 1)
+			// Clone payload to avoid data race
+			payloadCopy := make([]byte, len(payload))
+			copy(payloadCopy, payload)
+
+			sReq := Request{
+				method:     method,
+				payload:    payloadCopy,
+				responseCh: sResponseCh,
+			}
+
+			select {
+			case shadowReqCh <- sReq:
+				// Sent
+			case <-shadowCtx.Done():
+				h.collector.Counter("invoke_error", 1, map[string]string{"service_id": serviceID, "type": "shadow_timeout_send"})
+				return
+			}
+
+			select {
+			case res := <-sResponseCh:
+				if res.err != nil {
+					h.collector.Counter("invoke_error", 1, map[string]string{"service_id": serviceID, "type": "shadow_execution_error"})
+				} else {
+					h.collector.Counter("invoke_success", 1, map[string]string{"service_id": serviceID, "type": "shadow"})
+				}
+			case <-shadowCtx.Done():
+				h.collector.Counter("invoke_error", 1, map[string]string{"service_id": serviceID, "type": "shadow_timeout_recv"})
+			}
+		}()
 	}
 
 	responseCh := make(chan Response, 1) // Buffered
@@ -321,6 +395,12 @@ func (h *WazeroRuntimeHost) UnloadVersion(ctx context.Context, serviceID, versio
 	if active, ok := h.activeVersions[serviceID]; ok && active == uniqueName {
 		slog.Warn("Unloading active version", "service_id", serviceID, "version", version)
 		delete(h.activeVersions, serviceID)
+	}
+
+	// Check if it's the shadow version
+	if shadow, ok := h.shadowVersions[serviceID]; ok && shadow == uniqueName {
+		slog.Warn("Unloading shadow version", "service_id", serviceID, "version", version)
+		delete(h.shadowVersions, serviceID)
 	}
 
 	// Ensure module is closed using runtime reference if possible
