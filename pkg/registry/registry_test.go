@@ -241,6 +241,7 @@ func TestRegistry_Reconcile_ShadowMode(t *testing.T) {
 	// 1. Deploy Active (v1)
 	processed, err := reg.Reconcile(ctx)
 	if err != nil { t.Fatalf("Reconcile 1 failed: %v", err) }
+	if !processed { t.Fatal("Expected processed") }
 
 	rec, _ := store.GetService(ctx, "svc-1")
 	if rec.ActiveVersion != 1 {
