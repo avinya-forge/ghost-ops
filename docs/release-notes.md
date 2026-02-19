@@ -1,6 +1,8 @@
 # Release Notes
 
-## v0.2.0 (Alpha) - In Development
+## v0.2.0 (Released)
+- Implemented Telemetry Collection (runtime metrics) via `MetricsCollector`.
+- Integrated AI Engine into CLI for end-to-end intent-to-WASM flow.
 - Implemented `AIEvolutionEngine` to support generating WASM from natural language intent (using Mock LLM or OpenAI).
 - Added `LLMProvider` interface and `MockLLMProvider`.
 - Added `OpenAIProvider` for real code generation from intents.
@@ -9,7 +11,7 @@
 - Enhanced Reconcile Loop to support continuous evolution by reloading blueprints when the file changes.
 - Enhanced AI Evolution Engine to support constraint-aware synthesis by passing full blueprints (intents + constraints) to the LLM.
 
-## v0.1.0 (Upcoming)
+## v0.1.0 (Foundation)
 - Initial project setup.
 - Core interface definitions.
 - Added GitHub Actions CI workflow.
