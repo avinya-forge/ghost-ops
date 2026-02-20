@@ -15,6 +15,7 @@ import (
 type MockStateStore struct {
 	records map[string]protocol.ServiceRecord
 }
+
 func (m *MockStateStore) GetService(ctx context.Context, id string) (*protocol.ServiceRecord, error) {
 	if r, ok := m.records[id]; ok {
 		return &r, nil
@@ -45,8 +46,9 @@ func (m *MockStateStore) Set(ctx context.Context, key string, val []byte) error 
 // MockIntentSource
 type MockIntentSource struct {
 	blueprints []protocol.Blueprint
-	index int
+	index      int
 }
+
 func (m *MockIntentSource) GetNextBlueprint(ctx context.Context) (*protocol.Blueprint, error) {
 	if m.index >= len(m.blueprints) {
 		return nil, nil
@@ -57,7 +59,8 @@ func (m *MockIntentSource) GetNextBlueprint(ctx context.Context) (*protocol.Blue
 }
 
 // MockEvolutionEngine
-type MockEvolutionEngine struct {}
+type MockEvolutionEngine struct{}
+
 func (m *MockEvolutionEngine) Evolve(ctx context.Context, bp protocol.Blueprint) ([]byte, error) {
 	return []byte("mock-wasm"), nil
 }
@@ -66,11 +69,12 @@ func (m *MockEvolutionEngine) Evolve(ctx context.Context, bp protocol.Blueprint)
 type MockRuntimeHost struct {
 	modules map[string][]byte
 }
+
 func (m *MockRuntimeHost) LoadModule(ctx context.Context, id, version string, b []byte) error {
 	if m.modules == nil {
 		m.modules = make(map[string][]byte)
 	}
-	m.modules[id + "-" + version] = b
+	m.modules[id+"-"+version] = b
 	return nil
 }
 func (m *MockRuntimeHost) Invoke(ctx context.Context, id, method string, p []byte) ([]byte, error) {
@@ -87,7 +91,7 @@ func (m *MockRuntimeHost) UnsetShadowVersion(ctx context.Context, id string) err
 }
 func (m *MockRuntimeHost) UnloadVersion(ctx context.Context, id, version string) error {
 	if m.modules != nil {
-		delete(m.modules, id + "-" + version)
+		delete(m.modules, id+"-"+version)
 	}
 	return nil
 }

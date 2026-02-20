@@ -140,3 +140,63 @@ func TestFileIntentSource_Reload(t *testing.T) {
 		t.Errorf("Expected nil, got %v", bp)
 	}
 }
+
+func TestFileIntentSource_EdgeCases(t *testing.T) {
+	// Case 1: File does not exist
+	_, err := NewFileIntentSource("non-existent-file.json")
+	if err == nil {
+		t.Error("Expected error for non-existent file, got nil")
+	}
+
+	// Case 2: Empty File
+	tmpfile, err := os.CreateTemp("", "blueprints-empty-*.json")
+	if err != nil {
+		t.Fatal(err)
+	}
+	defer os.Remove(tmpfile.Name())
+
+	// Create empty file source
+	source, err := NewFileIntentSource(tmpfile.Name())
+	if err != nil {
+		t.Fatalf("Failed to create source with empty file: %v", err)
+	}
+
+	ctx := context.Background()
+	bp, err := source.GetNextBlueprint(ctx)
+	if err != nil {
+		t.Errorf("Unexpected error for empty file: %v", err)
+	}
+	if bp != nil {
+		t.Errorf("Expected nil blueprint for empty file, got %v", bp)
+	}
+
+	// Case 3: Invalid JSON
+	// Ensure we sleep enough to trigger reload
+	time.Sleep(2 * time.Second)
+
+	if err := os.WriteFile(tmpfile.Name(), []byte("{invalid-json"), 0644); err != nil {
+		t.Fatal(err)
+	}
+
+	// We need to trigger reload by exhausting the list (it was already empty/exhausted)
+	// GetNextBlueprint calls load() if index >= len
+	_, err = source.GetNextBlueprint(ctx)
+	if err == nil {
+		t.Error("Expected error for invalid JSON reload, got nil")
+	}
+
+	// Case 4: Invalid JSON on initial load
+	tmpfileInvalid, err := os.CreateTemp("", "blueprints-invalid-*.json")
+	if err != nil {
+		t.Fatal(err)
+	}
+	defer os.Remove(tmpfileInvalid.Name())
+	if err := os.WriteFile(tmpfileInvalid.Name(), []byte("not-json"), 0644); err != nil {
+		t.Fatal(err)
+	}
+
+	_, err = NewFileIntentSource(tmpfileInvalid.Name())
+	if err == nil {
+		t.Error("Expected error for invalid JSON on init, got nil")
+	}
+}

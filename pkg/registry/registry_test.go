@@ -12,14 +12,23 @@ import (
 // MockStateStore
 type MockStateStore struct {
 	records map[string]protocol.ServiceRecord
+	getServiceErr error
+	updateServiceErr error
 }
+
 func (m *MockStateStore) GetService(ctx context.Context, id string) (*protocol.ServiceRecord, error) {
+	if m.getServiceErr != nil {
+		return nil, m.getServiceErr
+	}
 	if r, ok := m.records[id]; ok {
 		return &r, nil
 	}
 	return nil, nil
 }
 func (m *MockStateStore) UpdateService(ctx context.Context, r protocol.ServiceRecord) error {
+	if m.updateServiceErr != nil {
+		return m.updateServiceErr
+	}
 	if m.records == nil {
 		m.records = make(map[string]protocol.ServiceRecord)
 	}
@@ -43,9 +52,14 @@ func (m *MockStateStore) Set(ctx context.Context, key string, val []byte) error 
 // MockIntentSource
 type MockIntentSource struct {
 	blueprints []protocol.Blueprint
-	index int
+	index      int
+	err        error
 }
+
 func (m *MockIntentSource) GetNextBlueprint(ctx context.Context) (*protocol.Blueprint, error) {
+	if m.err != nil {
+		return nil, m.err
+	}
 	if m.index >= len(m.blueprints) {
 		return nil, nil
 	}
@@ -55,8 +69,14 @@ func (m *MockIntentSource) GetNextBlueprint(ctx context.Context) (*protocol.Blue
 }
 
 // MockEvolutionEngine
-type MockEvolutionEngine struct {}
+type MockEvolutionEngine struct{
+	err error
+}
+
 func (m *MockEvolutionEngine) Evolve(ctx context.Context, bp protocol.Blueprint) ([]byte, error) {
+	if m.err != nil {
+		return nil, m.err
+	}
 	return []byte("mock-wasm"), nil
 }
 
@@ -65,8 +85,13 @@ type MockRuntimeHost struct {
 	modules        map[string][]byte
 	activeVersions map[string]string
 	shadowVersions map[string]string
+	loadErr        error
 }
+
 func (m *MockRuntimeHost) LoadModule(ctx context.Context, id, version string, b []byte) error {
+	if m.loadErr != nil {
+		return m.loadErr
+	}
 	if m.modules == nil {
 		m.modules = make(map[string][]byte)
 	}
@@ -106,7 +131,6 @@ func (m *MockRuntimeHost) Close(ctx context.Context) error {
 	return nil
 }
 
-
 func TestRegistry_Reconcile(t *testing.T) {
 	store := &MockStateStore{records: make(map[string]protocol.ServiceRecord)}
 	engine := &MockEvolutionEngine{}
@@ -116,7 +140,7 @@ func TestRegistry_Reconcile(t *testing.T) {
 		},
 	}
 	runtime := &MockRuntimeHost{
-		modules: make(map[string][]byte),
+		modules:        make(map[string][]byte),
 		activeVersions: make(map[string]string),
 	}
 	collector := telemetry.NewInMemoryCollector()
@@ -171,7 +195,7 @@ func TestRegistry_Reconcile_Versioning(t *testing.T) {
 		},
 	}
 	runtime := &MockRuntimeHost{
-		modules: make(map[string][]byte),
+		modules:        make(map[string][]byte),
 		activeVersions: make(map[string]string),
 	}
 	collector := telemetry.NewInMemoryCollector()
@@ -229,7 +253,7 @@ func TestRegistry_Reconcile_ShadowMode(t *testing.T) {
 		},
 	}
 	runtime := &MockRuntimeHost{
-		modules: make(map[string][]byte),
+		modules:        make(map[string][]byte),
 		activeVersions: make(map[string]string),
 		shadowVersions: make(map[string]string),
 	}
@@ -240,8 +264,12 @@ func TestRegistry_Reconcile_ShadowMode(t *testing.T) {
 
 	// 1. Deploy Active (v1)
 	processed, err := reg.Reconcile(ctx)
-	if err != nil { t.Fatalf("Reconcile 1 failed: %v", err) }
-	if !processed { t.Fatal("Expected processed") }
+	if err != nil {
+		t.Fatalf("Reconcile 1 failed: %v", err)
+	}
+	if !processed {
+		t.Fatal("Expected processed")
+	}
 
 	rec, _ := store.GetService(ctx, "svc-1")
 	if rec.ActiveVersion != 1 {
@@ -256,8 +284,12 @@ func TestRegistry_Reconcile_ShadowMode(t *testing.T) {
 
 	// 2. Deploy Shadow (v2)
 	processed, err = reg.Reconcile(ctx)
-	if err != nil { t.Fatalf("Reconcile 2 failed: %v", err) }
-	if !processed { t.Fatal("Expected processed") }
+	if err != nil {
+		t.Fatalf("Reconcile 2 failed: %v", err)
+	}
+	if !processed {
+		t.Fatal("Expected processed")
+	}
 
 	rec, _ = store.GetService(ctx, "svc-1")
 	if rec.ActiveVersion != 1 {
@@ -279,6 +311,73 @@ func TestRegistry_Reconcile_ShadowMode(t *testing.T) {
 	}
 
 	// Verify both modules are loaded
-	if _, ok := runtime.modules["svc-1-1"]; !ok { t.Error("v1 module missing") }
-	if _, ok := runtime.modules["svc-1-2"]; !ok { t.Error("v2 module missing") }
+	if _, ok := runtime.modules["svc-1-1"]; !ok {
+		t.Error("v1 module missing")
+	}
+	if _, ok := runtime.modules["svc-1-2"]; !ok {
+		t.Error("v2 module missing")
+	}
+}
+
+func TestRegistry_Reconcile_Errors(t *testing.T) {
+	ctx := context.Background()
+	collector := telemetry.NewInMemoryCollector()
+
+	// 1. Intent Source Error
+	t.Run("IntentSource Error", func(t *testing.T) {
+		source := &MockIntentSource{err: fmt.Errorf("intent error")}
+		reg := NewRegistry(nil, nil, source, nil, collector)
+		_, err := reg.Reconcile(ctx)
+		if err == nil {
+			t.Error("Expected error from intent source, got nil")
+		}
+	})
+
+	// 2. Store GetService Error
+	t.Run("Store GetService Error", func(t *testing.T) {
+		source := &MockIntentSource{
+			blueprints: []protocol.Blueprint{{ServiceID: "svc-1"}},
+		}
+		store := &MockStateStore{getServiceErr: fmt.Errorf("store error")}
+		engine := &MockEvolutionEngine{}
+		reg := NewRegistry(store, engine, source, nil, collector)
+		// It should NOT return error from Reconcile, but log error and continue
+		// Actually Reconcile returns (bool, error). The error is usually nil unless critical.
+		// Failures in evolve/store/runtime usually return (true, nil) but increment metrics/log.
+		// Let's check if it returns.
+		_, _ = reg.Reconcile(ctx)
+		// We can't easily check for internal error logging without a better collector or logger hook.
+		// But at least it shouldn't panic.
+	})
+
+	// 3. Evolution Engine Error
+	t.Run("Evolution Engine Error", func(t *testing.T) {
+		source := &MockIntentSource{
+			blueprints: []protocol.Blueprint{{ServiceID: "svc-1"}},
+		}
+		store := &MockStateStore{records: make(map[string]protocol.ServiceRecord)}
+		engine := &MockEvolutionEngine{err: fmt.Errorf("compile error")}
+		reg := NewRegistry(store, engine, source, nil, collector)
+		_, err := reg.Reconcile(ctx)
+		// Again, Reconcile swallows the error and logs it.
+		if err != nil {
+			t.Errorf("Expected nil error (swallowed), got %v", err)
+		}
+	})
+
+	// 4. Runtime LoadModule Error
+	t.Run("Runtime LoadModule Error", func(t *testing.T) {
+		source := &MockIntentSource{
+			blueprints: []protocol.Blueprint{{ServiceID: "svc-1"}},
+		}
+		store := &MockStateStore{records: make(map[string]protocol.ServiceRecord)}
+		engine := &MockEvolutionEngine{}
+		runtime := &MockRuntimeHost{loadErr: fmt.Errorf("runtime error")}
+		reg := NewRegistry(store, engine, source, runtime, collector)
+		_, err := reg.Reconcile(ctx)
+		// Reconcile swallows runtime errors too
+		if err != nil {
+			t.Errorf("Expected nil error (swallowed), got %v", err)
+		}
+	})
 }

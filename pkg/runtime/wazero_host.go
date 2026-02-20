@@ -30,11 +30,11 @@ type Response struct {
 // WazeroRuntimeHost implements RuntimeHost using wazero.
 type WazeroRuntimeHost struct {
 	runtime        wazero.Runtime
-	modules        map[string]api.Module        // Key: uniqueName (serviceID-version)
-	requests       map[string]chan Request      // Key: uniqueName
-	currentReq     map[string]Request           // Key: uniqueName
-	activeVersions map[string]string            // Key: serviceID, Value: uniqueName
-	shadowVersions map[string]string            // Key: serviceID, Value: uniqueName
+	modules        map[string]api.Module   // Key: uniqueName (serviceID-version)
+	requests       map[string]chan Request // Key: uniqueName
+	currentReq     map[string]Request      // Key: uniqueName
+	activeVersions map[string]string       // Key: serviceID, Value: uniqueName
+	shadowVersions map[string]string       // Key: serviceID, Value: uniqueName
 	mu             sync.RWMutex
 	collector      protocol.MetricsCollector
 }
@@ -88,25 +88,37 @@ func NewWazeroRuntimeHost(ctx context.Context, store protocol.StateStore, collec
 	rpc := func(ctx context.Context, m api.Module, svcPtr, svcLen, methPtr, methLen, payPtr, payLen, outPtr, outLen uint32) uint32 {
 		mem := m.Memory()
 		svcBytes, ok := mem.Read(svcPtr, svcLen)
-		if !ok { return 0 }
+		if !ok {
+			return 0
+		}
 		targetServiceID := string(svcBytes)
 
 		methBytes, ok := mem.Read(methPtr, methLen)
-		if !ok { return 0 }
+		if !ok {
+			return 0
+		}
 		method := string(methBytes)
 
 		payload, ok := mem.Read(payPtr, payLen)
-		if !ok { return 0 }
+		if !ok {
+			return 0
+		}
 		payloadCopy := make([]byte, len(payload))
 		copy(payloadCopy, payload)
 
 		result, err := h.Invoke(ctx, targetServiceID, method, payloadCopy)
-		if err != nil { return 0 }
+		if err != nil {
+			return 0
+		}
 
 		if uint32(len(result)) > outLen {
-			if !mem.Write(outPtr, result[:outLen]) { return 0 }
+			if !mem.Write(outPtr, result[:outLen]) {
+				return 0
+			}
 		} else {
-			if !mem.Write(outPtr, result) { return 0 }
+			if !mem.Write(outPtr, result) {
+				return 0
+			}
 		}
 
 		return uint32(len(result))
@@ -152,7 +164,9 @@ func NewWazeroRuntimeHost(ctx context.Context, store protocol.StateStore, collec
 		h.mu.RLock()
 		req, ok := h.currentReq[moduleName]
 		h.mu.RUnlock()
-		if !ok { return }
+		if !ok {
+			return
+		}
 
 		if uint32(len(req.payload)) > cap {
 			m.Memory().Write(ptr, req.payload[:cap])
@@ -167,7 +181,9 @@ func NewWazeroRuntimeHost(ctx context.Context, store protocol.StateStore, collec
 		h.mu.RLock()
 		req, ok := h.currentReq[moduleName]
 		h.mu.RUnlock()
-		if !ok { return }
+		if !ok {
+			return
+		}
 
 		var res []byte
 		if len > 0 {
