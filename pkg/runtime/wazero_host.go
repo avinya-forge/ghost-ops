@@ -36,6 +36,7 @@ type WazeroRuntimeHost struct {
 	activeVersions map[string]string       // Key: serviceID, Value: uniqueName
 	shadowVersions map[string]string       // Key: serviceID, Value: uniqueName
 	mu             sync.RWMutex
+	store          protocol.StateStore
 	collector      protocol.MetricsCollector
 }
 
@@ -55,163 +56,17 @@ func NewWazeroRuntimeHost(ctx context.Context, store protocol.StateStore, collec
 		currentReq:     make(map[string]Request),
 		activeVersions: make(map[string]string),
 		shadowVersions: make(map[string]string),
+		store:          store,
 		collector:      collector,
-	}
-
-	// Define kv_get host function
-	kvGet := func(ctx context.Context, m api.Module, keyPtr, keyLen, valPtr, valLen uint32) uint32 {
-		keyBytes, ok := m.Memory().Read(keyPtr, keyLen)
-		if !ok {
-			return 0
-		}
-		key := string(keyBytes)
-
-		val, err := store.Get(ctx, key)
-		if err != nil {
-			return 0
-		}
-
-		if uint32(len(val)) > valLen {
-			if !m.Memory().Write(valPtr, val[:valLen]) {
-				return 0
-			}
-		} else {
-			if !m.Memory().Write(valPtr, val) {
-				return 0
-			}
-		}
-
-		return uint32(len(val))
-	}
-
-	// Define rpc host function
-	rpc := func(ctx context.Context, m api.Module, svcPtr, svcLen, methPtr, methLen, payPtr, payLen, outPtr, outLen uint32) uint32 {
-		mem := m.Memory()
-		svcBytes, ok := mem.Read(svcPtr, svcLen)
-		if !ok {
-			return 0
-		}
-		targetServiceID := string(svcBytes)
-
-		methBytes, ok := mem.Read(methPtr, methLen)
-		if !ok {
-			return 0
-		}
-		method := string(methBytes)
-
-		payload, ok := mem.Read(payPtr, payLen)
-		if !ok {
-			return 0
-		}
-		payloadCopy := make([]byte, len(payload))
-		copy(payloadCopy, payload)
-
-		result, err := h.Invoke(ctx, targetServiceID, method, payloadCopy)
-		if err != nil {
-			return 0
-		}
-
-		if uint32(len(result)) > outLen {
-			if !mem.Write(outPtr, result[:outLen]) {
-				return 0
-			}
-		} else {
-			if !mem.Write(outPtr, result) {
-				return 0
-			}
-		}
-
-		return uint32(len(result))
-	}
-
-	// Define next_command host function
-	nextCommand := func(ctx context.Context, m api.Module, methPtr, methCap uint32) uint64 {
-		moduleName := m.Name()
-
-		h.mu.Lock()
-		if _, known := h.modules[moduleName]; !known {
-			h.modules[moduleName] = m
-		}
-		reqCh, ok := h.requests[moduleName]
-		h.mu.Unlock()
-
-		if !ok {
-			return 0
-		}
-
-		select {
-		case req := <-reqCh:
-			h.mu.Lock()
-			h.currentReq[moduleName] = req
-			h.mu.Unlock()
-
-			methBytes := []byte(req.method)
-			if uint32(len(methBytes)) > methCap {
-				methBytes = methBytes[:methCap]
-			}
-			m.Memory().Write(methPtr, methBytes)
-
-			return (uint64(len(req.payload)) << 32) | uint64(len(methBytes))
-
-		case <-ctx.Done():
-			return 0
-		}
-	}
-
-	// Define read_payload host function
-	readPayload := func(ctx context.Context, m api.Module, ptr, cap uint32) {
-		moduleName := m.Name()
-		h.mu.RLock()
-		req, ok := h.currentReq[moduleName]
-		h.mu.RUnlock()
-		if !ok {
-			return
-		}
-
-		if uint32(len(req.payload)) > cap {
-			m.Memory().Write(ptr, req.payload[:cap])
-		} else {
-			m.Memory().Write(ptr, req.payload)
-		}
-	}
-
-	// Define submit_result host function
-	submitResult := func(ctx context.Context, m api.Module, ptr, len uint32) {
-		moduleName := m.Name()
-		h.mu.RLock()
-		req, ok := h.currentReq[moduleName]
-		h.mu.RUnlock()
-		if !ok {
-			return
-		}
-
-		var res []byte
-		if len > 0 {
-			resBytes, ok := m.Memory().Read(ptr, len)
-			if ok {
-				res = make([]byte, len)
-				copy(res, resBytes)
-			}
-		}
-
-		// Cleanup before sending response
-		h.mu.Lock()
-		delete(h.currentReq, moduleName)
-		h.mu.Unlock()
-
-		select {
-		case req.responseCh <- Response{payload: res}:
-		default:
-		}
 	}
 
 	// Instantiate host module
 	_, err := r.NewHostModuleBuilder("ghost_ops").
-		NewFunctionBuilder().WithFunc(kvGet).Export("kv_get").
-		NewFunctionBuilder().WithFunc(rpc).Export("rpc").
-		NewFunctionBuilder().WithFunc(nextCommand).Export("next_command").
-		NewFunctionBuilder().WithFunc(readPayload).Export("read_payload").
-		NewFunctionBuilder().WithFunc(submitResult).Export("submit_result").
+		NewFunctionBuilder().WithFunc(h.kvGet).Export("kv_get").
+		NewFunctionBuilder().WithFunc(h.rpc).Export("rpc").
+		NewFunctionBuilder().WithFunc(h.nextCommand).Export("next_command").
+		NewFunctionBuilder().WithFunc(h.readPayload).Export("read_payload").
+		NewFunctionBuilder().WithFunc(h.submitResult).Export("submit_result").
 		Instantiate(ctx)
 
 	if err != nil {
@@ -219,6 +74,148 @@ func NewWazeroRuntimeHost(ctx context.Context, store protocol.StateStore, collec
 	}
 
 	return h, nil
+}
+
+func (h *WazeroRuntimeHost) kvGet(ctx context.Context, m api.Module, keyPtr, keyLen, valPtr, valLen uint32) uint32 {
+	keyBytes, ok := m.Memory().Read(keyPtr, keyLen)
+	if !ok {
+		return 0
+	}
+	key := string(keyBytes)
+
+	val, err := h.store.Get(ctx, key)
+	if err != nil {
+		return 0
+	}
+
+	if uint32(len(val)) > valLen {
+		if !m.Memory().Write(valPtr, val[:valLen]) {
+			return 0
+		}
+	} else {
+		if !m.Memory().Write(valPtr, val) {
+			return 0
+		}
+	}
+
+	return uint32(len(val))
+}
+
+func (h *WazeroRuntimeHost) rpc(ctx context.Context, m api.Module, svcPtr, svcLen, methPtr, methLen, payPtr, payLen, outPtr, outLen uint32) uint32 {
+	mem := m.Memory()
+	svcBytes, ok := mem.Read(svcPtr, svcLen)
+	if !ok {
+		return 0
+	}
+	targetServiceID := string(svcBytes)
+
+	methBytes, ok := mem.Read(methPtr, methLen)
+	if !ok {
+		return 0
+	}
+	method := string(methBytes)
+
+	payload, ok := mem.Read(payPtr, payLen)
+	if !ok {
+		return 0
+	}
+	payloadCopy := make([]byte, len(payload))
+	copy(payloadCopy, payload)
+
+	result, err := h.Invoke(ctx, targetServiceID, method, payloadCopy)
+	if err != nil {
+		return 0
+	}
+
+	if uint32(len(result)) > outLen {
+		if !mem.Write(outPtr, result[:outLen]) {
+			return 0
+		}
+	} else {
+		if !mem.Write(outPtr, result) {
+			return 0
+		}
+	}
+
+	return uint32(len(result))
+}
+
+func (h *WazeroRuntimeHost) nextCommand(ctx context.Context, m api.Module, methPtr, methCap uint32) uint64 {
+	moduleName := m.Name()
+
+	h.mu.Lock()
+	if _, known := h.modules[moduleName]; !known {
+		h.modules[moduleName] = m
+	}
+	reqCh, ok := h.requests[moduleName]
+	h.mu.Unlock()
+
+	if !ok {
+		return 0
+	}
+
+	select {
+	case req := <-reqCh:
+		h.mu.Lock()
+		h.currentReq[moduleName] = req
+		h.mu.Unlock()
+
+		methBytes := []byte(req.method)
+		if uint32(len(methBytes)) > methCap {
+			methBytes = methBytes[:methCap]
+		}
+		m.Memory().Write(methPtr, methBytes)
+
+		return (uint64(len(req.payload)) << 32) | uint64(len(methBytes))
+
+	case <-ctx.Done():
+		return 0
+	}
+}
+
+func (h *WazeroRuntimeHost) readPayload(ctx context.Context, m api.Module, ptr, cap uint32) {
+	moduleName := m.Name()
+	h.mu.RLock()
+	req, ok := h.currentReq[moduleName]
+	h.mu.RUnlock()
+	if !ok {
+		return
+	}
+
+	if uint32(len(req.payload)) > cap {
+		m.Memory().Write(ptr, req.payload[:cap])
+	} else {
+		m.Memory().Write(ptr, req.payload)
+	}
+}
+
+func (h *WazeroRuntimeHost) submitResult(ctx context.Context, m api.Module, ptr, len uint32) {
+	moduleName := m.Name()
+	h.mu.RLock()
+	req, ok := h.currentReq[moduleName]
+	h.mu.RUnlock()
+	if !ok {
+		return
+	}
+
+	var res []byte
+	if len > 0 {
+		resBytes, ok := m.Memory().Read(ptr, len)
+		if ok {
+			res = make([]byte, len)
+			copy(res, resBytes)
+		}
+	}
+
+	// Cleanup before sending response
+	h.mu.Lock()
+	delete(h.currentReq, moduleName)
+	h.mu.Unlock()
+
+	select {
+	case req.responseCh <- Response{payload: res}:
+	default:
+	}
 }
 
 // LoadModule loads a WASM binary for a specific version.
