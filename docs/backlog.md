@@ -20,77 +20,117 @@
 
 ### Epic: Configuration Management
 - [ ] [200] | [FEAT] Add Viper Dependency & Setup | [INDEPENDENT] | [TODO]
-    - [SEC] Ensure secure defaults.
+    - [SEC] Ensure secure defaults. [TEST] Verify precedence. [OPT] Lazy load.
 - [ ] [201] | [FEAT] Define `Config` Struct | [BLOCKS-200] | [TODO]
-    - Define fields for `Server`, `Log`, `Store`, `Runtime`.
+    - [LINT] Add struct tags. [TEST] JSON/YAML serialization.
 - [ ] [202] | [FEAT] Migrate CLI Flags to Viper Config | [BLOCKS-201] | [TODO]
-    - Replace `flag` package usage in `main.go`.
+    - [TEST] Verify flag overrides. [SEC] No secrets in flags.
 - [ ] [203] | [FEAT] Add Config Validation Logic | [BLOCKS-201] | [TODO]
-    - Validate required fields.
+    - [SEC] Sanitize inputs. [TEST] Invalid config cases.
 - [ ] [204] | [FEAT] Add Hot-Reload for Config | [BLOCKS-200] | [TODO]
-    - Watch config file for changes.
+    - [OPT] Debounce events. [TEST] Verify dynamic update.
 - [ ] [205] | [FEAT] Add Environment Variable Overrides | [BLOCKS-200] | [TODO]
-    - Map env vars to config keys.
+    - [SEC] Mask secrets in logs. [TEST] Env var mapping.
 
 ### Epic: Error Handling
 - [ ] [210] | [FEAT] Define `AppError` Interface in `pkg/protocol` | [INDEPENDENT] | [TODO]
-    - Define `Code` and `Message`.
+    - [LINT] GoDoc. [TEST] Interface compliance. [OPT] O(1) error wrapping.
 - [ ] [211] | [FEAT] Implement Sentinel Errors | [BLOCKS-210] | [TODO]
-    - `ErrNotFound`, `ErrInvalidInput`, `ErrInternal`.
+    - [TEST] Error type assertions. [LINT] Constant naming.
 - [ ] [212] | [FEAT] Refactor `Registry` to use `AppError` | [BLOCKS-211] | [TODO]
-    - Replace `fmt.Errorf`.
+    - [TEST] Verify error propagation. [OPT] Minimize allocation.
 - [ ] [213] | [FEAT] Refactor `Runtime` to use `AppError` | [BLOCKS-211] | [TODO]
-    - Map Wazero errors.
+    - [TEST] Map Wazero exit codes. [SEC] Mask internal details.
 - [ ] [214] | [FEAT] Add Error Codes to API Responses | [BLOCKS-210] | [TODO]
-    - Return structured JSON error responses.
+    - [TEST] HTTP 4xx/5xx mappings. [SEC] No stack traces in production.
 - [ ] [215] | [FEAT] Add Stack Trace to Internal Errors | [BLOCKS-210] | [TODO]
-    - Capture stack on error creation.
+    - [OPT] Capture only on debug. [SEC] Redact sensitive paths.
 
 ### Epic: Validation
 - [ ] [220] | [FEAT] Define JSON Schema for `Blueprint` | [INDEPENDENT] | [TODO]
-    - Define required fields.
+    - [LINT] Valid JSON. [TEST] Schema validation tests.
 - [ ] [221] | [FEAT] Implement `Blueprint` Validation Logic | [BLOCKS-220] | [TODO]
-    - [SEC] Validate `service_id`.
+    - [SEC] Sanitize inputs. [TEST] Boundary checks.
 - [ ] [222] | [FEAT] Validate `service_id` format | [BLOCKS-220] | [TODO]
-    - Alphanumeric check.
+    - [SEC] Regex `^[a-zA-Z0-9-]+$`. [TEST] Inject special chars.
 - [ ] [223] | [FEAT] Validate `constraints` size limits | [BLOCKS-220] | [TODO]
-    - Prevent DoS via large constraints.
+    - [SEC] Max size 1MB. [TEST] Large payload DoS.
 - [ ] [224] | [FEAT] Add Validation Middleware to API | [BLOCKS-221] | [TODO]
-    - Validate inputs before processing.
+    - [OPT] Fail fast. [TEST] Middleware chain order.
 
 ### Epic: CLI Enhancements
 - [ ] [230] | [FEAT] Add `ghost-ops version` command | [INDEPENDENT] | [TODO]
-    - Print build version.
+    - [TEST] Compare output with runtime. [LINT] Flag parsing.
 - [ ] [231] | [FEAT] Add `ghost-ops service list` command | [INDEPENDENT] | [TODO]
-    - Table output of services.
+    - [OPT] Pagination support. [TEST] Empty/Large list.
 - [ ] [232] | [FEAT] Add `ghost-ops service inspect` command | [BLOCKS-231] | [TODO]
-    - Detailed JSON view of a service.
+    - [SEC] Redact secrets. [TEST] Not found case.
 - [ ] [233] | [FEAT] Add `ghost-ops service logs` command | [BLOCKS-231] | [TODO]
-    - Stream logs (future).
+    - [OPT] Stream buffer size. [TEST] Connection drop handling.
 - [ ] [234] | [FEAT] Add `ghost-ops config show` command | [BLOCKS-201] | [TODO]
-    - Print loaded config.
+    - [SEC] Mask sensitive keys. [TEST] Verify output matches loaded config.
 
 ### Epic: Runtime Hardening
 - [ ] [240] | [FEAT] Configure Wazero Memory Limits | [INDEPENDENT] | [TODO]
-    - Prevent guest from consuming all host memory.
+    - [SEC] Max 128MB/guest. [TEST] OOM handling.
 - [ ] [241] | [FEAT] Configure Wazero CPU Limits | [INDEPENDENT] | [TODO]
-    - Time slicing or instruction limits.
+    - [SEC] Max instructions/call. [TEST] Infinite loop break.
 - [ ] [242] | [FEAT] Implement Execution Timeouts | [INDEPENDENT] | [TODO]
-    - Context timeout for Invoke.
+    - [REL] 5s default. [TEST] Context cancellation.
 - [ ] [243] | [FEAT] Verify Async Module Instantiation | [INDEPENDENT] | [TODO]
-    - Ensure `Compile` doesn't block main loop.
+    - [OPT] Non-blocking I/O. [TEST] Load module under load.
 - [ ] [244] | [FEAT] Implement Module Cache Eviction | [INDEPENDENT] | [TODO]
-    - LRU cache for compiled modules.
+    - [OPT] LRU policy. [TEST] Cache hit/miss ratio.
 
 ### Epic: Registry Enhancements
 - [ ] [250] | [FEAT] Implement Event Bus for Service Updates | [INDEPENDENT] | [TODO]
-    - Internal pub/sub.
+    - [OPT] Async channel. [TEST] Subscriber notification.
 - [ ] [251] | [FEAT] Add Metrics for Service Lifecycle | [INDEPENDENT] | [TODO]
-    - Track evolution time.
+    - [OBS] Gauge/Histogram. [TEST] Metric emission.
 - [ ] [252] | [FEAT] Implement Dependency Graph for Services | [INDEPENDENT] | [TODO]
-    - Track service-to-service calls.
+    - [ARCH] DAG traversal. [TEST] Cycle detection.
 - [ ] [253] | [FEAT] Add Service Health Check Logic | [INDEPENDENT] | [TODO]
-    - Periodic liveness probes.
+    - [REL] 10s interval. [TEST] Unhealthy service purge.
+
+### Epic: Hardening (Observability & Security)
+- [ ] [260] | [TEST] Add Unit Tests for `pkg/telemetry` | [INDEPENDENT] | [TODO]
+    - [TEST] Achieve >95% coverage for metrics collector.
+- [ ] [261] | [TEST] Add Unit Tests for `pkg/logging` | [INDEPENDENT] | [TODO]
+    - [TEST] Achieve >95% coverage for structured logger.
+- [ ] [262] | [TEST] Add Unit Tests for `pkg/sdk/guest` | [INDEPENDENT] | [TODO]
+    - [TEST] Achieve >95% coverage for guest SDK.
+- [ ] [263] | [SEC] Run `gosec` Security Scan | [INDEPENDENT] | [TODO]
+    - [SEC] Audit and fix all high-severity issues.
+- [ ] [264] | [OPT] Benchmark `RuntimeHost` Performance | [INDEPENDENT] | [TODO]
+    - [OPT] Ensure overhead < 5ms per invoke.
+- [ ] [265] | [TEST] Add Integration Tests for API | [INDEPENDENT] | [TODO]
+    - [TEST] End-to-end flow coverage.
+
+### Epic: Developer Experience
+- [ ] [270] | [FEAT] Add Makefile `dev` target (hot reload) | [INDEPENDENT] | [TODO]
+    - [DX] Auto-restart server on source change.
+- [ ] [271] | [DOCS] Generate API Swagger/OpenAPI Spec | [INDEPENDENT] | [TODO]
+    - [DOC] Auto-generate spec from code/comments.
+- [ ] [272] | [FEAT] Add Pre-commit Hooks (Git) | [INDEPENDENT] | [TODO]
+    - [DX] Enforce lint/test before commit.
+- [ ] [273] | [FEAT] Add `ghost-ops init` command | [INDEPENDENT] | [TODO]
+    - [DX] Bootstrap new project structure.
+- [ ] [274] | [DOCS] Create Architecture Diagrams (PlantUML/Mermaid) | [INDEPENDENT] | [TODO]
+    - [DOC] Visualize system components and flow.
+- [ ] [275] | [DOCS] Update `README.md` with new features | [INDEPENDENT] | [TODO]
+    - [DOC] Reflect latest capabilities.
+
+### Epic: AI Evolution Enhancements
+- [ ] [280] | [FEAT] Support Custom System Prompts | [INDEPENDENT] | [TODO]
+    - [FEAT] Allow overriding default LLM prompt.
+- [ ] [281] | [FEAT] Implement Prompt Caching | [INDEPENDENT] | [TODO]
+    - [OPT] Cache prompts to save tokens/cost.
+- [ ] [282] | [FEAT] Add Token Usage Metrics | [INDEPENDENT] | [TODO]
+    - [OBS] Track input/output tokens per evolution.
+- [ ] [283] | [FEAT] Support Ollama Provider | [INDEPENDENT] | [TODO]
+    - [FEAT] Add local LLM support via Ollama.
+- [ ] [284] | [TEST] Add Evals for Code Generation Quality | [INDEPENDENT] | [TODO]
+    - [TEST] Automated evaluation of generated code.
 
 ## Phase 2: Scale (Distributed & Resilient)
 
@@ -117,6 +157,24 @@
     - Export to Jaeger/Tempo.
 - [ ] [314] | [FEAT] Correlate Logs with Traces | [BLOCKS-311] | [TODO]
     - Add TraceID to logs.
+
+### Epic: Service Mesh Lite
+- [ ] [320] | [FEAT] Implement Sidecar Proxy Pattern | [INDEPENDENT] | [TODO]
+    - [ARCH] Deploy sidecar for network interception.
+- [ ] [321] | [FEAT] Implement mTLS between Services | [BLOCKS-320] | [TODO]
+    - [SEC] Mutual TLS for service-to-service auth.
+- [ ] [322] | [FEAT] Implement Circuit Breaker | [INDEPENDENT] | [TODO]
+    - [REL] Fail fast on downstream failures.
+- [ ] [323] | [FEAT] Implement Retry Logic with Backoff | [INDEPENDENT] | [TODO]
+    - [REL] Exponential backoff for transient errors.
+- [ ] [324] | [FEAT] Implement Rate Limiting (Token Bucket) | [INDEPENDENT] | [TODO]
+    - [REL] Protect services from overload.
+
+### Epic: Advanced Scheduling
+- [ ] [330] | [FEAT] Implement Priority Queues for Evolution | [INDEPENDENT] | [TODO]
+    - [ALG] Min-heap for task priority. [TEST] Priority order.
+- [ ] [331] | [FEAT] Implement Resource-Aware Scheduling | [BLOCKS-330] | [TODO]
+    - [OPT] Bin packing algorithm. [TEST] Maximize density.
 
 ## Phase 3: Future (Autonomous Evolution)
 - [ ] [400] | [PROPOSAL] Autonomous Feedback Loop Architecture | [INDEPENDENT] | [TODO]
