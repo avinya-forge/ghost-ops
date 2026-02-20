@@ -241,6 +241,9 @@ func (h *WazeroRuntimeHost) LoadModule(ctx context.Context, serviceID, version s
 
 	compiled, err := h.runtime.CompileModule(ctx, wasmBytes)
 	if err != nil {
+		h.mu.Lock()
+		delete(h.requests, uniqueName)
+		h.mu.Unlock()
 		return fmt.Errorf("failed to compile module: %w", err)
 	}
 

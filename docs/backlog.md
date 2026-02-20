@@ -7,7 +7,7 @@
     - [LINT] Run linter and fix reported issues.
 - [x] [102] | [TEST] Add Unit Tests for `Registry` Error Paths | [INDEPENDENT] | [DONE]
     - [UNIT] Coverage for `Reconcile` failure scenarios.
-- [ ] [103] | [TEST] Add Unit Tests for `WazeroRuntimeHost` Edge Cases | [INDEPENDENT] | [TODO]
+- [x] [103] | [TEST] Add Unit Tests for `WazeroRuntimeHost` Edge Cases | [INDEPENDENT] | [DONE]
     - [UNIT] Coverage for `LoadModule` with invalid WASM.
 - [x] [104] | [TEST] Add Unit Tests for `IntentSource` Edge Cases | [INDEPENDENT] | [DONE]
     - [UNIT] Coverage for empty file, invalid JSON.
