@@ -1,19 +1,19 @@
 # Backlog
 
 ## Phase 0: Hygiene (Foundations)
-- [ ] [100] | [LINT] Add `.golangci.yml` configuration | [INDEPENDENT] | [TODO]
+- [x] [100] | [LINT] Add `.golangci.yml` configuration | [INDEPENDENT] | [DONE]
     - [LINT] Enable `staticcheck`, `gofmt`, `govet`.
-- [ ] [101] | [LINT] Fix `staticcheck` issues (SA4006 unused variables) | [BLOCKS-100] | [TODO]
+- [x] [101] | [LINT] Fix `staticcheck` issues (SA4006 unused variables) | [BLOCKS-100] | [DONE]
     - [LINT] Run linter and fix reported issues.
-- [ ] [102] | [TEST] Add Unit Tests for `Registry` Error Paths | [INDEPENDENT] | [TODO]
+- [x] [102] | [TEST] Add Unit Tests for `Registry` Error Paths | [INDEPENDENT] | [DONE]
     - [UNIT] Coverage for `Reconcile` failure scenarios.
 - [ ] [103] | [TEST] Add Unit Tests for `WazeroRuntimeHost` Edge Cases | [INDEPENDENT] | [TODO]
     - [UNIT] Coverage for `LoadModule` with invalid WASM.
-- [ ] [104] | [TEST] Add Unit Tests for `IntentSource` Edge Cases | [INDEPENDENT] | [TODO]
+- [x] [104] | [TEST] Add Unit Tests for `IntentSource` Edge Cases | [INDEPENDENT] | [DONE]
     - [UNIT] Coverage for empty file, invalid JSON.
 - [ ] [105] | [REFACTOR] Restructure `examples/` directory | [INDEPENDENT] | [TODO]
     - Move `hello-world` to `examples/basic/`.
-- [ ] [106] | [DOCS] Create `CONTRIBUTING.md` | [INDEPENDENT] | [TODO]
+- [x] [106] | [DOCS] Create `CONTRIBUTING.md` | [INDEPENDENT] | [DONE]
     - [DOC] detailed guide on how to contribute.
 
 ## Phase 1: MVP (The Self-Healing Loop)

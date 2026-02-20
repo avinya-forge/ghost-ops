@@ -7,8 +7,8 @@ import (
 	"testing"
 
 	"ghost-ops/pkg/evolution"
-	"ghost-ops/pkg/telemetry"
 	"ghost-ops/pkg/protocol"
+	"ghost-ops/pkg/telemetry"
 )
 
 // TestWazeroRuntimeHost_Integration verifies the runtime host using the Guest SDK.

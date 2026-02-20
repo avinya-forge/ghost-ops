@@ -13,7 +13,7 @@ import (
 )
 
 const (
-	defaultOpenAIModel = "gpt-4o"
+	defaultOpenAIModel   = "gpt-4o"
 	defaultOpenAIBaseURL = "https://api.openai.com/v1"
 )
 
@@ -50,7 +50,7 @@ type message struct {
 }
 
 type chatCompletionResponse struct {
-	Choices []choice `json:"choices"`
+	Choices []choice  `json:"choices"`
 	Error   *apiError `json:"error,omitempty"`
 }
 
@@ -59,9 +59,9 @@ type choice struct {
 }
 
 type apiError struct {
-	Message string `json:"message"`
-	Type    string `json:"type"`
-	Param   string `json:"param"`
+	Message string      `json:"message"`
+	Type    string      `json:"type"`
+	Param   string      `json:"param"`
 	Code    interface{} `json:"code"`
 }
 
