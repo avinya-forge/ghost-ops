@@ -1,6 +1,6 @@
 # Release Notes
 
-## v0.2.1 (Unreleased)
+## v0.2.1 (Released)
 - Restructured `examples/` directory to group basic examples (`examples/basic/hello-world`).
 - Added `CONTRIBUTING.md` for development guidelines.
 
