@@ -10,6 +10,9 @@
 - Implemented Service Versioning Strategy (incrementing version on evolution).
 - Enhanced Reconcile Loop to support continuous evolution by reloading blueprints when the file changes.
 - Enhanced AI Evolution Engine to support constraint-aware synthesis by passing full blueprints (intents + constraints) to the LLM.
+- Added `/healthz` endpoint to API Server for liveness probes.
+- implemented graceful shutdown handling in `main.go` using context cancellation.
+- Audited and ensured structured logging across all core components.
 
 ## v0.1.0 (Foundation)
 - Initial project setup.
