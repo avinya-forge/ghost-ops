@@ -1,5 +1,9 @@
 # Release Notes
 
+## v0.2.1 (Unreleased)
+- Restructured `examples/` directory to group basic examples (`examples/basic/hello-world`).
+- Added `CONTRIBUTING.md` for development guidelines.
+
 ## v0.2.0 (Released)
 - Implemented Telemetry Collection (runtime metrics) via `MetricsCollector`.
 - Integrated AI Engine into CLI for end-to-end intent-to-WASM flow.

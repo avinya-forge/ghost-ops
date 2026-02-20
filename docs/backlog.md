@@ -11,7 +11,7 @@
     - [UNIT] Coverage for `LoadModule` with invalid WASM.
 - [x] [104] | [TEST] Add Unit Tests for `IntentSource` Edge Cases | [INDEPENDENT] | [DONE]
     - [UNIT] Coverage for empty file, invalid JSON.
-- [ ] [105] | [REFACTOR] Restructure `examples/` directory | [INDEPENDENT] | [TODO]
+- [x] [105] | [REFACTOR] Restructure `examples/` directory | [INDEPENDENT] | [DONE]
     - Move `hello-world` to `examples/basic/`.
 - [x] [106] | [DOCS] Create `CONTRIBUTING.md` | [INDEPENDENT] | [DONE]
     - [DOC] detailed guide on how to contribute.
