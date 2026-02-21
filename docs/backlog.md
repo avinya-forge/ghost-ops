@@ -33,9 +33,9 @@
     - [SEC] Mask secrets in logs. [TEST] Env var mapping.
 
 ### Epic: Error Handling
-- [ ] [210] | [FEAT] Define `AppError` Interface in `pkg/protocol` | [INDEPENDENT] | [TODO]
+- [x] [210] | [FEAT] Define `AppError` Interface in `pkg/protocol` | [INDEPENDENT] | [DONE]
     - [LINT] GoDoc. [TEST] Interface compliance. [OPT] O(1) error wrapping.
-- [ ] [211] | [FEAT] Implement Sentinel Errors | [BLOCKS-210] | [TODO]
+- [x] [211] | [FEAT] Implement Sentinel Errors | [BLOCKS-210] | [DONE]
     - [TEST] Error type assertions. [LINT] Constant naming.
 - [ ] [212] | [FEAT] Refactor `Registry` to use `AppError` | [BLOCKS-211] | [TODO]
     - [TEST] Verify error propagation. [OPT] Minimize allocation.
@@ -59,7 +59,7 @@
     - [OPT] Fail fast. [TEST] Middleware chain order.
 
 ### Epic: CLI Enhancements
-- [ ] [230] | [FEAT] Add `ghost-ops version` command | [INDEPENDENT] | [TODO]
+- [x] [230] | [FEAT] Add `ghost-ops version` command | [INDEPENDENT] | [DONE]
     - [TEST] Compare output with runtime. [LINT] Flag parsing.
 - [ ] [231] | [FEAT] Add `ghost-ops service list` command | [INDEPENDENT] | [TODO]
     - [OPT] Pagination support. [TEST] Empty/Large list.
@@ -71,11 +71,11 @@
     - [SEC] Mask sensitive keys. [TEST] Verify output matches loaded config.
 
 ### Epic: Runtime Hardening
-- [ ] [240] | [FEAT] Configure Wazero Memory Limits | [INDEPENDENT] | [TODO]
+- [x] [240] | [FEAT] Configure Wazero Memory Limits | [INDEPENDENT] | [DONE]
     - [SEC] Max 128MB/guest. [TEST] OOM handling.
 - [ ] [241] | [FEAT] Configure Wazero CPU Limits | [INDEPENDENT] | [TODO]
     - [SEC] Max instructions/call. [TEST] Infinite loop break.
-- [ ] [242] | [FEAT] Implement Execution Timeouts | [INDEPENDENT] | [TODO]
+- [x] [242] | [FEAT] Implement Execution Timeouts | [INDEPENDENT] | [DONE]
     - [REL] 5s default. [TEST] Context cancellation.
 - [ ] [243] | [FEAT] Verify Async Module Instantiation | [INDEPENDENT] | [TODO]
     - [OPT] Non-blocking I/O. [TEST] Load module under load.
@@ -93,7 +93,7 @@
     - [REL] 10s interval. [TEST] Unhealthy service purge.
 
 ### Epic: Hardening (Observability & Security)
-- [ ] [260] | [TEST] Add Unit Tests for `pkg/telemetry` | [INDEPENDENT] | [TODO]
+- [x] [260] | [TEST] Add Unit Tests for `pkg/telemetry` | [INDEPENDENT] | [DONE]
     - [TEST] Achieve >95% coverage for metrics collector.
 - [ ] [261] | [TEST] Add Unit Tests for `pkg/logging` | [INDEPENDENT] | [TODO]
     - [TEST] Achieve >95% coverage for structured logger.

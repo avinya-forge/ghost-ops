@@ -42,7 +42,9 @@ type WazeroRuntimeHost struct {
 
 // NewWazeroRuntimeHost creates a new WazeroRuntimeHost.
 func NewWazeroRuntimeHost(ctx context.Context, store protocol.StateStore, collector protocol.MetricsCollector) (*WazeroRuntimeHost, error) {
-	r := wazero.NewRuntime(ctx)
+	// 128MB limit per memory instance
+	config := wazero.NewRuntimeConfig().WithMemoryLimitPages(2048)
+	r := wazero.NewRuntimeWithConfig(ctx, config)
 
 	// Instantiate WASI, as many modules might need it.
 	if _, err := wasi_snapshot_preview1.Instantiate(ctx, r); err != nil {
@@ -305,6 +307,10 @@ func (h *WazeroRuntimeHost) UnsetShadowVersion(ctx context.Context, serviceID st
 
 // Invoke calls a function on the loaded module of the active version.
 func (h *WazeroRuntimeHost) Invoke(ctx context.Context, serviceID, method string, payload []byte) ([]byte, error) {
+	// Enforce 5s timeout
+	ctx, cancel := context.WithTimeout(ctx, 5*time.Second)
+	defer cancel()
+
 	start := time.Now()
 	defer func() {
 		duration := time.Since(start).Seconds()

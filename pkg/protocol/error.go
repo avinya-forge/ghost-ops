@@ -1,0 +1,58 @@
+package protocol
+
+import (
+	"fmt"
+)
+
+// AppError defines the standard application error interface.
+type AppError interface {
+	error
+	Code() string
+	Message() string
+	Unwrap() error
+}
+
+// BaseError is a concrete implementation of AppError.
+type BaseError struct {
+	CodeStr string
+	Msg     string
+	Err     error
+}
+
+func (e *BaseError) Error() string {
+	if e.Err != nil {
+		return fmt.Sprintf("[%s] %s: %v", e.CodeStr, e.Msg, e.Err)
+	}
+	return fmt.Sprintf("[%s] %s", e.CodeStr, e.Msg)
+}
+
+func (e *BaseError) Code() string {
+	return e.CodeStr
+}
+
+func (e *BaseError) Message() string {
+	return e.Msg
+}
+
+func (e *BaseError) Unwrap() error {
+	return e.Err
+}
+
+// NewAppError creates a new AppError.
+func NewAppError(code, msg string, err error) AppError {
+	return &BaseError{
+		CodeStr: code,
+		Msg:     msg,
+		Err:     err,
+	}
+}
+
+// Sentinel Errors
+var (
+	ErrNotFound     = NewAppError("NOT_FOUND", "resource not found", nil)
+	ErrInvalidInput = NewAppError("INVALID_INPUT", "invalid input", nil)
+	ErrTimeout      = NewAppError("TIMEOUT", "operation timed out", nil)
+	ErrInternal     = NewAppError("INTERNAL", "internal server error", nil)
+	ErrConflict     = NewAppError("CONFLICT", "resource conflict", nil)
+	ErrUnauthorized = NewAppError("UNAUTHORIZED", "unauthorized access", nil)
+)

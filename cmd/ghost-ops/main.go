@@ -3,6 +3,7 @@ package main
 import (
 	"context"
 	"flag"
+	"fmt"
 	"log/slog"
 	"net/http"
 	"os"
@@ -22,6 +23,8 @@ import (
 	"ghost-ops/pkg/telemetry"
 )
 
+var Version = "dev"
+
 func main() {
 	blueprintsPath := flag.String("blueprints", "blueprints.json", "Path to blueprints file")
 	wasmPath := flag.String("wasm", "", "Path to mock WASM binary (optional)")
@@ -31,6 +34,12 @@ func main() {
 	llmProvider := flag.String("llm", "mock", "LLM provider to use (mock)")
 	debug := flag.Bool("debug", false, "Enable debug logging")
 	flag.Parse()
+
+	// Check for version command
+	if len(flag.Args()) > 0 && flag.Arg(0) == "version" {
+		fmt.Printf("ghost-ops version %s\n", Version)
+		os.Exit(0)
+	}
 
 	// Initialize structured logging
 	logLevel := slog.LevelInfo
