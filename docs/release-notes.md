@@ -4,6 +4,11 @@
 - Added Viper dependency and basic configuration setup (`pkg/config`).
 - Implemented environment variable overrides and config file support.
 - Defined strongly-typed `Config` struct in `pkg/config` with JSON/YAML support.
+- Implemented `AppError` interface and sentinel errors in `pkg/protocol`.
+- Configured Wazero runtime with 128MB memory limit per instance.
+- Implemented 5s execution timeout for WASM invocations.
+- Added unit tests for `pkg/telemetry`.
+- Implemented `ghost-ops version` command.
 
 ## v0.2.1 (Released)
 - Restructured `examples/` directory to group basic examples (`examples/basic/hello-world`).

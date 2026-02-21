@@ -4,7 +4,7 @@
 BINARY_NAME=ghost-ops
 
 build: ## Build the binary
-	go build -o $(BINARY_NAME) cmd/ghost-ops/main.go
+	go build -ldflags "-X main.Version=$(shell cat VERSION)" -o $(BINARY_NAME) cmd/ghost-ops/main.go
 
 test: ## Run tests
 	go test -v ./...
