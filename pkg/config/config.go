@@ -2,11 +2,15 @@ package config
 
 import (
 	"fmt"
+	"log/slog"
 	"os"
 	"path/filepath"
 	"strings"
 
+	"github.com/fsnotify/fsnotify"
 	"github.com/spf13/viper"
+
+	"ghost-ops/pkg/logging"
 )
 
 // Config represents the application configuration.
@@ -105,17 +109,17 @@ func (c *Config) Sanitize() {
 
 // Validate checks if the configuration is valid.
 func (c *Config) Validate() error {
-	if c.Server.Port <= 0 {
-		return fmt.Errorf("server.port must be greater than 0")
+	if c.Server.Port <= 0 || c.Server.Port > 65535 {
+		return fmt.Errorf("server.port must be between 1 and 65535")
 	}
 	validLevels := map[string]bool{"debug": true, "info": true, "warn": true, "error": true}
 	if !validLevels[strings.ToLower(c.Logging.Level)] {
 		return fmt.Errorf("logging.level must be one of: debug, info, warn, error")
 	}
-	if c.Paths.Blueprints == "" {
+	if strings.TrimSpace(c.Paths.Blueprints) == "" {
 		return fmt.Errorf("paths.blueprints cannot be empty")
 	}
-	if c.Paths.Store == "" {
+	if strings.TrimSpace(c.Paths.Store) == "" {
 		return fmt.Errorf("paths.store cannot be empty")
 	}
 	validEngines := map[string]bool{"mock": true, "compiler": true, "ai": true}
@@ -127,6 +131,37 @@ func (c *Config) Validate() error {
 		if !validProviders[strings.ToLower(c.LLM.Provider)] {
 			return fmt.Errorf("llm.provider must be one of: mock, openai")
 		}
+		// Assuming we want to validate API Key presence only if not mock, but let's stick to simple logic for now
 	}
 	return nil
+}
+
+// Watch starts watching for configuration changes.
+func Watch(cfg *Config) {
+	viper.OnConfigChange(func(e fsnotify.Event) {
+		slog.Info("Config file changed", "name", e.Name)
+		if err := viper.Unmarshal(cfg); err != nil {
+			slog.Error("Failed to reload config", "error", err)
+			return
+		}
+		cfg.Sanitize()
+		if err := cfg.Validate(); err != nil {
+			slog.Error("Invalid config after reload", "error", err)
+			return
+		}
+
+		// Update logging level if changed
+		level := slog.LevelInfo
+		switch cfg.Logging.Level {
+		case "debug":
+			level = slog.LevelDebug
+		case "warn":
+			level = slog.LevelWarn
+		case "error":
+			level = slog.LevelError
+		}
+		logging.SetLevel(level)
+		slog.Info("Configuration reloaded", "logging.level", cfg.Logging.Level)
+	})
+	viper.WatchConfig()
 }
