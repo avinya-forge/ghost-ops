@@ -1,5 +1,9 @@
 # Release Notes
 
+## Unreleased
+- Added Viper dependency and basic configuration setup (`pkg/config`).
+- Implemented environment variable overrides and config file support.
+
 ## v0.2.1 (Released)
 - Restructured `examples/` directory to group basic examples (`examples/basic/hello-world`).
 - Added `CONTRIBUTING.md` for development guidelines.
