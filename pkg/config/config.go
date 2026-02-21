@@ -91,5 +91,42 @@ func Load() (*Config, error) {
 		return nil, fmt.Errorf("unable to decode into struct: %w", err)
 	}
 
+	config.Sanitize()
+
 	return &config, nil
+}
+
+// Sanitize cleans up the configuration (e.g. trimming whitespace, lowercasing).
+func (c *Config) Sanitize() {
+	c.Logging.Level = strings.ToLower(strings.TrimSpace(c.Logging.Level))
+	c.Engine.Type = strings.ToLower(strings.TrimSpace(c.Engine.Type))
+	c.LLM.Provider = strings.ToLower(strings.TrimSpace(c.LLM.Provider))
+}
+
+// Validate checks if the configuration is valid.
+func (c *Config) Validate() error {
+	if c.Server.Port <= 0 {
+		return fmt.Errorf("server.port must be greater than 0")
+	}
+	validLevels := map[string]bool{"debug": true, "info": true, "warn": true, "error": true}
+	if !validLevels[strings.ToLower(c.Logging.Level)] {
+		return fmt.Errorf("logging.level must be one of: debug, info, warn, error")
+	}
+	if c.Paths.Blueprints == "" {
+		return fmt.Errorf("paths.blueprints cannot be empty")
+	}
+	if c.Paths.Store == "" {
+		return fmt.Errorf("paths.store cannot be empty")
+	}
+	validEngines := map[string]bool{"mock": true, "compiler": true, "ai": true}
+	if !validEngines[strings.ToLower(c.Engine.Type)] {
+		return fmt.Errorf("engine.type must be one of: mock, compiler, ai")
+	}
+	if strings.ToLower(c.Engine.Type) == "ai" {
+		validProviders := map[string]bool{"mock": true, "openai": true}
+		if !validProviders[strings.ToLower(c.LLM.Provider)] {
+			return fmt.Errorf("llm.provider must be one of: mock, openai")
+		}
+	}
+	return nil
 }
