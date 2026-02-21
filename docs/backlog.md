@@ -21,7 +21,7 @@
 ### Epic: Configuration Management
 - [x] [200] | [FEAT] Add Viper Dependency & Setup | [INDEPENDENT] | [DONE]
     - [SEC] Ensure secure defaults. [TEST] Verify precedence. [OPT] Lazy load.
-- [ ] [201] | [FEAT] Define `Config` Struct | [BLOCKS-200] | [TODO]
+- [x] [201] | [FEAT] Define `Config` Struct | [BLOCKS-200] | [DONE]
     - [LINT] Add struct tags. [TEST] JSON/YAML serialization.
 - [ ] [202] | [FEAT] Migrate CLI Flags to Viper Config | [BLOCKS-201] | [TODO]
     - [TEST] Verify flag overrides. [SEC] No secrets in flags.

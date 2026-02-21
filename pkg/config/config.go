@@ -9,13 +9,56 @@ import (
 	"github.com/spf13/viper"
 )
 
-// Load initializes the configuration system.
+// Config represents the application configuration.
+type Config struct {
+	Server  ServerConfig  `mapstructure:"server" json:"server" yaml:"server"`
+	Logging LoggingConfig `mapstructure:"logging" json:"logging" yaml:"logging"`
+	Paths   PathsConfig   `mapstructure:"paths" json:"paths" yaml:"paths"`
+	Engine  EngineConfig  `mapstructure:"engine" json:"engine" yaml:"engine"`
+	LLM     LLMConfig     `mapstructure:"llm" json:"llm" yaml:"llm"`
+}
+
+// ServerConfig configures the HTTP server.
+type ServerConfig struct {
+	Port int `mapstructure:"port" json:"port" yaml:"port"`
+}
+
+// LoggingConfig configures the logger.
+type LoggingConfig struct {
+	Level  string `mapstructure:"level" json:"level" yaml:"level"`
+	Format string `mapstructure:"format" json:"format" yaml:"format"`
+}
+
+// PathsConfig configures file paths.
+type PathsConfig struct {
+	Blueprints string `mapstructure:"blueprints" json:"blueprints" yaml:"blueprints"`
+	WASM       string `mapstructure:"wasm" json:"wasm" yaml:"wasm"`
+	Store      string `mapstructure:"store" json:"store" yaml:"store"`
+}
+
+// EngineConfig configures the evolution engine.
+type EngineConfig struct {
+	Type string `mapstructure:"type" json:"type" yaml:"type"`
+}
+
+// LLMConfig configures the LLM provider.
+type LLMConfig struct {
+	Provider string `mapstructure:"provider" json:"provider" yaml:"provider"`
+	Model    string `mapstructure:"model" json:"model" yaml:"model"`
+	APIKey   string `mapstructure:"api_key" json:"api_key" yaml:"api_key"`
+}
+
+// Load initializes the configuration system and returns the loaded Config.
 // It sets defaults, configures environment variable reading, and attempts to read a config file.
-func Load() error {
+func Load() (*Config, error) {
 	// 1. Set Defaults
 	viper.SetDefault("server.port", 8080)
 	viper.SetDefault("logging.level", "info")
 	viper.SetDefault("logging.format", "json")
+	viper.SetDefault("paths.blueprints", "blueprints.json")
+	viper.SetDefault("paths.store", "store.json")
+	viper.SetDefault("engine.type", "mock")
+	viper.SetDefault("llm.provider", "mock")
 
 	// 2. Configure Environment Variables
 	viper.SetEnvPrefix("GHOST")
@@ -38,9 +81,15 @@ func Load() error {
 			// (we are okay with just defaults and env vars)
 		} else {
 			// Config file was found but another error was produced
-			return fmt.Errorf("fatal error config file: %w", err)
+			return nil, fmt.Errorf("fatal error config file: %w", err)
 		}
 	}
 
-	return nil
+	// 5. Unmarshal into Struct
+	var config Config
+	if err := viper.Unmarshal(&config); err != nil {
+		return nil, fmt.Errorf("unable to decode into struct: %w", err)
+	}
+
+	return &config, nil
 }
