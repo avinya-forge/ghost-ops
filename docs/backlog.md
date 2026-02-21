@@ -19,7 +19,7 @@
 ## Phase 1: MVP (The Self-Healing Loop)
 
 ### Epic: Configuration Management
-- [ ] [200] | [FEAT] Add Viper Dependency & Setup | [INDEPENDENT] | [TODO]
+- [x] [200] | [FEAT] Add Viper Dependency & Setup | [INDEPENDENT] | [DONE]
     - [SEC] Ensure secure defaults. [TEST] Verify precedence. [OPT] Lazy load.
 - [ ] [201] | [FEAT] Define `Config` Struct | [BLOCKS-200] | [TODO]
     - [LINT] Add struct tags. [TEST] JSON/YAML serialization.
