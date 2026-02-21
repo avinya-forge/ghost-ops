@@ -179,3 +179,117 @@ func TestConfig_Serialization(t *testing.T) {
 		t.Errorf("YAML output missing keys: %s", yamlStr)
 	}
 }
+
+func TestConfig_Validate(t *testing.T) {
+	tests := []struct {
+		name    string
+		config  Config
+		wantErr bool
+	}{
+		{
+			name: "Valid Config (Default)",
+			config: Config{
+				Server:  ServerConfig{Port: 8080},
+				Logging: LoggingConfig{Level: "info"},
+				Paths:   PathsConfig{Blueprints: "blueprints.json", Store: "store.json"},
+				Engine:  EngineConfig{Type: "mock"},
+				LLM:     LLMConfig{Provider: "mock"},
+			},
+			wantErr: false,
+		},
+		{
+			name: "Invalid Port",
+			config: Config{
+				Server: ServerConfig{Port: 0},
+			},
+			wantErr: true,
+		},
+		{
+			name: "Invalid Logging Level",
+			config: Config{
+				Server:  ServerConfig{Port: 8080},
+				Logging: LoggingConfig{Level: "verbose"},
+			},
+			wantErr: true,
+		},
+		{
+			name: "Empty Blueprints Path",
+			config: Config{
+				Server:  ServerConfig{Port: 8080},
+				Logging: LoggingConfig{Level: "info"},
+				Paths:   PathsConfig{Blueprints: "", Store: "store.json"},
+			},
+			wantErr: true,
+		},
+		{
+			name: "Empty Store Path",
+			config: Config{
+				Server:  ServerConfig{Port: 8080},
+				Logging: LoggingConfig{Level: "info"},
+				Paths:   PathsConfig{Blueprints: "blueprints.json", Store: ""},
+			},
+			wantErr: true,
+		},
+		{
+			name: "Invalid Engine Type",
+			config: Config{
+				Server:  ServerConfig{Port: 8080},
+				Logging: LoggingConfig{Level: "info"},
+				Paths:   PathsConfig{Blueprints: "blueprints.json", Store: "store.json"},
+				Engine:  EngineConfig{Type: "unknown"},
+			},
+			wantErr: true,
+		},
+		{
+			name: "Valid AI Engine",
+			config: Config{
+				Server:  ServerConfig{Port: 8080},
+				Logging: LoggingConfig{Level: "info"},
+				Paths:   PathsConfig{Blueprints: "blueprints.json", Store: "store.json"},
+				Engine:  EngineConfig{Type: "ai"},
+				LLM:     LLMConfig{Provider: "openai"},
+			},
+			wantErr: false,
+		},
+		{
+			name: "Invalid LLM Provider for AI Engine",
+			config: Config{
+				Server:  ServerConfig{Port: 8080},
+				Logging: LoggingConfig{Level: "info"},
+				Paths:   PathsConfig{Blueprints: "blueprints.json", Store: "store.json"},
+				Engine:  EngineConfig{Type: "ai"},
+				LLM:     LLMConfig{Provider: "anthropic"},
+			},
+			wantErr: true,
+		},
+	}
+
+	for _, tt := range tests {
+		t.Run(tt.name, func(t *testing.T) {
+			err := tt.config.Validate()
+			if (err != nil) != tt.wantErr {
+				t.Errorf("Config.Validate() error = %v, wantErr %v", err, tt.wantErr)
+			}
+		})
+	}
+}
+
+func TestConfig_Sanitize(t *testing.T) {
+	cfg := Config{
+		Logging: LoggingConfig{Level: " DEBUG "},
+		Engine:  EngineConfig{Type: " AI "},
+		LLM:     LLMConfig{Provider: " OpenAI "},
+	}
+
+	cfg.Sanitize()
+
+	if cfg.Logging.Level != "debug" {
+		t.Errorf("expected logging.level to be 'debug', got '%s'", cfg.Logging.Level)
+	}
+	if cfg.Engine.Type != "ai" {
+		t.Errorf("expected engine.type to be 'ai', got '%s'", cfg.Engine.Type)
+	}
+	if cfg.LLM.Provider != "openai" {
+		t.Errorf("expected llm.provider to be 'openai', got '%s'", cfg.LLM.Provider)
+	}
+}
