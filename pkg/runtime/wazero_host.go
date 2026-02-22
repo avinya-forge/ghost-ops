@@ -227,12 +227,12 @@ func (h *WazeroRuntimeHost) LoadModule(ctx context.Context, serviceID, version s
 	h.mu.Lock()
 	if _, exists := h.modules[uniqueName]; exists {
 		h.mu.Unlock()
-		return fmt.Errorf("module %s already loaded", uniqueName)
+		return protocol.NewAppError(protocol.ErrConflict.Code(), fmt.Sprintf("module %s already loaded", uniqueName), nil)
 	}
 	// Also check if channel exists
 	if _, exists := h.requests[uniqueName]; exists {
 		h.mu.Unlock()
-		return fmt.Errorf("request channel for %s already exists", uniqueName)
+		return protocol.NewAppError(protocol.ErrConflict.Code(), fmt.Sprintf("request channel for %s already exists", uniqueName), nil)
 	}
 
 	h.requests[uniqueName] = make(chan Request)
@@ -243,7 +243,7 @@ func (h *WazeroRuntimeHost) LoadModule(ctx context.Context, serviceID, version s
 		h.mu.Lock()
 		delete(h.requests, uniqueName)
 		h.mu.Unlock()
-		return fmt.Errorf("failed to compile module: %w", err)
+		return protocol.NewAppError(protocol.ErrInternal.Code(), "failed to compile module", err)
 	}
 
 	// Instantiate in goroutine
@@ -269,7 +269,7 @@ func (h *WazeroRuntimeHost) SetActiveVersion(ctx context.Context, serviceID, ver
 	defer h.mu.Unlock()
 
 	if _, ok := h.requests[uniqueName]; !ok {
-		return fmt.Errorf("version %s of service %s is not loaded", version, serviceID)
+		return protocol.NewAppError(protocol.ErrNotFound.Code(), fmt.Sprintf("version %s of service %s is not loaded", version, serviceID), nil)
 	}
 
 	h.activeVersions[serviceID] = uniqueName
@@ -285,7 +285,7 @@ func (h *WazeroRuntimeHost) SetShadowVersion(ctx context.Context, serviceID, ver
 	defer h.mu.Unlock()
 
 	if _, ok := h.requests[uniqueName]; !ok {
-		return fmt.Errorf("version %s of service %s is not loaded", version, serviceID)
+		return protocol.NewAppError(protocol.ErrNotFound.Code(), fmt.Sprintf("version %s of service %s is not loaded", version, serviceID), nil)
 	}
 
 	h.shadowVersions[serviceID] = uniqueName
@@ -324,7 +324,7 @@ func (h *WazeroRuntimeHost) Invoke(ctx context.Context, serviceID, method string
 	if !active {
 		h.mu.RUnlock()
 		h.collector.Counter("invoke_error", 1, map[string]string{"service_id": serviceID, "type": "no_active_version"})
-		return nil, fmt.Errorf("service %s has no active version", serviceID)
+		return nil, protocol.NewAppError(protocol.ErrNotFound.Code(), fmt.Sprintf("service %s has no active version", serviceID), nil)
 	}
 
 	reqCh, exists := h.requests[uniqueName]
@@ -336,7 +336,7 @@ func (h *WazeroRuntimeHost) Invoke(ctx context.Context, serviceID, method string
 
 	if !exists {
 		h.collector.Counter("invoke_error", 1, map[string]string{"service_id": serviceID, "type": "not_found"})
-		return nil, fmt.Errorf("module %s not found or not ready", uniqueName)
+		return nil, protocol.NewAppError(protocol.ErrNotFound.Code(), fmt.Sprintf("module %s not found or not ready", uniqueName), nil)
 	}
 
 	// Shadow Invocation
@@ -389,7 +389,7 @@ func (h *WazeroRuntimeHost) Invoke(ctx context.Context, serviceID, method string
 		// Request sent
 	case <-ctx.Done():
 		h.collector.Counter("invoke_error", 1, map[string]string{"service_id": serviceID, "type": "context_cancelled"})
-		return nil, ctx.Err()
+		return nil, protocol.NewAppError(protocol.ErrTimeout.Code(), "request context cancelled", ctx.Err())
 	}
 
 	select {
@@ -402,7 +402,7 @@ func (h *WazeroRuntimeHost) Invoke(ctx context.Context, serviceID, method string
 		return res.payload, res.err
 	case <-ctx.Done():
 		h.collector.Counter("invoke_error", 1, map[string]string{"service_id": serviceID, "type": "timeout"})
-		return nil, ctx.Err()
+		return nil, protocol.NewAppError(protocol.ErrTimeout.Code(), "operation timed out", ctx.Err())
 	}
 }
 
