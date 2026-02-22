@@ -85,7 +85,7 @@
 ### Epic: Registry Enhancements
 - [ ] [250] | [FEAT] Implement Event Bus for Service Updates | [INDEPENDENT] | [TODO]
     - [OPT] Async channel. [TEST] Subscriber notification.
-- [ ] [251] | [FEAT] Add Metrics for Service Lifecycle | [INDEPENDENT] | [TODO]
+- [x] [251] | [FEAT] Add Metrics for Service Lifecycle | [INDEPENDENT] | [DONE]
     - [OBS] Gauge/Histogram. [TEST] Metric emission.
 - [ ] [252] | [FEAT] Implement Dependency Graph for Services | [INDEPENDENT] | [TODO]
     - [ARCH] DAG traversal. [TEST] Cycle detection.
@@ -95,9 +95,9 @@
 ### Epic: Hardening (Observability & Security)
 - [x] [260] | [TEST] Add Unit Tests for `pkg/telemetry` | [INDEPENDENT] | [DONE]
     - [TEST] Achieve >95% coverage for metrics collector.
-- [ ] [261] | [TEST] Add Unit Tests for `pkg/logging` | [INDEPENDENT] | [TODO]
+- [x] [261] | [TEST] Add Unit Tests for pkg/logging | [INDEPENDENT] | [DONE]
     - [TEST] Achieve >95% coverage for structured logger.
-- [ ] [262] | [TEST] Add Unit Tests for `pkg/sdk/guest` | [INDEPENDENT] | [TODO]
+- [x] [262] | [TEST] Add Unit Tests for pkg/sdk/guest | [INDEPENDENT] | [DONE]
     - [TEST] Achieve >95% coverage for guest SDK.
 - [ ] [263] | [SEC] Run `gosec` Security Scan | [INDEPENDENT] | [TODO]
     - [SEC] Audit and fix all high-severity issues.

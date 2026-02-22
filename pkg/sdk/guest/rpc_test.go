@@ -3,90 +3,93 @@ package guest_test
 import (
 	"context"
 	"os"
-	"path/filepath"
 	"testing"
 
 	"ghost-ops/pkg/evolution"
 	"ghost-ops/pkg/protocol"
 	"ghost-ops/pkg/runtime"
+	"ghost-ops/pkg/store"
 	"ghost-ops/pkg/telemetry"
 )
 
-func TestGuestRPC(t *testing.T) {
+// Callee Source Code
+const calleeSource = `
+package main
+
+import (
+	"fmt"
+	"ghost-ops/pkg/sdk/guest"
+)
+
+func Hello(payload []byte) ([]byte, error) {
+	name := string(payload)
+	return []byte(fmt.Sprintf("Hello, %s!", name)), nil
+}
+
+func main() {
+	guest.Register("Hello", Hello)
+	guest.Start()
+}
+`
+
+// Caller Source Code
+const callerSource = `
+package main
+
+import (
+	"fmt"
+	"ghost-ops/pkg/sdk/guest"
+)
+
+func InvokeCallee(payload []byte) ([]byte, error) {
+	// payload is the name to send to callee
+	res, err := guest.Call("callee", "Hello", payload)
+	if err != nil {
+		return nil, err
+	}
+	return []byte(fmt.Sprintf("Callee said: %s", string(res))), nil
+}
+
+func main() {
+	guest.Register("InvokeCallee", InvokeCallee)
+	guest.Start()
+}
+`
+
+func TestGuestSDK_RPC(t *testing.T) {
 	ctx := context.Background()
 	engine := evolution.NewGoCompilerEngine()
 
-	// Locate repo root (assuming we are in pkg/sdk/guest)
-	// We need to write files inside the module for imports to work.
-	// We'll use examples/services/rpc-test-generated
-	cwd, _ := os.Getwd()
-	repoRoot := filepath.Join(cwd, "../../..") // from pkg/sdk/guest
-	testDir := filepath.Join(repoRoot, "examples", "services", "rpc-test-generated")
-
-	if err := os.MkdirAll(testDir, 0755); err != nil {
-		t.Fatalf("Failed to create test dir: %v", err)
+	// 1. Compile Callee
+	calleeBP := protocol.Blueprint{
+		Constraints: map[string]interface{}{
+			"source_code": calleeSource,
+		},
 	}
-	defer os.RemoveAll(testDir)
-
-	// Callee
-	calleeDir := filepath.Join(testDir, "callee")
-	if err := os.MkdirAll(calleeDir, 0755); err != nil {
-		t.Fatalf("Failed to create callee dir: %v", err)
-	}
-	calleeSource := `package main
-import "ghost-ops/pkg/sdk/guest"
-func Handle(payload []byte) ([]byte, error) {
-	return append([]byte("Echo: "), payload...), nil
-}
-func main() {
-	guest.Register("Handle", Handle)
-	guest.Start()
-}
-`
-	calleeFile := filepath.Join(calleeDir, "main.go")
-	if err := os.WriteFile(calleeFile, []byte(calleeSource), 0644); err != nil {
-		t.Fatalf("Failed to write callee: %v", err)
-	}
-
-	// Caller
-	callerDir := filepath.Join(testDir, "caller")
-	if err := os.MkdirAll(callerDir, 0755); err != nil {
-		t.Fatalf("Failed to create caller dir: %v", err)
-	}
-	callerSource := `package main
-import "ghost-ops/pkg/sdk/guest"
-func Call(payload []byte) ([]byte, error) {
-	return guest.Call("Callee", "Handle", payload)
-}
-func main() {
-	guest.Register("Call", Call)
-	guest.Start()
-}
-`
-	callerFile := filepath.Join(callerDir, "main.go")
-	if err := os.WriteFile(callerFile, []byte(callerSource), 0644); err != nil {
-		t.Fatalf("Failed to write caller: %v", err)
-	}
-
-	// Compile using source_path constraint
-	// Evolve returns (wasmBytes, error)
-	calleeWasm, err := engine.Evolve(ctx, protocol.Blueprint{
-		Constraints: map[string]interface{}{"source_path": calleeFile},
-	})
+	calleeWasm, err := engine.Evolve(ctx, calleeBP)
 	if err != nil {
-		t.Fatalf("Failed to compile Callee: %v", err)
+		t.Fatalf("Failed to compile callee: %v", err)
 	}
 
-	callerWasm, err := engine.Evolve(ctx, protocol.Blueprint{
-		Constraints: map[string]interface{}{"source_path": callerFile},
-	})
+	// 2. Compile Caller
+	callerBP := protocol.Blueprint{
+		Constraints: map[string]interface{}{
+			"source_code": callerSource,
+		},
+	}
+	callerWasm, err := engine.Evolve(ctx, callerBP)
 	if err != nil {
-		t.Fatalf("Failed to compile Caller: %v", err)
+		t.Fatalf("Failed to compile caller: %v", err)
 	}
 
-	// Setup Host
-	// Use InMemoryStateStore from protocol package
-	st := protocol.NewInMemoryStateStore()
+	// 3. Setup Host
+	storePath := "rpc_test_store.json"
+	st, err := store.NewJSONFileStore(storePath)
+	if err != nil {
+		t.Fatalf("Failed to create store: %v", err)
+	}
+	defer os.Remove(storePath)
+
 	collector := telemetry.NewInMemoryCollector()
 	host, err := runtime.NewWazeroRuntimeHost(ctx, st, collector)
 	if err != nil {
@@ -94,30 +97,31 @@ func main() {
 	}
 	defer host.Close(ctx)
 
-	// Load Services
-	version := "v1"
-	if err := host.LoadModule(ctx, "Callee", version, calleeWasm); err != nil {
-		t.Fatalf("Failed to load Callee: %v", err)
+	// 4. Load Modules
+	// Load Callee
+	if err := host.LoadModule(ctx, "callee", "v1", calleeWasm); err != nil {
+		t.Fatalf("Failed to load callee: %v", err)
 	}
-	if err := host.SetActiveVersion(ctx, "Callee", version); err != nil {
-		t.Fatalf("Failed to activate Callee: %v", err)
-	}
-
-	if err := host.LoadModule(ctx, "Caller", version, callerWasm); err != nil {
-		t.Fatalf("Failed to load Caller: %v", err)
-	}
-	if err := host.SetActiveVersion(ctx, "Caller", version); err != nil {
-		t.Fatalf("Failed to activate Caller: %v", err)
+	if err := host.SetActiveVersion(ctx, "callee", "v1"); err != nil {
+		t.Fatalf("Failed to activate callee: %v", err)
 	}
 
-	// Invoke Caller
-	payload := []byte("World")
-	res, err := host.Invoke(ctx, "Caller", "Call", payload)
+	// Load Caller
+	if err := host.LoadModule(ctx, "caller", "v1", callerWasm); err != nil {
+		t.Fatalf("Failed to load caller: %v", err)
+	}
+	if err := host.SetActiveVersion(ctx, "caller", "v1"); err != nil {
+		t.Fatalf("Failed to activate caller: %v", err)
+	}
+
+	// 5. Invoke Caller
+	// We call "InvokeCallee" on "caller" service.
+	res, err := host.Invoke(ctx, "caller", "InvokeCallee", []byte("World"))
 	if err != nil {
 		t.Fatalf("Invoke failed: %v", err)
 	}
 
-	expected := "Echo: World"
+	expected := "Callee said: Hello, World!"
 	if string(res) != expected {
 		t.Errorf("Expected %q, got %q", expected, string(res))
 	}
