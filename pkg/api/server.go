@@ -46,8 +46,7 @@ func (s *Server) handleListServices(w http.ResponseWriter, r *http.Request) {
 
 	services, err := s.registry.ListServices(r.Context())
 	if err != nil {
-		slog.Error("Failed to list services", "error", err)
-		http.Error(w, "Internal server error", http.StatusInternalServerError)
+		s.writeError(w, err)
 		return
 	}
 
@@ -66,8 +65,7 @@ func (s *Server) handleReconcile(w http.ResponseWriter, r *http.Request) {
 	for {
 		processed, err := s.registry.Reconcile(r.Context())
 		if err != nil {
-			slog.Error("Failed to reconcile", "error", err)
-			http.Error(w, "Internal server error", http.StatusInternalServerError)
+			s.writeError(w, err)
 			return
 		}
 		if !processed {
@@ -105,4 +103,29 @@ func (s *Server) handleMetrics(w http.ResponseWriter, r *http.Request) {
 func (s *Server) handleHealthz(w http.ResponseWriter, r *http.Request) {
 	w.WriteHeader(http.StatusOK)
 	w.Write([]byte("OK"))
+}
+
+func (s *Server) writeError(w http.ResponseWriter, err error) {
+	statusCode := http.StatusInternalServerError
+	message := "Internal server error"
+
+	if appErr, ok := err.(protocol.AppError); ok {
+		switch appErr.Code() {
+		case protocol.ErrNotFound.Code():
+			statusCode = http.StatusNotFound
+		case protocol.ErrInvalidInput.Code():
+			statusCode = http.StatusBadRequest
+		case protocol.ErrTimeout.Code():
+			statusCode = http.StatusGatewayTimeout
+		case protocol.ErrConflict.Code():
+			statusCode = http.StatusConflict
+		case protocol.ErrUnauthorized.Code():
+			statusCode = http.StatusUnauthorized
+		}
+		// Use the full error message for context
+		message = appErr.Error()
+	}
+
+	slog.Error("Request failed", "error", err, "status_code", statusCode)
+	http.Error(w, message, statusCode)
 }

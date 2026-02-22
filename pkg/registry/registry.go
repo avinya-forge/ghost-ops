@@ -45,7 +45,7 @@ func (r *Registry) Reconcile(ctx context.Context) (bool, error) {
 	// Get next blueprint
 	bp, err := r.source.GetNextBlueprint(ctx)
 	if err != nil {
-		return false, fmt.Errorf("failed to get blueprint: %w", err)
+		return false, wrapError(protocol.ErrInternal.Code(), "failed to get blueprint", err)
 	}
 	if bp == nil {
 		slog.Debug("No more blueprints to process")
@@ -113,7 +113,7 @@ func (r *Registry) Reconcile(ctx context.Context) (bool, error) {
 func (r *Registry) evolveService(ctx context.Context, bp *protocol.Blueprint) ([]byte, string, error) {
 	wasmBytes, err := r.engine.Evolve(ctx, *bp)
 	if err != nil {
-		return nil, "", err
+		return nil, "", wrapError(protocol.ErrInternal.Code(), "failed to evolve service", err)
 	}
 
 	// Calculate hash
@@ -135,14 +135,14 @@ func (r *Registry) deployToRuntime(ctx context.Context, serviceID string, existi
 
 	// 1. Load new version
 	if err := r.runtime.LoadModule(ctx, serviceID, versionStr, wasmBytes); err != nil {
-		return fmt.Errorf("failed to load module: %w", err)
+		return wrapError(protocol.ErrInternal.Code(), "failed to load module", err)
 	}
 
 	if shadowMode {
 		// Set Shadow Version
 		if err := r.runtime.SetShadowVersion(ctx, serviceID, versionStr); err != nil {
 			_ = r.runtime.UnloadVersion(ctx, serviceID, versionStr)
-			return fmt.Errorf("failed to set shadow version: %w", err)
+			return wrapError(protocol.ErrInternal.Code(), "failed to set shadow version", err)
 		}
 
 		// Unload OLD Shadow Version if exists and different
@@ -157,7 +157,7 @@ func (r *Registry) deployToRuntime(ctx context.Context, serviceID string, existi
 		if err := r.runtime.SetActiveVersion(ctx, serviceID, versionStr); err != nil {
 			// Rollback? Unload new version
 			_ = r.runtime.UnloadVersion(ctx, serviceID, versionStr)
-			return fmt.Errorf("failed to set active version: %w", err)
+			return wrapError(protocol.ErrInternal.Code(), "failed to set active version", err)
 		}
 
 		// 3. Unload old version if exists
@@ -235,7 +235,17 @@ func (r *Registry) updateStore(ctx context.Context, serviceID string, version in
 		record.CurrentState = protocol.StateActive
 	}
 
-	return r.store.UpdateService(ctx, record)
+	if err := r.store.UpdateService(ctx, record); err != nil {
+		return wrapError(protocol.ErrInternal.Code(), "failed to update store", err)
+	}
+	return nil
+}
+
+func wrapError(defaultCode string, msg string, err error) protocol.AppError {
+	if appErr, ok := err.(protocol.AppError); ok {
+		return protocol.NewAppError(appErr.Code(), msg, err)
+	}
+	return protocol.NewAppError(defaultCode, msg, err)
 }
 
 func (r *Registry) refreshMetrics(ctx context.Context) {
@@ -247,5 +257,9 @@ func (r *Registry) refreshMetrics(ctx context.Context) {
 
 // ListServices returns all services from the store.
 func (r *Registry) ListServices(ctx context.Context) ([]protocol.ServiceRecord, error) {
-	return r.store.ListServices(ctx)
+	services, err := r.store.ListServices(ctx)
+	if err != nil {
+		return nil, wrapError(protocol.ErrInternal.Code(), "failed to list services", err)
+	}
+	return services, nil
 }

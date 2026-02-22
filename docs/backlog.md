@@ -37,11 +37,11 @@
     - [LINT] GoDoc. [TEST] Interface compliance. [OPT] O(1) error wrapping.
 - [x] [211] | [FEAT] Implement Sentinel Errors | [BLOCKS-210] | [DONE]
     - [TEST] Error type assertions. [LINT] Constant naming.
-- [ ] [212] | [FEAT] Refactor `Registry` to use `AppError` | [BLOCKS-211] | [TODO]
+- [x] [212] | [FEAT] Refactor `Registry` to use `AppError` | [BLOCKS-211] | [DONE]
     - [TEST] Verify error propagation. [OPT] Minimize allocation.
-- [ ] [213] | [FEAT] Refactor `Runtime` to use `AppError` | [BLOCKS-211] | [TODO]
+- [x] [213] | [FEAT] Refactor `Runtime` to use `AppError` | [BLOCKS-211] | [DONE]
     - [TEST] Map Wazero exit codes. [SEC] Mask internal details.
-- [ ] [214] | [FEAT] Add Error Codes to API Responses | [BLOCKS-210] | [TODO]
+- [x] [214] | [FEAT] Add Error Codes to API Responses | [BLOCKS-210] | [DONE]
     - [TEST] HTTP 4xx/5xx mappings. [SEC] No stack traces in production.
 - [ ] [215] | [FEAT] Add Stack Trace to Internal Errors | [BLOCKS-210] | [TODO]
     - [OPT] Capture only on debug. [SEC] Redact sensitive paths.

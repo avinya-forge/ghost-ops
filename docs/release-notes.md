@@ -1,6 +1,8 @@
 # Release Notes
 
 ## Unreleased
+- **Error Handling**: Refactored `Registry`, `Runtime`, and `API` to use standardized `AppError` types and HTTP status codes.
+- **Testing**: Added integration tests for API error mapping.
 - **Testing**: Added unit tests for `pkg/logging` (refactored for testability) and `pkg/sdk/guest` (including RPC integration tests).
 - **Observability**: Enhanced `Registry` with duration metrics for reconcile, evolve, and deploy phases.
 - **CLI Enhancements**: Added `ghost-ops service list`, `ghost-ops service inspect <id>`, and `ghost-ops config show` commands.
