@@ -22,6 +22,9 @@ type RuntimeHost interface {
 	// UnloadVersion removes a specific version of a module.
 	UnloadVersion(ctx context.Context, serviceID, version string) error
 
+	// GetLogs retrieves the logs for a specific service.
+	GetLogs(ctx context.Context, serviceID string) ([]byte, error)
+
 	// Close closes the runtime.
 	Close(ctx context.Context) error
 }

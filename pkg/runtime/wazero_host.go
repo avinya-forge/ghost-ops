@@ -1,9 +1,11 @@
 package runtime
 
 import (
+	"bytes"
 	"context"
 	"fmt"
 	"log/slog"
+	"math"
 	"sync"
 	"time"
 
@@ -27,14 +29,42 @@ type Response struct {
 	err     error
 }
 
+// ThreadSafeBuffer is a goroutine-safe bytes.Buffer.
+type ThreadSafeBuffer struct {
+	b  bytes.Buffer
+	mu sync.Mutex
+}
+
+func (b *ThreadSafeBuffer) Write(p []byte) (n int, err error) {
+	b.mu.Lock()
+	defer b.mu.Unlock()
+	return b.b.Write(p)
+}
+
+func (b *ThreadSafeBuffer) Bytes() []byte {
+	b.mu.Lock()
+	defer b.mu.Unlock()
+	// Return a copy to avoid race conditions if the caller modifies it
+	out := make([]byte, b.b.Len())
+	copy(out, b.b.Bytes())
+	return out
+}
+
+func (b *ThreadSafeBuffer) String() string {
+	b.mu.Lock()
+	defer b.mu.Unlock()
+	return b.b.String()
+}
+
 // WazeroRuntimeHost implements RuntimeHost using wazero.
 type WazeroRuntimeHost struct {
 	runtime        wazero.Runtime
-	modules        map[string]api.Module   // Key: uniqueName (serviceID-version)
-	requests       map[string]chan Request // Key: uniqueName
-	currentReq     map[string]Request      // Key: uniqueName
-	activeVersions map[string]string       // Key: serviceID, Value: uniqueName
-	shadowVersions map[string]string       // Key: serviceID, Value: uniqueName
+	modules        map[string]api.Module        // Key: uniqueName (serviceID-version)
+	requests       map[string]chan Request      // Key: uniqueName
+	currentReq     map[string]Request           // Key: uniqueName
+	activeVersions map[string]string            // Key: serviceID, Value: uniqueName
+	shadowVersions map[string]string            // Key: serviceID, Value: uniqueName
+	logBuffers     map[string]*ThreadSafeBuffer // Key: uniqueName
 	mu             sync.RWMutex
 	store          protocol.StateStore
 	collector      protocol.MetricsCollector
@@ -43,7 +73,11 @@ type WazeroRuntimeHost struct {
 // NewWazeroRuntimeHost creates a new WazeroRuntimeHost.
 func NewWazeroRuntimeHost(ctx context.Context, store protocol.StateStore, collector protocol.MetricsCollector) (*WazeroRuntimeHost, error) {
 	// 128MB limit per memory instance
-	config := wazero.NewRuntimeConfig().WithMemoryLimitPages(2048)
+	// WithCloseOnContextDone ensures that long-running or infinite loops are terminated when context is cancelled.
+	config := wazero.NewRuntimeConfig().
+		WithMemoryLimitPages(2048).
+		WithCloseOnContextDone(true)
+
 	r := wazero.NewRuntimeWithConfig(ctx, config)
 
 	// Instantiate WASI, as many modules might need it.
@@ -58,6 +92,7 @@ func NewWazeroRuntimeHost(ctx context.Context, store protocol.StateStore, collec
 		currentReq:     make(map[string]Request),
 		activeVersions: make(map[string]string),
 		shadowVersions: make(map[string]string),
+		logBuffers:     make(map[string]*ThreadSafeBuffer),
 		store:          store,
 		collector:      collector,
 	}
@@ -90,7 +125,7 @@ func (h *WazeroRuntimeHost) kvGet(ctx context.Context, m api.Module, keyPtr, key
 		return 0
 	}
 
-	if uint32(len(val)) > valLen {
+	if uint64(len(val)) > uint64(valLen) {
 		if !m.Memory().Write(valPtr, val[:valLen]) {
 			return 0
 		}
@@ -100,7 +135,11 @@ func (h *WazeroRuntimeHost) kvGet(ctx context.Context, m api.Module, keyPtr, key
 		}
 	}
 
-	return uint32(len(val))
+	l := len(val)
+	if l > math.MaxUint32 {
+		l = math.MaxUint32
+	}
+	return uint32(l)
 }
 
 func (h *WazeroRuntimeHost) rpc(ctx context.Context, m api.Module, svcPtr, svcLen, methPtr, methLen, payPtr, payLen, outPtr, outLen uint32) uint32 {
@@ -129,7 +168,7 @@ func (h *WazeroRuntimeHost) rpc(ctx context.Context, m api.Module, svcPtr, svcLe
 		return 0
 	}
 
-	if uint32(len(result)) > outLen {
+	if uint64(len(result)) > uint64(outLen) {
 		if !mem.Write(outPtr, result[:outLen]) {
 			return 0
 		}
@@ -139,7 +178,11 @@ func (h *WazeroRuntimeHost) rpc(ctx context.Context, m api.Module, svcPtr, svcLe
 		}
 	}
 
-	return uint32(len(result))
+	l := len(result)
+	if l > math.MaxUint32 {
+		l = math.MaxUint32
+	}
+	return uint32(l)
 }
 
 func (h *WazeroRuntimeHost) nextCommand(ctx context.Context, m api.Module, methPtr, methCap uint32) uint64 {
@@ -163,12 +206,20 @@ func (h *WazeroRuntimeHost) nextCommand(ctx context.Context, m api.Module, methP
 		h.mu.Unlock()
 
 		methBytes := []byte(req.method)
-		if uint32(len(methBytes)) > methCap {
+		if uint64(len(methBytes)) > uint64(methCap) {
 			methBytes = methBytes[:methCap]
 		}
 		m.Memory().Write(methPtr, methBytes)
 
-		return (uint64(len(req.payload)) << 32) | uint64(len(methBytes))
+		payLen := len(req.payload)
+		if payLen > math.MaxUint32 {
+			payLen = math.MaxUint32
+		}
+		methLen := len(methBytes)
+		if methLen > math.MaxUint32 {
+			methLen = math.MaxUint32
+		}
+		return (uint64(payLen) << 32) | uint64(methLen)
 
 	case <-ctx.Done():
 		return 0
@@ -184,7 +235,7 @@ func (h *WazeroRuntimeHost) readPayload(ctx context.Context, m api.Module, ptr, 
 		return
 	}
 
-	if uint32(len(req.payload)) > cap {
+	if uint64(len(req.payload)) > uint64(cap) {
 		m.Memory().Write(ptr, req.payload[:cap])
 	} else {
 		m.Memory().Write(ptr, req.payload)
@@ -236,19 +287,29 @@ func (h *WazeroRuntimeHost) LoadModule(ctx context.Context, serviceID, version s
 	}
 
 	h.requests[uniqueName] = make(chan Request)
+
+	// Create log buffer
+	logBuf := &ThreadSafeBuffer{}
+	h.logBuffers[uniqueName] = logBuf
+
 	h.mu.Unlock()
 
 	compiled, err := h.runtime.CompileModule(ctx, wasmBytes)
 	if err != nil {
 		h.mu.Lock()
 		delete(h.requests, uniqueName)
+		delete(h.logBuffers, uniqueName)
 		h.mu.Unlock()
 		return protocol.NewAppError(protocol.ErrInternal.Code(), "failed to compile module", err)
 	}
 
 	// Instantiate in goroutine
 	go func() {
-		config := wazero.NewModuleConfig().WithName(uniqueName)
+		config := wazero.NewModuleConfig().
+			WithName(uniqueName).
+			WithStdout(logBuf).
+			WithStderr(logBuf)
+
 		_, err := h.runtime.InstantiateModule(ctx, compiled, config)
 		if err != nil {
 			slog.Error("Failed to instantiate module", "unique_name", uniqueName, "error", err)
@@ -438,8 +499,31 @@ func (h *WazeroRuntimeHost) UnloadVersion(ctx context.Context, serviceID, versio
 	delete(h.modules, uniqueName)
 	delete(h.requests, uniqueName)
 	delete(h.currentReq, uniqueName)
+	delete(h.logBuffers, uniqueName)
 
 	return nil
+}
+
+// GetLogs retrieves the logs for a specific service.
+func (h *WazeroRuntimeHost) GetLogs(ctx context.Context, serviceID string) ([]byte, error) {
+	h.mu.RLock()
+	uniqueName, active := h.activeVersions[serviceID]
+	h.mu.RUnlock()
+
+	if !active {
+		return nil, protocol.NewAppError(protocol.ErrNotFound.Code(), fmt.Sprintf("service %s has no active version", serviceID), nil)
+	}
+
+	h.mu.RLock()
+	logBuf, exists := h.logBuffers[uniqueName]
+	h.mu.RUnlock()
+
+	if !exists {
+		// Should not happen if loaded correctly, but handle gracefully
+		return []byte{}, nil
+	}
+
+	return logBuf.Bytes(), nil
 }
 
 // Close closes the runtime.

@@ -263,3 +263,8 @@ func (r *Registry) ListServices(ctx context.Context) ([]protocol.ServiceRecord, 
 	}
 	return services, nil
 }
+
+// GetLogs retrieves the logs for a specific service.
+func (r *Registry) GetLogs(ctx context.Context, serviceID string) ([]byte, error) {
+	return r.runtime.GetLogs(ctx, serviceID)
+}

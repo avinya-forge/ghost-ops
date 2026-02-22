@@ -25,7 +25,7 @@ type storeData struct {
 func NewJSONFileStore(path string) (*JSONFileStore, error) {
 	// Check if file exists, if not create empty
 	if _, err := os.Stat(path); os.IsNotExist(err) {
-		if err := os.WriteFile(path, []byte("{}"), 0644); err != nil {
+		if err := os.WriteFile(path, []byte("{}"), 0600); err != nil {
 			return nil, fmt.Errorf("failed to create store file: %w", err)
 		}
 	}
@@ -91,7 +91,7 @@ func (s *JSONFileStore) save(sd *storeData) error {
 	if err != nil {
 		return err
 	}
-	return os.WriteFile(s.path, data, 0644)
+	return os.WriteFile(s.path, data, 0600)
 }
 
 // GetService retrieves a service record by ID.

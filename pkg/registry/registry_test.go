@@ -127,6 +127,9 @@ func (m *MockRuntimeHost) UnloadVersion(ctx context.Context, id, version string)
 	delete(m.modules, uniqueName)
 	return nil
 }
+func (m *MockRuntimeHost) GetLogs(ctx context.Context, id string) ([]byte, error) {
+	return nil, nil
+}
 func (m *MockRuntimeHost) Close(ctx context.Context) error {
 	return nil
 }

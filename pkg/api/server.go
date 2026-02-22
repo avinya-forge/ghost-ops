@@ -26,6 +26,7 @@ func NewServer(r *registry.Registry, c protocol.MetricsCollector) *Server {
 	}
 
 	mux.HandleFunc("/services", s.handleListServices)
+	mux.HandleFunc("GET /services/{id}/logs", s.handleServiceLogs)
 	mux.HandleFunc("/reconcile", s.handleReconcile)
 	mux.HandleFunc("/metrics", s.handleMetrics)
 	mux.HandleFunc("/healthz", s.handleHealthz)
@@ -105,6 +106,23 @@ func (s *Server) handleHealthz(w http.ResponseWriter, r *http.Request) {
 	w.Write([]byte("OK"))
 }
 
+func (s *Server) handleServiceLogs(w http.ResponseWriter, r *http.Request) {
+	id := r.PathValue("id")
+	if id == "" {
+		http.Error(w, "Missing service ID", http.StatusBadRequest)
+		return
+	}
+
+	logs, err := s.registry.GetLogs(r.Context(), id)
+	if err != nil {
+		s.writeError(w, err)
+		return
+	}
+
+	w.Header().Set("Content-Type", "text/plain; charset=utf-8")
+	w.Write(logs)
+}
+
 func (s *Server) writeError(w http.ResponseWriter, err error) {
 	statusCode := http.StatusInternalServerError
 	message := "Internal server error"
@@ -127,5 +145,16 @@ func (s *Server) writeError(w http.ResponseWriter, err error) {
 	}
 
 	slog.Error("Request failed", "error", err, "status_code", statusCode)
+
+	// Log stack trace for internal errors
+	if statusCode == http.StatusInternalServerError {
+		if appErr, ok := err.(protocol.AppError); ok {
+			stack := appErr.StackTrace()
+			if stack != "" {
+				slog.Error("Internal error stack trace", "stack", stack)
+			}
+		}
+	}
+
 	http.Error(w, message, statusCode)
 }

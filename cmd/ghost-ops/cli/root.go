@@ -72,10 +72,74 @@ func Execute(version string) {
 			}
 			fmt.Println("Usage: ghost-ops config [show]")
 			os.Exit(1)
+		case "init":
+			runInit()
+			return
 		}
 	}
 
 	runServer(version)
+}
+
+func runInit() {
+	configFile := "ghost-ops.yaml"
+	if _, err := os.Stat(configFile); os.IsNotExist(err) {
+		configContent := `# GhostOps Configuration
+paths:
+  blueprints: "blueprints/blueprints.json"
+  store: "store.json"
+  wasm: ""
+
+server:
+  port: 8080
+
+engine:
+  type: "mock" # Options: mock, compiler, ai
+
+llm:
+  provider: "mock" # Options: mock, openai
+  api_key: ""
+  model: "gpt-4"
+
+logging:
+  level: "info" # Options: debug, info, warn, error
+`
+		if err := os.WriteFile(configFile, []byte(configContent), 0644); err != nil {
+			fmt.Printf("Failed to create config file: %v\n", err)
+			os.Exit(1)
+		}
+		fmt.Println("Created ghost-ops.yaml")
+	} else {
+		fmt.Println("ghost-ops.yaml already exists")
+	}
+
+	if _, err := os.Stat("blueprints"); os.IsNotExist(err) {
+		if err := os.Mkdir("blueprints", 0755); err != nil {
+			fmt.Printf("Failed to create blueprints directory: %v\n", err)
+			os.Exit(1)
+		}
+		fmt.Println("Created blueprints directory")
+	}
+
+	blueprintFile := "blueprints/blueprints.json"
+	if _, err := os.Stat(blueprintFile); os.IsNotExist(err) {
+		sampleContent := `[
+  {
+    "service_id": "hello-service",
+    "intent": "Create a service that responds 'Hello from GhostOps' to any request.",
+    "constraints": {
+      "language": "go"
+    }
+  }
+]`
+		if err := os.WriteFile(blueprintFile, []byte(sampleContent), 0644); err != nil {
+			fmt.Printf("Failed to create blueprints file: %v\n", err)
+			os.Exit(1)
+		}
+		fmt.Println("Created blueprints/blueprints.json")
+	}
+
+	fmt.Println("Initialization complete. Run './ghost-ops' to start.")
 }
 
 func runServer(version string) {
@@ -186,8 +250,9 @@ func runServer(version string) {
 	srv := api.NewServer(reg, collector)
 	httpAddr := fmt.Sprintf(":%d", cfg.Server.Port)
 	httpServer := &http.Server{
-		Addr:    httpAddr,
-		Handler: srv,
+		Addr:              httpAddr,
+		Handler:           srv,
+		ReadHeaderTimeout: 10 * time.Second,
 	}
 
 	// Start API Server

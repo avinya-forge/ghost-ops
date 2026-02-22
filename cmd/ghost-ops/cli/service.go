@@ -3,6 +3,7 @@ package cli
 import (
 	"encoding/json"
 	"fmt"
+	"io"
 	"net/http"
 	"os"
 
@@ -28,6 +29,12 @@ func handleServiceCommand(args []string) {
 			return
 		}
 		inspectService(baseURL, args[1])
+	case "logs":
+		if len(args) < 2 {
+			fmt.Println("Usage: ghost-ops service logs <id>")
+			return
+		}
+		serviceLogs(baseURL, args[1])
 	default:
 		fmt.Println("Unknown service command:", args[0])
 	}
@@ -99,4 +106,21 @@ func inspectService(baseURL string, id string) {
 	enc := json.NewEncoder(os.Stdout)
 	enc.SetIndent("", "  ")
 	enc.Encode(found)
+}
+
+func serviceLogs(baseURL string, id string) {
+	resp, err := http.Get(baseURL + "/services/" + id + "/logs")
+	if err != nil {
+		fmt.Printf("Error connecting to server: %v\n", err)
+		os.Exit(1)
+	}
+	defer resp.Body.Close()
+
+	if resp.StatusCode != http.StatusOK {
+		body, _ := io.ReadAll(resp.Body)
+		fmt.Printf("Error: Server returned %s: %s\n", resp.Status, string(body))
+		os.Exit(1)
+	}
+
+	io.Copy(os.Stdout, resp.Body)
 }
