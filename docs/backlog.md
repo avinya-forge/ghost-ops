@@ -23,13 +23,13 @@
     - [SEC] Ensure secure defaults. [TEST] Verify precedence. [OPT] Lazy load.
 - [x] [201] | [FEAT] Define `Config` Struct | [BLOCKS-200] | [DONE]
     - [LINT] Add struct tags. [TEST] JSON/YAML serialization.
-- [ ] [202] | [FEAT] Migrate CLI Flags to Viper Config | [BLOCKS-201] | [TODO]
+- [x] [202] | [FEAT] Migrate CLI Flags to Viper Config | [BLOCKS-201] | [DONE]
     - [TEST] Verify flag overrides. [SEC] No secrets in flags.
-- [ ] [203] | [FEAT] Add Config Validation Logic | [BLOCKS-201] | [TODO]
+- [x] [203] | [FEAT] Add Config Validation Logic | [BLOCKS-201] | [DONE]
     - [SEC] Sanitize inputs. [TEST] Invalid config cases.
-- [ ] [204] | [FEAT] Add Hot-Reload for Config | [BLOCKS-200] | [TODO]
+- [x] [204] | [FEAT] Add Hot-Reload for Config | [BLOCKS-200] | [DONE]
     - [OPT] Debounce events. [TEST] Verify dynamic update.
-- [ ] [205] | [FEAT] Add Environment Variable Overrides | [BLOCKS-200] | [TODO]
+- [x] [205] | [FEAT] Add Environment Variable Overrides | [BLOCKS-200] | [DONE]
     - [SEC] Mask secrets in logs. [TEST] Env var mapping.
 
 ### Epic: Error Handling
@@ -47,13 +47,13 @@
     - [OPT] Capture only on debug. [SEC] Redact sensitive paths.
 
 ### Epic: Validation
-- [ ] [220] | [FEAT] Define JSON Schema for `Blueprint` | [INDEPENDENT] | [TODO]
+- [x] [220] | [FEAT] Define JSON Schema for `Blueprint` | [INDEPENDENT] | [DONE]
     - [LINT] Valid JSON. [TEST] Schema validation tests.
-- [ ] [221] | [FEAT] Implement `Blueprint` Validation Logic | [BLOCKS-220] | [TODO]
+- [x] [221] | [FEAT] Implement `Blueprint` Validation Logic | [BLOCKS-220] | [DONE]
     - [SEC] Sanitize inputs. [TEST] Boundary checks.
-- [ ] [222] | [FEAT] Validate `service_id` format | [BLOCKS-220] | [TODO]
+- [x] [222] | [FEAT] Validate `service_id` format | [BLOCKS-220] | [DONE]
     - [SEC] Regex `^[a-zA-Z0-9-]+$`. [TEST] Inject special chars.
-- [ ] [223] | [FEAT] Validate `constraints` size limits | [BLOCKS-220] | [TODO]
+- [x] [223] | [FEAT] Validate `constraints` size limits | [BLOCKS-220] | [DONE]
     - [SEC] Max size 1MB. [TEST] Large payload DoS.
 - [ ] [224] | [FEAT] Add Validation Middleware to API | [BLOCKS-221] | [TODO]
     - [OPT] Fail fast. [TEST] Middleware chain order.
@@ -61,13 +61,13 @@
 ### Epic: CLI Enhancements
 - [x] [230] | [FEAT] Add `ghost-ops version` command | [INDEPENDENT] | [DONE]
     - [TEST] Compare output with runtime. [LINT] Flag parsing.
-- [ ] [231] | [FEAT] Add `ghost-ops service list` command | [INDEPENDENT] | [TODO]
+- [x] [231] | [FEAT] Add `ghost-ops service list` command | [INDEPENDENT] | [DONE]
     - [OPT] Pagination support. [TEST] Empty/Large list.
-- [ ] [232] | [FEAT] Add `ghost-ops service inspect` command | [BLOCKS-231] | [TODO]
+- [x] [232] | [FEAT] Add `ghost-ops service inspect` command | [BLOCKS-231] | [DONE]
     - [SEC] Redact secrets. [TEST] Not found case.
 - [ ] [233] | [FEAT] Add `ghost-ops service logs` command | [BLOCKS-231] | [TODO]
     - [OPT] Stream buffer size. [TEST] Connection drop handling.
-- [ ] [234] | [FEAT] Add `ghost-ops config show` command | [BLOCKS-201] | [TODO]
+- [x] [234] | [FEAT] Add `ghost-ops config show` command | [BLOCKS-201] | [DONE]
     - [SEC] Mask sensitive keys. [TEST] Verify output matches loaded config.
 
 ### Epic: Runtime Hardening

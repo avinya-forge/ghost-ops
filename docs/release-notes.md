@@ -1,6 +1,10 @@
 # Release Notes
 
 ## Unreleased
+- **CLI Enhancements**: Added `ghost-ops service list`, `ghost-ops service inspect <id>`, and `ghost-ops config show` commands.
+- **Configuration Management**: Migrated CLI flags to Viper, implemented config validation, and added support for hot-reloading configuration (including dynamic logging level).
+- **Validation**: Implemented strict validation for Blueprints, including `service_id` format, intent length, and constraint size limits.
+- **Refactoring**: Refactored CLI structure to support subcommands using `cobra`-like pattern with `pflag`.
 - Added Viper dependency and basic configuration setup (`pkg/config`).
 - Implemented environment variable overrides and config file support.
 - Defined strongly-typed `Config` struct in `pkg/config` with JSON/YAML support.
