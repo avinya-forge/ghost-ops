@@ -1,6 +1,10 @@
 # Release Notes
 
 ## Unreleased
+- **CLI Enhancements**: Added `ghost-ops init` to bootstrap projects and `ghost-ops service logs` to view service output.
+- **Runtime Hardening**: Configured Wazero with CPU limits (CloseOnContextDone) and implemented secure log capture for guest modules.
+- **Error Handling**: Added stack traces to internal errors (logged only) for better debugging.
+- **Security**: Ran `gosec` and fixed high-severity issues (permissions, integer overflows, slowloris).
 - **Error Handling**: Refactored `Registry`, `Runtime`, and `API` to use standardized `AppError` types and HTTP status codes.
 - **Testing**: Added integration tests for API error mapping.
 - **Testing**: Added unit tests for `pkg/logging` (refactored for testability) and `pkg/sdk/guest` (including RPC integration tests).

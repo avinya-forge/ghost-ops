@@ -2,6 +2,7 @@ package protocol
 
 import (
 	"fmt"
+	"runtime/debug"
 )
 
 // AppError defines the standard application error interface.
@@ -10,6 +11,7 @@ type AppError interface {
 	Code() string
 	Message() string
 	Unwrap() error
+	StackTrace() string
 }
 
 // BaseError is a concrete implementation of AppError.
@@ -17,6 +19,7 @@ type BaseError struct {
 	CodeStr string
 	Msg     string
 	Err     error
+	Stack   []byte
 }
 
 func (e *BaseError) Error() string {
@@ -38,12 +41,21 @@ func (e *BaseError) Unwrap() error {
 	return e.Err
 }
 
+func (e *BaseError) StackTrace() string {
+	return string(e.Stack)
+}
+
 // NewAppError creates a new AppError.
 func NewAppError(code, msg string, err error) AppError {
+	var stack []byte
+	if code == "INTERNAL" {
+		stack = debug.Stack()
+	}
 	return &BaseError{
 		CodeStr: code,
 		Msg:     msg,
 		Err:     err,
+		Stack:   stack,
 	}
 }
 

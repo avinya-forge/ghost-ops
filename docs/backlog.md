@@ -43,7 +43,7 @@
     - [TEST] Map Wazero exit codes. [SEC] Mask internal details.
 - [x] [214] | [FEAT] Add Error Codes to API Responses | [BLOCKS-210] | [DONE]
     - [TEST] HTTP 4xx/5xx mappings. [SEC] No stack traces in production.
-- [ ] [215] | [FEAT] Add Stack Trace to Internal Errors | [BLOCKS-210] | [TODO]
+- [x] [215] | [FEAT] Add Stack Trace to Internal Errors | [BLOCKS-210] | [DONE]
     - [OPT] Capture only on debug. [SEC] Redact sensitive paths.
 
 ### Epic: Validation
@@ -65,7 +65,7 @@
     - [OPT] Pagination support. [TEST] Empty/Large list.
 - [x] [232] | [FEAT] Add `ghost-ops service inspect` command | [BLOCKS-231] | [DONE]
     - [SEC] Redact secrets. [TEST] Not found case.
-- [ ] [233] | [FEAT] Add `ghost-ops service logs` command | [BLOCKS-231] | [TODO]
+- [x] [233] | [FEAT] Add `ghost-ops service logs` command | [BLOCKS-231] | [DONE]
     - [OPT] Stream buffer size. [TEST] Connection drop handling.
 - [x] [234] | [FEAT] Add `ghost-ops config show` command | [BLOCKS-201] | [DONE]
     - [SEC] Mask sensitive keys. [TEST] Verify output matches loaded config.
@@ -73,7 +73,7 @@
 ### Epic: Runtime Hardening
 - [x] [240] | [FEAT] Configure Wazero Memory Limits | [INDEPENDENT] | [DONE]
     - [SEC] Max 128MB/guest. [TEST] OOM handling.
-- [ ] [241] | [FEAT] Configure Wazero CPU Limits | [INDEPENDENT] | [TODO]
+- [x] [241] | [FEAT] Configure Wazero CPU Limits | [INDEPENDENT] | [DONE]
     - [SEC] Max instructions/call. [TEST] Infinite loop break.
 - [x] [242] | [FEAT] Implement Execution Timeouts | [INDEPENDENT] | [DONE]
     - [REL] 5s default. [TEST] Context cancellation.
@@ -99,7 +99,7 @@
     - [TEST] Achieve >95% coverage for structured logger.
 - [x] [262] | [TEST] Add Unit Tests for pkg/sdk/guest | [INDEPENDENT] | [DONE]
     - [TEST] Achieve >95% coverage for guest SDK.
-- [ ] [263] | [SEC] Run `gosec` Security Scan | [INDEPENDENT] | [TODO]
+- [x] [263] | [SEC] Run `gosec` Security Scan | [INDEPENDENT] | [DONE]
     - [SEC] Audit and fix all high-severity issues.
 - [ ] [264] | [OPT] Benchmark `RuntimeHost` Performance | [INDEPENDENT] | [TODO]
     - [OPT] Ensure overhead < 5ms per invoke.
@@ -113,11 +113,11 @@
     - [DOC] Auto-generate spec from code/comments.
 - [ ] [272] | [FEAT] Add Pre-commit Hooks (Git) | [INDEPENDENT] | [TODO]
     - [DX] Enforce lint/test before commit.
-- [ ] [273] | [FEAT] Add `ghost-ops init` command | [INDEPENDENT] | [TODO]
+- [x] [273] | [FEAT] Add `ghost-ops init` command | [INDEPENDENT] | [DONE]
     - [DX] Bootstrap new project structure.
 - [ ] [274] | [DOCS] Create Architecture Diagrams (PlantUML/Mermaid) | [INDEPENDENT] | [TODO]
     - [DOC] Visualize system components and flow.
-- [ ] [275] | [DOCS] Update `README.md` with new features | [INDEPENDENT] | [TODO]
+- [x] [275] | [DOCS] Update `README.md` with new features | [INDEPENDENT] | [DONE]
     - [DOC] Reflect latest capabilities.
 
 ### Epic: AI Evolution Enhancements

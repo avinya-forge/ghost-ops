@@ -40,12 +40,27 @@ Run with the mock engine (no API key needed, returns dummy WASM):
 ./ghost-ops -engine mock
 ```
 
+### Initialization
+
+Initialize a new project with default configuration and blueprints:
+
+```bash
+./ghost-ops init
+```
+
 ### Run (AI Mode)
 
 ```bash
 export OPENAI_API_KEY=your-key
-./ghost-ops -engine ai -blueprints ./examples/blueprints
+./ghost-ops -engine ai -blueprints ./blueprints/blueprints.json
 ```
+
+### CLI Commands
+
+- `ghost-ops service list`: List all running services.
+- `ghost-ops service inspect <id>`: Inspect service details.
+- `ghost-ops service logs <id>`: View logs for a service.
+- `ghost-ops config show`: Show current configuration.
 
 ## Architecture
 

@@ -95,8 +95,38 @@ func (m *MockRuntimeHost) UnloadVersion(ctx context.Context, id, version string)
 	}
 	return nil
 }
+func (m *MockRuntimeHost) GetLogs(ctx context.Context, id string) ([]byte, error) {
+	if logs, ok := m.modules[id+"-logs"]; ok {
+		return logs, nil
+	}
+	return nil, protocol.ErrNotFound
+}
 func (m *MockRuntimeHost) Close(ctx context.Context) error {
 	return nil
+}
+
+func TestServer_Logs(t *testing.T) {
+	store := &MockStateStore{records: make(map[string]protocol.ServiceRecord)}
+	collector := telemetry.NewInMemoryCollector()
+	runtime := &MockRuntimeHost{modules: map[string][]byte{
+		"svc-1-logs": []byte("mock logs"),
+	}}
+	reg := registry.NewRegistry(store, &MockEvolutionEngine{}, &MockIntentSource{}, runtime, collector)
+	server := NewServer(reg, collector)
+
+	req := httptest.NewRequest(http.MethodGet, "/services/svc-1/logs", nil)
+	w := httptest.NewRecorder()
+
+	server.ServeHTTP(w, req)
+
+	if w.Code != http.StatusOK {
+		t.Errorf("Expected status 200, got %d", w.Code)
+	}
+
+	body := w.Body.String()
+	if body != "mock logs" {
+		t.Errorf("Expected 'mock logs', got '%s'", body)
+	}
 }
 
 func TestServer_Services(t *testing.T) {
