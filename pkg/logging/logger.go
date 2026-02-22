@@ -1,6 +1,7 @@
 package logging
 
 import (
+	"io"
 	"log/slog"
 	"os"
 )
@@ -9,11 +10,16 @@ var logLevel = new(slog.LevelVar)
 
 // InitLogger initializes the global logger with a JSON handler and the specified level.
 func InitLogger(level slog.Level) {
+	InitLoggerWithWriter(level, os.Stdout)
+}
+
+// InitLoggerWithWriter initializes the global logger with a JSON handler, the specified level, and output writer.
+func InitLoggerWithWriter(level slog.Level, w io.Writer) {
 	logLevel.Set(level)
 	opts := &slog.HandlerOptions{
 		Level: logLevel,
 	}
-	logger := slog.New(slog.NewJSONHandler(os.Stdout, opts))
+	logger := slog.New(slog.NewJSONHandler(w, opts))
 	slog.SetDefault(logger)
 }
 

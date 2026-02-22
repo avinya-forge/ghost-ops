@@ -1,6 +1,8 @@
 # Release Notes
 
 ## Unreleased
+- **Testing**: Added unit tests for `pkg/logging` (refactored for testability) and `pkg/sdk/guest` (including RPC integration tests).
+- **Observability**: Enhanced `Registry` with duration metrics for reconcile, evolve, and deploy phases.
 - **CLI Enhancements**: Added `ghost-ops service list`, `ghost-ops service inspect <id>`, and `ghost-ops config show` commands.
 - **Configuration Management**: Migrated CLI flags to Viper, implemented config validation, and added support for hot-reloading configuration (including dynamic logging level).
 - **Validation**: Implemented strict validation for Blueprints, including `service_id` format, intent length, and constraint size limits.

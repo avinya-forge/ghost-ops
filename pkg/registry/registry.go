@@ -54,8 +54,16 @@ func (r *Registry) Reconcile(ctx context.Context) (bool, error) {
 
 	slog.Info("Processing blueprint", "service_id", bp.ServiceID)
 
+	start := time.Now()
+	defer func() {
+		r.collector.Histogram("reconcile_duration_seconds", time.Since(start).Seconds(), map[string]string{"service_id": bp.ServiceID})
+	}()
+
 	// Evolve
+	evolveStart := time.Now()
 	wasmBytes, hashStr, err := r.evolveService(ctx, bp)
+	r.collector.Histogram("evolve_duration_seconds", time.Since(evolveStart).Seconds(), map[string]string{"service_id": bp.ServiceID})
+
 	if err != nil {
 		slog.Error("Failed to evolve service", "service_id", bp.ServiceID, "error", err)
 		r.collector.Counter("reconcile_failure", 1, map[string]string{"phase": "evolve", "service_id": bp.ServiceID})
@@ -76,7 +84,11 @@ func (r *Registry) Reconcile(ctx context.Context) (bool, error) {
 	}
 
 	// Deploy to Runtime
-	if err := r.deployToRuntime(ctx, bp.ServiceID, existing, newVersion, wasmBytes, bp.Constraints); err != nil {
+	deployStart := time.Now()
+	err = r.deployToRuntime(ctx, bp.ServiceID, existing, newVersion, wasmBytes, bp.Constraints)
+	r.collector.Histogram("deploy_duration_seconds", time.Since(deployStart).Seconds(), map[string]string{"service_id": bp.ServiceID})
+
+	if err != nil {
 		slog.Error("Failed to load module", "service_id", bp.ServiceID, "error", err)
 		r.collector.Counter("reconcile_failure", 1, map[string]string{"phase": "load_module", "service_id": bp.ServiceID})
 		return true, nil

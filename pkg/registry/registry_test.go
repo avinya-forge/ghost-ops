@@ -381,3 +381,42 @@ func TestRegistry_Reconcile_Errors(t *testing.T) {
 		}
 	})
 }
+
+func TestRegistry_Metrics(t *testing.T) {
+	store := &MockStateStore{records: make(map[string]protocol.ServiceRecord)}
+	engine := &MockEvolutionEngine{}
+	source := &MockIntentSource{
+		blueprints: []protocol.Blueprint{
+			{ServiceID: "svc-metrics", Intent: "do metrics"},
+		},
+	}
+	runtime := &MockRuntimeHost{
+		modules:        make(map[string][]byte),
+		activeVersions: make(map[string]string),
+	}
+	collector := telemetry.NewInMemoryCollector()
+
+	reg := NewRegistry(store, engine, source, runtime, collector)
+	ctx := context.Background()
+
+	// Run Reconcile
+	_, err := reg.Reconcile(ctx)
+	if err != nil {
+		t.Fatalf("Reconcile failed: %v", err)
+	}
+
+	snapshot := collector.Snapshot()
+
+	// Check histograms
+	histograms := []string{
+		"reconcile_duration_seconds{service_id=svc-metrics}",
+		"evolve_duration_seconds{service_id=svc-metrics}",
+		"deploy_duration_seconds{service_id=svc-metrics}",
+	}
+
+	for _, name := range histograms {
+		if _, ok := snapshot[name]; !ok {
+			t.Errorf("Metric %s not found in snapshot", name)
+		}
+	}
+}
