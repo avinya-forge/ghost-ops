@@ -95,6 +95,9 @@ func (m *MockRuntimeHost) UnloadVersion(ctx context.Context, id, version string)
 	}
 	return nil
 }
+func (m *MockRuntimeHost) CheckHealth(ctx context.Context, id string) error {
+	return nil
+}
 func (m *MockRuntimeHost) GetLogs(ctx context.Context, id string) ([]byte, error) {
 	if logs, ok := m.modules[id+"-logs"]; ok {
 		return logs, nil
