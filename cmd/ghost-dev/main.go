@@ -89,10 +89,7 @@ func main() {
 func shouldIgnore(path string) bool {
 	// Ignore hidden files/dirs
 	if strings.Contains(path, "/.") || strings.HasPrefix(path, ".") {
-		if path == "." {
-			return false
-		}
-		return true
+		return path != "."
 	}
 	// Ignore build artifacts and vendor
 	if strings.Contains(path, "vendor") || strings.Contains(path, "bin") || strings.Contains(path, "tmp") || strings.Contains(path, "ghost-ops") || strings.Contains(path, "ghost-dev") {
