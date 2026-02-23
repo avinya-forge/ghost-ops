@@ -121,13 +121,14 @@ func (r *Registry) StartHealthCheck(ctx context.Context) {
 			case <-ctx.Done():
 				return
 			case <-ticker.C:
-				r.checkServices(ctx)
+				r.CheckServices(ctx)
 			}
 		}
 	}()
 }
 
-func (r *Registry) checkServices(ctx context.Context) {
+// CheckServices performs a health check on all services.
+func (r *Registry) CheckServices(ctx context.Context) {
 	services, err := r.store.ListServices(ctx)
 	if err != nil {
 		slog.Error("Failed to list services for health check", "error", err)
