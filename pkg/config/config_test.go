@@ -82,6 +82,17 @@ func TestConfig_Validate(t *testing.T) {
 			},
 			wantErr: true,
 		},
+		{
+			name: "Valid Ollama Provider",
+			config: Config{
+				Server:  ServerConfig{Port: 8080},
+				Logging: LoggingConfig{Level: "info"},
+				Paths:   PathsConfig{Blueprints: "b.json", Store: "s.json"},
+				Engine:  EngineConfig{Type: "ai"},
+				LLM:     LLMConfig{Provider: "ollama"},
+			},
+			wantErr: false,
+		},
 	}
 
 	for _, tt := range tests {
@@ -110,6 +121,7 @@ func TestLoad_Defaults(t *testing.T) {
 	assert.Equal(t, "blueprints.json", cfg.Paths.Blueprints)
 	assert.Equal(t, "store.json", cfg.Paths.Store)
 	assert.Equal(t, "mock", cfg.Engine.Type)
+	assert.Equal(t, DefaultSystemPrompt, cfg.LLM.SystemPrompt)
 }
 
 func TestLoad_FileOverride(t *testing.T) {
