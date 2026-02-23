@@ -26,7 +26,7 @@ func NewServer(r *registry.Registry, c protocol.MetricsCollector) *Server {
 	}
 
 	mux.HandleFunc("/services", s.handleListServices)
-	mux.HandleFunc("GET /services/{id}/logs", s.handleServiceLogs)
+	mux.HandleFunc("GET /services/{id}/logs", validateServiceIDMiddleware(s.handleServiceLogs))
 	mux.HandleFunc("/reconcile", s.handleReconcile)
 	mux.HandleFunc("/metrics", s.handleMetrics)
 	mux.HandleFunc("/healthz", s.handleHealthz)
