@@ -110,6 +110,47 @@ func (r *Registry) Reconcile(ctx context.Context) (bool, error) {
 	return true, nil
 }
 
+// StartHealthCheck starts a background routine to check service health.
+func (r *Registry) StartHealthCheck(ctx context.Context) {
+	go func() {
+		ticker := time.NewTicker(10 * time.Second)
+		defer ticker.Stop()
+
+		for {
+			select {
+			case <-ctx.Done():
+				return
+			case <-ticker.C:
+				r.checkServices(ctx)
+			}
+		}
+	}()
+}
+
+func (r *Registry) checkServices(ctx context.Context) {
+	services, err := r.store.ListServices(ctx)
+	if err != nil {
+		slog.Error("Failed to list services for health check", "error", err)
+		return
+	}
+
+	for _, svc := range services {
+		// Only check services that are supposed to be active
+		if svc.ActiveVersion > 0 {
+			if err := r.runtime.CheckHealth(ctx, svc.ServiceID); err != nil {
+				slog.Warn("Service unhealthy", "service_id", svc.ServiceID, "error", err)
+				r.collector.Counter("health_check_failure", 1, map[string]string{"service_id": svc.ServiceID})
+
+				// Purge from runtime to ensure clean state
+				versionStr := fmt.Sprintf("%d", svc.ActiveVersion)
+				if unloadErr := r.runtime.UnloadVersion(ctx, svc.ServiceID, versionStr); unloadErr != nil {
+					slog.Error("Failed to purge unhealthy service", "service_id", svc.ServiceID, "error", unloadErr)
+				}
+			}
+		}
+	}
+}
+
 func (r *Registry) evolveService(ctx context.Context, bp *protocol.Blueprint) ([]byte, string, error) {
 	wasmBytes, err := r.engine.Evolve(ctx, *bp)
 	if err != nil {

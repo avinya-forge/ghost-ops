@@ -246,6 +246,9 @@ func runServer(version string) {
 	// Initialize Registry
 	reg := registry.NewRegistry(stateStore, engine, source, host, collector)
 
+	// Start Health Check Loop
+	reg.StartHealthCheck(ctx)
+
 	// Initialize API Server
 	srv := api.NewServer(reg, collector)
 	httpAddr := fmt.Sprintf(":%d", cfg.Server.Port)

@@ -467,6 +467,25 @@ func (h *WazeroRuntimeHost) Invoke(ctx context.Context, serviceID, method string
 	}
 }
 
+// CheckHealth checks if a service is healthy (loaded and responsive).
+func (h *WazeroRuntimeHost) CheckHealth(ctx context.Context, serviceID string) error {
+	h.mu.RLock()
+	defer h.mu.RUnlock()
+
+	uniqueName, active := h.activeVersions[serviceID]
+	if !active {
+		return protocol.NewAppError(protocol.ErrNotFound.Code(), fmt.Sprintf("service %s has no active version", serviceID), nil)
+	}
+
+	if _, exists := h.modules[uniqueName]; !exists {
+		return protocol.NewAppError(protocol.ErrInternal.Code(), fmt.Sprintf("module %s not loaded in runtime", uniqueName), nil)
+	}
+
+	// Future: check if request channel is responsive or blocked?
+	// For now, existence is the basic health check.
+	return nil
+}
+
 // UnloadVersion removes a specific version of a module.
 func (h *WazeroRuntimeHost) UnloadVersion(ctx context.Context, serviceID, version string) error {
 	uniqueName := fmt.Sprintf("%s-%s", serviceID, version)

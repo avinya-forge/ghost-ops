@@ -86,6 +86,7 @@ type MockRuntimeHost struct {
 	activeVersions map[string]string
 	shadowVersions map[string]string
 	loadErr        error
+	checkHealthErr error
 }
 
 func (m *MockRuntimeHost) LoadModule(ctx context.Context, id, version string, b []byte) error {
@@ -124,7 +125,15 @@ func (m *MockRuntimeHost) UnsetShadowVersion(ctx context.Context, id string) err
 }
 func (m *MockRuntimeHost) UnloadVersion(ctx context.Context, id, version string) error {
 	uniqueName := fmt.Sprintf("%s-%s", id, version)
-	delete(m.modules, uniqueName)
+	if m.modules != nil {
+		delete(m.modules, uniqueName)
+	}
+	return nil
+}
+func (m *MockRuntimeHost) CheckHealth(ctx context.Context, id string) error {
+	if m.checkHealthErr != nil {
+		return m.checkHealthErr
+	}
 	return nil
 }
 func (m *MockRuntimeHost) GetLogs(ctx context.Context, id string) ([]byte, error) {
@@ -421,5 +430,48 @@ func TestRegistry_Metrics(t *testing.T) {
 		if _, ok := snapshot[name]; !ok {
 			t.Errorf("Metric %s not found in snapshot", name)
 		}
+	}
+}
+
+func TestRegistry_StartHealthCheck(t *testing.T) {
+	store := &MockStateStore{
+		records: map[string]protocol.ServiceRecord{
+			"svc-unhealthy": {
+				ServiceID:     "svc-unhealthy",
+				ActiveVersion: 1,
+				CurrentState:  protocol.StateActive,
+			},
+		},
+	}
+	engine := &MockEvolutionEngine{}
+	source := &MockIntentSource{}
+	runtime := &MockRuntimeHost{
+		modules: map[string][]byte{
+			"svc-unhealthy-1": []byte("mock-wasm"),
+		},
+		activeVersions: map[string]string{
+			"svc-unhealthy": "svc-unhealthy-1",
+		},
+		checkHealthErr: fmt.Errorf("unhealthy"),
+	}
+	collector := telemetry.NewInMemoryCollector()
+
+	reg := NewRegistry(store, engine, source, runtime, collector)
+	ctx, cancel := context.WithCancel(context.Background())
+	defer cancel()
+
+	// Call private checkServices directly to avoid waiting for ticker
+	reg.checkServices(ctx)
+
+	// Verify metrics
+	snapshot := collector.Snapshot()
+	if val, ok := snapshot["health_check_failure{service_id=svc-unhealthy}"]; !ok || val != int64(1) {
+		t.Errorf("Expected health_check_failure metric 1, got %v", val)
+	}
+
+	// Verify module unloaded
+	// Since MockRuntimeHost.UnloadVersion removes from modules map
+	if _, ok := runtime.modules["svc-unhealthy-1"]; ok {
+		t.Error("Expected module svc-unhealthy-1 to be unloaded")
 	}
 }
