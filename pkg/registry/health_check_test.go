@@ -63,7 +63,7 @@ func TestRegistry_CheckServices_PurgesUnhealthy(t *testing.T) {
 	collector := telemetry.NewInMemoryCollector()
 
 	// Registry uses the SmartMockRuntimeHost
-	reg := NewRegistry(store, &MockEvolutionEngine{}, &MockIntentSource{}, runtime, collector)
+	reg := NewRegistry(store, &MockEvolutionEngine{}, &MockIntentSource{}, runtime, collector, nil)
 	ctx := context.Background()
 
 	// Run CheckServices

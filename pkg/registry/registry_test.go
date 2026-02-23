@@ -4,7 +4,9 @@ import (
 	"context"
 	"fmt"
 	"testing"
+	"time"
 
+	"ghost-ops/pkg/event"
 	"ghost-ops/pkg/protocol"
 	"ghost-ops/pkg/telemetry"
 )
@@ -157,7 +159,7 @@ func TestRegistry_Reconcile(t *testing.T) {
 	}
 	collector := telemetry.NewInMemoryCollector()
 
-	reg := NewRegistry(store, engine, source, runtime, collector)
+	reg := NewRegistry(store, engine, source, runtime, collector, nil)
 	ctx := context.Background()
 
 	// First call should process one blueprint
@@ -212,7 +214,7 @@ func TestRegistry_Reconcile_Versioning(t *testing.T) {
 	}
 	collector := telemetry.NewInMemoryCollector()
 
-	reg := NewRegistry(store, engine, source, runtime, collector)
+	reg := NewRegistry(store, engine, source, runtime, collector, nil)
 	ctx := context.Background()
 
 	// First call - Version 1
@@ -271,7 +273,7 @@ func TestRegistry_Reconcile_ShadowMode(t *testing.T) {
 	}
 	collector := telemetry.NewInMemoryCollector()
 
-	reg := NewRegistry(store, engine, source, runtime, collector)
+	reg := NewRegistry(store, engine, source, runtime, collector, nil)
 	ctx := context.Background()
 
 	// 1. Deploy Active (v1)
@@ -338,7 +340,7 @@ func TestRegistry_Reconcile_Errors(t *testing.T) {
 	// 1. Intent Source Error
 	t.Run("IntentSource Error", func(t *testing.T) {
 		source := &MockIntentSource{err: fmt.Errorf("intent error")}
-		reg := NewRegistry(nil, nil, source, nil, collector)
+		reg := NewRegistry(nil, nil, source, nil, collector, nil)
 		_, err := reg.Reconcile(ctx)
 		if err == nil {
 			t.Error("Expected error from intent source, got nil")
@@ -352,7 +354,7 @@ func TestRegistry_Reconcile_Errors(t *testing.T) {
 		}
 		store := &MockStateStore{getServiceErr: fmt.Errorf("store error")}
 		engine := &MockEvolutionEngine{}
-		reg := NewRegistry(store, engine, source, nil, collector)
+		reg := NewRegistry(store, engine, source, nil, collector, nil)
 		// It should NOT return error from Reconcile, but log error and continue
 		// Actually Reconcile returns (bool, error). The error is usually nil unless critical.
 		// Failures in evolve/store/runtime usually return (true, nil) but increment metrics/log.
@@ -369,7 +371,7 @@ func TestRegistry_Reconcile_Errors(t *testing.T) {
 		}
 		store := &MockStateStore{records: make(map[string]protocol.ServiceRecord)}
 		engine := &MockEvolutionEngine{err: fmt.Errorf("compile error")}
-		reg := NewRegistry(store, engine, source, nil, collector)
+		reg := NewRegistry(store, engine, source, nil, collector, nil)
 		_, err := reg.Reconcile(ctx)
 		// Again, Reconcile swallows the error and logs it.
 		if err != nil {
@@ -385,7 +387,7 @@ func TestRegistry_Reconcile_Errors(t *testing.T) {
 		store := &MockStateStore{records: make(map[string]protocol.ServiceRecord)}
 		engine := &MockEvolutionEngine{}
 		runtime := &MockRuntimeHost{loadErr: fmt.Errorf("runtime error")}
-		reg := NewRegistry(store, engine, source, runtime, collector)
+		reg := NewRegistry(store, engine, source, runtime, collector, nil)
 		_, err := reg.Reconcile(ctx)
 		// Reconcile swallows runtime errors too
 		if err != nil {
@@ -408,7 +410,7 @@ func TestRegistry_Metrics(t *testing.T) {
 	}
 	collector := telemetry.NewInMemoryCollector()
 
-	reg := NewRegistry(store, engine, source, runtime, collector)
+	reg := NewRegistry(store, engine, source, runtime, collector, nil)
 	ctx := context.Background()
 
 	// Run Reconcile
@@ -433,3 +435,49 @@ func TestRegistry_Metrics(t *testing.T) {
 	}
 }
 
+func TestRegistry_Events(t *testing.T) {
+	store := &MockStateStore{records: make(map[string]protocol.ServiceRecord)}
+	engine := &MockEvolutionEngine{}
+	source := &MockIntentSource{
+		blueprints: []protocol.Blueprint{
+			{ServiceID: "svc-events", Intent: "do events"},
+		},
+	}
+	runtime := &MockRuntimeHost{
+		modules:        make(map[string][]byte),
+		activeVersions: make(map[string]string),
+	}
+	collector := telemetry.NewInMemoryCollector()
+	bus := event.NewInMemoryEventBus()
+
+	reg := NewRegistry(store, engine, source, runtime, collector, bus)
+	ctx := context.Background()
+
+	// Subscribe to ServiceDeployed
+	ch, err := bus.Subscribe(ctx, protocol.EventServiceDeployed)
+	if err != nil {
+		t.Fatalf("Failed to subscribe: %v", err)
+	}
+
+	// Run Reconcile
+	_, err = reg.Reconcile(ctx)
+	if err != nil {
+		t.Fatalf("Reconcile failed: %v", err)
+	}
+
+	// Wait for event
+	select {
+	case evt := <-ch:
+		if evt.Type != protocol.EventServiceDeployed {
+			t.Errorf("Expected event type %s, got %s", protocol.EventServiceDeployed, evt.Type)
+		}
+		if evt.ServiceID != "svc-events" {
+			t.Errorf("Expected service ID svc-events, got %s", evt.ServiceID)
+		}
+		if ver, ok := evt.Payload["version"]; !ok || ver != 1 {
+			t.Errorf("Expected payload version 1, got %v", ver)
+		}
+	case <-time.After(1 * time.Second):
+		t.Fatal("Timeout waiting for event")
+	}
+}

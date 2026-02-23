@@ -18,7 +18,7 @@ type Server struct {
 }
 
 // NewServer creates a new API server.
-func NewServer(r *registry.Registry, c protocol.MetricsCollector) *Server {
+func NewServer(r *registry.Registry, c protocol.MetricsCollector, maxBodySize int64) *Server {
 	mux := http.NewServeMux()
 	s := &Server{
 		registry:  r,
@@ -26,10 +26,27 @@ func NewServer(r *registry.Registry, c protocol.MetricsCollector) *Server {
 		mux:       mux,
 	}
 
-	mux.HandleFunc("/services", s.handleListServices)
-	mux.HandleFunc("GET /services/{id}/logs", validateServiceIDMiddleware(s.handleServiceLogs))
-	mux.HandleFunc("POST /services/{id}/invoke", validateServiceIDMiddleware(s.handleServiceInvoke))
-	mux.HandleFunc("/reconcile", s.handleReconcile)
+	// Middleware Chain
+	commonMiddleware := func(h http.HandlerFunc) http.HandlerFunc {
+		return RecoverMiddleware(h)
+	}
+
+	invokeMiddleware := func(h http.HandlerFunc) http.HandlerFunc {
+		return RecoverMiddleware(
+			MaxBytesMiddleware(maxBodySize)(
+				validateServiceIDMiddleware(h),
+			),
+		)
+	}
+	// Note: ContentTypeMiddleware might be too strict for generic invoke if we allow arbitrary payloads?
+	// The blueprint says "Create a service that responds ...". Input can be anything.
+	// But `handleServiceInvoke` reads `r.Body`.
+	// Let's enforce MaxBytes for sure.
+
+	mux.HandleFunc("/services", commonMiddleware(s.handleListServices))
+	mux.HandleFunc("GET /services/{id}/logs", commonMiddleware(validateServiceIDMiddleware(s.handleServiceLogs)))
+	mux.HandleFunc("POST /services/{id}/invoke", invokeMiddleware(s.handleServiceInvoke))
+	mux.HandleFunc("/reconcile", commonMiddleware(s.handleReconcile))
 	mux.HandleFunc("/metrics", s.handleMetrics)
 	mux.HandleFunc("/healthz", s.handleHealthz)
 

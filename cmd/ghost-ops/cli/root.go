@@ -15,6 +15,7 @@ import (
 
 	"ghost-ops/pkg/api"
 	"ghost-ops/pkg/config"
+	"ghost-ops/pkg/event"
 	"ghost-ops/pkg/evolution"
 	"ghost-ops/pkg/intent"
 	"ghost-ops/pkg/llm"
@@ -243,14 +244,17 @@ func runServer(version string) {
 	}
 	defer host.Close(ctx)
 
+	// Initialize Event Bus
+	eventBus := event.NewInMemoryEventBus()
+
 	// Initialize Registry
-	reg := registry.NewRegistry(stateStore, engine, source, host, collector)
+	reg := registry.NewRegistry(stateStore, engine, source, host, collector, eventBus)
 
 	// Start Health Check Loop
 	reg.StartHealthCheck(ctx)
 
 	// Initialize API Server
-	srv := api.NewServer(reg, collector)
+	srv := api.NewServer(reg, collector, cfg.Server.MaxBodySize)
 	httpAddr := fmt.Sprintf(":%d", cfg.Server.Port)
 	httpServer := &http.Server{
 		Addr:              httpAddr,

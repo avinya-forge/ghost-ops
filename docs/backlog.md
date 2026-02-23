@@ -55,7 +55,7 @@
     - [SEC] Regex `^[a-zA-Z0-9-]+$`. [TEST] Inject special chars.
 - [x] [223] | [FEAT] Validate `constraints` size limits | [BLOCKS-220] | [DONE]
     - [SEC] Max size 1MB. [TEST] Large payload DoS.
-- [ ] [224] | [FEAT] Add Validation Middleware to API | [BLOCKS-221] | [TODO]
+- [x] [224] | [FEAT] Add Validation Middleware to API | [BLOCKS-221] | [DONE]
     - [OPT] Fail fast. [TEST] Middleware chain order.
 
 ### Epic: CLI Enhancements
@@ -83,7 +83,7 @@
     - [OPT] LRU policy. [TEST] Cache hit/miss ratio.
 
 ### Epic: Registry Enhancements
-- [ ] [250] | [FEAT] Implement Event Bus for Service Updates | [INDEPENDENT] | [TODO]
+- [x] [250] | [FEAT] Implement Event Bus for Service Updates | [INDEPENDENT] | [DONE]
     - [OPT] Async channel. [TEST] Subscriber notification.
 - [x] [251] | [FEAT] Add Metrics for Service Lifecycle | [INDEPENDENT] | [DONE]
     - [OBS] Gauge/Histogram. [TEST] Metric emission.
@@ -107,11 +107,11 @@
     - [TEST] End-to-end flow coverage.
 
 ### Epic: Developer Experience
-- [ ] [270] | [FEAT] Add Makefile `dev` target (hot reload) | [INDEPENDENT] | [TODO]
+- [x] [270] | [FEAT] Add Makefile `dev` target (hot reload) | [INDEPENDENT] | [DONE]
     - [DX] Auto-restart server on source change.
 - [ ] [271] | [DOCS] Generate API Swagger/OpenAPI Spec | [INDEPENDENT] | [TODO]
     - [DOC] Auto-generate spec from code/comments.
-- [ ] [272] | [FEAT] Add Pre-commit Hooks (Git) | [INDEPENDENT] | [TODO]
+- [x] [272] | [FEAT] Add Pre-commit Hooks (Git) | [INDEPENDENT] | [DONE]
     - [DX] Enforce lint/test before commit.
 - [x] [273] | [FEAT] Add `ghost-ops init` command | [INDEPENDENT] | [DONE]
     - [DX] Bootstrap new project structure.

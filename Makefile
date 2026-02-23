@@ -19,5 +19,11 @@ clean: ## Clean up binary
 	rm -f $(BINARY_NAME)
 	rm -f *.wasm
 
+hooks: ## Install git hooks
+	git config core.hooksPath .githooks
+
+dev: ## Run with hot reload
+	go run cmd/ghost-dev/main.go
+
 help: ## Display this help screen
 	@grep -E '^[a-zA-Z_-]+:.*?## .*$$' $(MAKEFILE_LIST) | sort | awk 'BEGIN {FS = ":.*?## "}; {printf "\033[36m%-30s\033[0m %s\n", $$1, $$2}'

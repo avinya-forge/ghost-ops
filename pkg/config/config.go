@@ -24,7 +24,8 @@ type Config struct {
 
 // ServerConfig configures the HTTP server.
 type ServerConfig struct {
-	Port int `mapstructure:"port" json:"port" yaml:"port"`
+	Port        int   `mapstructure:"port" json:"port" yaml:"port"`
+	MaxBodySize int64 `mapstructure:"max_body_size" json:"max_body_size" yaml:"max_body_size"`
 }
 
 // LoggingConfig configures the logger.
@@ -57,6 +58,7 @@ type LLMConfig struct {
 func Load() (*Config, error) {
 	// 1. Set Defaults
 	viper.SetDefault("server.port", 8080)
+	viper.SetDefault("server.max_body_size", 1048576) // 1MB
 	viper.SetDefault("logging.level", "info")
 	viper.SetDefault("logging.format", "json")
 	viper.SetDefault("paths.blueprints", "blueprints.json")
