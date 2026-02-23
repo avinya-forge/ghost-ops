@@ -83,8 +83,8 @@ func TestAPI_EndToEndFlow(t *testing.T) {
 		wasmBytes: integrationWasmBytes,
 	}
 
-	reg := registry.NewRegistry(store, engine, source, rt, collector)
-	srv := NewServer(reg, collector)
+	reg := registry.NewRegistry(store, engine, source, rt, collector, nil)
+	srv := NewServer(reg, collector, 1024*1024)
 
 	// Create Test Server
 	ts := httptest.NewServer(srv)

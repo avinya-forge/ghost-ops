@@ -18,6 +18,7 @@ type Registry struct {
 	source    protocol.IntentSource
 	runtime   protocol.RuntimeHost
 	collector protocol.MetricsCollector
+	eventBus  protocol.EventBus
 }
 
 // NewRegistry creates a new Registry.
@@ -27,6 +28,7 @@ func NewRegistry(
 	source protocol.IntentSource,
 	runtime protocol.RuntimeHost,
 	collector protocol.MetricsCollector,
+	eventBus protocol.EventBus,
 ) *Registry {
 	return &Registry{
 		store:     store,
@@ -34,6 +36,7 @@ func NewRegistry(
 		source:    source,
 		runtime:   runtime,
 		collector: collector,
+		eventBus:  eventBus,
 	}
 }
 
@@ -104,6 +107,17 @@ func (r *Registry) Reconcile(ctx context.Context) (bool, error) {
 	slog.Info("Service reconciled successfully", "service_id", bp.ServiceID)
 	r.collector.Counter("reconcile_success", 1, map[string]string{"service_id": bp.ServiceID})
 
+	// Publish Event
+	if r.eventBus != nil {
+		r.eventBus.Publish(ctx, protocol.Event{
+			Type:      protocol.EventServiceDeployed,
+			ServiceID: bp.ServiceID,
+			Payload: map[string]interface{}{
+				"version": newVersion,
+			},
+		})
+	}
+
 	// Refresh Metrics
 	r.refreshMetrics(ctx)
 
@@ -141,6 +155,17 @@ func (r *Registry) CheckServices(ctx context.Context) {
 			if err := r.runtime.CheckHealth(ctx, svc.ServiceID); err != nil {
 				slog.Warn("Service unhealthy", "service_id", svc.ServiceID, "error", err)
 				r.collector.Counter("health_check_failure", 1, map[string]string{"service_id": svc.ServiceID})
+
+				// Publish Event
+				if r.eventBus != nil {
+					r.eventBus.Publish(ctx, protocol.Event{
+						Type:      protocol.EventServiceUnhealthy,
+						ServiceID: svc.ServiceID,
+						Payload: map[string]interface{}{
+							"error": err.Error(),
+						},
+					})
+				}
 
 				// Purge from runtime to ensure clean state
 				versionStr := fmt.Sprintf("%d", svc.ActiveVersion)

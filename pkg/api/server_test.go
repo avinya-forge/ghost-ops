@@ -119,8 +119,8 @@ func TestServer_Logs(t *testing.T) {
 	runtime := &MockRuntimeHost{modules: map[string][]byte{
 		"svc-1-logs": []byte("mock logs"),
 	}}
-	reg := registry.NewRegistry(store, &MockEvolutionEngine{}, &MockIntentSource{}, runtime, collector)
-	server := NewServer(reg, collector)
+	reg := registry.NewRegistry(store, &MockEvolutionEngine{}, &MockIntentSource{}, runtime, collector, nil)
+	server := NewServer(reg, collector, 1024*1024)
 
 	req := httptest.NewRequest(http.MethodGet, "/services/svc-1/logs", nil)
 	w := httptest.NewRecorder()
@@ -142,8 +142,8 @@ func TestServer_Services(t *testing.T) {
 		"svc-1": {ServiceID: "svc-1"},
 	}}
 	collector := telemetry.NewInMemoryCollector()
-	reg := registry.NewRegistry(store, &MockEvolutionEngine{}, &MockIntentSource{}, &MockRuntimeHost{}, collector)
-	server := NewServer(reg, collector)
+	reg := registry.NewRegistry(store, &MockEvolutionEngine{}, &MockIntentSource{}, &MockRuntimeHost{}, collector, nil)
+	server := NewServer(reg, collector, 1024*1024)
 
 	req := httptest.NewRequest(http.MethodGet, "/services", nil)
 	w := httptest.NewRecorder()
@@ -159,8 +159,8 @@ func TestServer_Services(t *testing.T) {
 func TestServer_Reconcile(t *testing.T) {
 	store := &MockStateStore{records: make(map[string]protocol.ServiceRecord)}
 	collector := telemetry.NewInMemoryCollector()
-	reg := registry.NewRegistry(store, &MockEvolutionEngine{}, &MockIntentSource{}, &MockRuntimeHost{modules: make(map[string][]byte)}, collector)
-	server := NewServer(reg, collector)
+	reg := registry.NewRegistry(store, &MockEvolutionEngine{}, &MockIntentSource{}, &MockRuntimeHost{modules: make(map[string][]byte)}, collector, nil)
+	server := NewServer(reg, collector, 1024*1024)
 
 	req := httptest.NewRequest(http.MethodPost, "/reconcile", nil)
 	w := httptest.NewRecorder()
@@ -178,8 +178,8 @@ func TestServer_Metrics(t *testing.T) {
 	// Increment a counter
 	collector.Counter("test_counter", 1, nil)
 
-	reg := registry.NewRegistry(store, &MockEvolutionEngine{}, &MockIntentSource{}, &MockRuntimeHost{}, collector)
-	server := NewServer(reg, collector)
+	reg := registry.NewRegistry(store, &MockEvolutionEngine{}, &MockIntentSource{}, &MockRuntimeHost{}, collector, nil)
+	server := NewServer(reg, collector, 1024*1024)
 
 	req := httptest.NewRequest(http.MethodGet, "/metrics", nil)
 	w := httptest.NewRecorder()
@@ -199,8 +199,8 @@ func TestServer_Metrics(t *testing.T) {
 func TestServer_Healthz(t *testing.T) {
 	store := &MockStateStore{records: make(map[string]protocol.ServiceRecord)}
 	collector := telemetry.NewInMemoryCollector()
-	reg := registry.NewRegistry(store, &MockEvolutionEngine{}, &MockIntentSource{}, &MockRuntimeHost{}, collector)
-	server := NewServer(reg, collector)
+	reg := registry.NewRegistry(store, &MockEvolutionEngine{}, &MockIntentSource{}, &MockRuntimeHost{}, collector, nil)
+	server := NewServer(reg, collector, 1024*1024)
 
 	req := httptest.NewRequest(http.MethodGet, "/healthz", nil)
 	w := httptest.NewRecorder()

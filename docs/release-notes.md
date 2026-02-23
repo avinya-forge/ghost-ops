@@ -1,6 +1,10 @@
 # Release Notes
 
 ## Unreleased
+- **Registry**: Implemented an in-memory Event Bus to publish `ServiceDeployed` and `ServiceUnhealthy` events.
+- **API**: Added validation middleware (`MaxBytes`, `ContentType`, `Recover`) to harden API endpoints.
+- **Developer Experience**: Added `ghost-dev` tool for hot-reloading development server (`make dev`).
+- **Developer Experience**: Added pre-commit hooks (`make hooks`) to enforce lint and test pass before commit.
 - **Testing**: Added end-to-end integration tests (`pkg/api/integration_test.go`) covering intent-to-invocation flow.
 - **Runtime**: Implemented async module instantiation to prevent blocking on long-running guest initialization.
 - **Runtime**: Implemented compiled module cache with LRU eviction (limit 50) to optimize reload performance.

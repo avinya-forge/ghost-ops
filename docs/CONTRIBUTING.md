@@ -20,6 +20,7 @@ Ghost Ops is a high-velocity, automated operations platform. We prioritize simpl
    - Write tests first (TDD).
    - Keep changes small and focused.
    - Run `make lint` and `make test` frequently.
+   - **Recommended**: Run `make hooks` to install git pre-commit hooks that automatically run lint and tests before commit.
 4. **Submit a PR**:
    - Ensure checks pass.
    - Describe your changes clearly.
