@@ -2,6 +2,7 @@ package api
 
 import (
 	"encoding/json"
+	"io"
 	"log/slog"
 	"net/http"
 
@@ -27,6 +28,7 @@ func NewServer(r *registry.Registry, c protocol.MetricsCollector) *Server {
 
 	mux.HandleFunc("/services", s.handleListServices)
 	mux.HandleFunc("GET /services/{id}/logs", validateServiceIDMiddleware(s.handleServiceLogs))
+	mux.HandleFunc("POST /services/{id}/invoke", validateServiceIDMiddleware(s.handleServiceInvoke))
 	mux.HandleFunc("/reconcile", s.handleReconcile)
 	mux.HandleFunc("/metrics", s.handleMetrics)
 	mux.HandleFunc("/healthz", s.handleHealthz)
@@ -121,6 +123,34 @@ func (s *Server) handleServiceLogs(w http.ResponseWriter, r *http.Request) {
 
 	w.Header().Set("Content-Type", "text/plain; charset=utf-8")
 	w.Write(logs)
+}
+
+func (s *Server) handleServiceInvoke(w http.ResponseWriter, r *http.Request) {
+	id := r.PathValue("id")
+	if id == "" {
+		http.Error(w, "Missing service ID", http.StatusBadRequest)
+		return
+	}
+
+	payload, err := io.ReadAll(r.Body)
+	if err != nil {
+		s.writeError(w, protocol.NewAppError(protocol.ErrInvalidInput.Code(), "failed to read payload", err))
+		return
+	}
+
+	method := r.URL.Query().Get("method")
+	if method == "" {
+		method = "default"
+	}
+
+	res, err := s.registry.Invoke(r.Context(), id, method, payload)
+	if err != nil {
+		s.writeError(w, err)
+		return
+	}
+
+	w.Header().Set("Content-Type", "application/octet-stream")
+	w.Write(res)
 }
 
 func (s *Server) writeError(w http.ResponseWriter, err error) {

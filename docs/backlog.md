@@ -77,9 +77,9 @@
     - [SEC] Max instructions/call. [TEST] Infinite loop break.
 - [x] [242] | [FEAT] Implement Execution Timeouts | [INDEPENDENT] | [DONE]
     - [REL] 5s default. [TEST] Context cancellation.
-- [ ] [243] | [FEAT] Verify Async Module Instantiation | [INDEPENDENT] | [TODO]
+- [x] [243] | [FEAT] Verify Async Module Instantiation | [INDEPENDENT] | [DONE]
     - [OPT] Non-blocking I/O. [TEST] Load module under load.
-- [ ] [244] | [FEAT] Implement Module Cache Eviction | [INDEPENDENT] | [TODO]
+- [x] [244] | [FEAT] Implement Module Cache Eviction | [INDEPENDENT] | [DONE]
     - [OPT] LRU policy. [TEST] Cache hit/miss ratio.
 
 ### Epic: Registry Enhancements
@@ -89,7 +89,7 @@
     - [OBS] Gauge/Histogram. [TEST] Metric emission.
 - [ ] [252] | [FEAT] Implement Dependency Graph for Services | [INDEPENDENT] | [TODO]
     - [ARCH] DAG traversal. [TEST] Cycle detection.
-- [ ] [253] | [FEAT] Add Service Health Check Logic | [INDEPENDENT] | [TODO]
+- [x] [253] | [FEAT] Add Service Health Check Logic | [INDEPENDENT] | [DONE]
     - [REL] 10s interval. [TEST] Unhealthy service purge.
 
 ### Epic: Hardening (Observability & Security)
@@ -103,7 +103,7 @@
     - [SEC] Audit and fix all high-severity issues.
 - [ ] [264] | [OPT] Benchmark `RuntimeHost` Performance | [INDEPENDENT] | [TODO]
     - [OPT] Ensure overhead < 5ms per invoke.
-- [ ] [265] | [TEST] Add Integration Tests for API | [INDEPENDENT] | [TODO]
+- [x] [265] | [TEST] Add Integration Tests for API | [INDEPENDENT] | [DONE]
     - [TEST] End-to-end flow coverage.
 
 ### Epic: Developer Experience

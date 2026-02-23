@@ -310,3 +310,8 @@ func (r *Registry) ListServices(ctx context.Context) ([]protocol.ServiceRecord, 
 func (r *Registry) GetLogs(ctx context.Context, serviceID string) ([]byte, error) {
 	return r.runtime.GetLogs(ctx, serviceID)
 }
+
+// Invoke calls a method on a service.
+func (r *Registry) Invoke(ctx context.Context, serviceID, method string, payload []byte) ([]byte, error) {
+	return r.runtime.Invoke(ctx, serviceID, method, payload)
+}

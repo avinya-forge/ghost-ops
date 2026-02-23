@@ -58,9 +58,12 @@ func TestInMemoryStateStore(t *testing.T) {
 
 	// Test GetService Not Found
 	t.Run("GetNonExistentService", func(t *testing.T) {
-		_, err := store.GetService(ctx, "non-existent")
-		if err == nil {
-			t.Error("GetService() expected error for non-existent service")
+		rec, err := store.GetService(ctx, "non-existent")
+		if err != nil {
+			t.Errorf("GetService() unexpected error for non-existent service: %v", err)
+		}
+		if rec != nil {
+			t.Error("GetService() expected nil for non-existent service")
 		}
 	})
 

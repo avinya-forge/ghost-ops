@@ -59,9 +59,14 @@ func (m *MockIntentSource) GetNextBlueprint(ctx context.Context) (*protocol.Blue
 }
 
 // MockEvolutionEngine
-type MockEvolutionEngine struct{}
+type MockEvolutionEngine struct{
+	wasmBytes []byte
+}
 
 func (m *MockEvolutionEngine) Evolve(ctx context.Context, bp protocol.Blueprint) ([]byte, error) {
+	if len(m.wasmBytes) > 0 {
+		return m.wasmBytes, nil
+	}
 	return []byte("mock-wasm"), nil
 }
 

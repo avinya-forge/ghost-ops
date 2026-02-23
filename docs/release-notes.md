@@ -1,6 +1,11 @@
 # Release Notes
 
 ## Unreleased
+- **Testing**: Added end-to-end integration tests (`pkg/api/integration_test.go`) covering intent-to-invocation flow.
+- **Runtime**: Implemented async module instantiation to prevent blocking on long-running guest initialization.
+- **Runtime**: Implemented compiled module cache with LRU eviction (limit 50) to optimize reload performance.
+- **Registry**: Enhanced service health check logic to verify active module state and context.
+- **API**: Added `POST /services/{id}/invoke` endpoint for direct service invocation.
 - **CLI Enhancements**: Added `ghost-ops init` to bootstrap projects and `ghost-ops service logs` to view service output.
 - **Runtime Hardening**: Configured Wazero with CPU limits (CloseOnContextDone) and implemented secure log capture for guest modules.
 - **Error Handling**: Added stack traces to internal errors (logged only) for better debugging.

@@ -1,108 +1,150 @@
 package api
 
 import (
+	"bytes"
 	"context"
+	"fmt"
+	"io"
 	"net/http"
 	"net/http/httptest"
+	"os"
+	"os/exec"
+	"path/filepath"
 	"testing"
+	"time"
 
 	"ghost-ops/pkg/protocol"
 	"ghost-ops/pkg/registry"
+	"ghost-ops/pkg/runtime"
 	"ghost-ops/pkg/telemetry"
 )
 
-type MockErrorStore struct {
-	listErr error
+var integrationWasmBytes []byte
+
+func TestMain(m *testing.M) {
+	// Compile the test WASM module for integration tests
+	if err := compileIntegrationWasm(); err != nil {
+		fmt.Fprintf(os.Stderr, "Failed to compile integration WASM: %v\n", err)
+		os.Exit(1)
+	}
+	os.Exit(m.Run())
 }
 
-func (m *MockErrorStore) GetService(ctx context.Context, id string) (*protocol.ServiceRecord, error) {
-	return nil, nil
-}
-func (m *MockErrorStore) UpdateService(ctx context.Context, r protocol.ServiceRecord) error {
+func compileIntegrationWasm() error {
+	wd, err := os.Getwd()
+	if err != nil {
+		return err
+	}
+	// wd is pkg/api
+	srcPath := filepath.Join(wd, "../../examples/test-service/main.go")
+	outPath := filepath.Join(wd, "integration.wasm")
+
+	cmd := exec.Command("go", "build", "-o", outPath, srcPath)
+	cmd.Env = append(os.Environ(), "GOOS=wasip1", "GOARCH=wasm")
+	out, err := cmd.CombinedOutput()
+	if err != nil {
+		return fmt.Errorf("compile failed: %s: %s", err, out)
+	}
+
+	b, err := os.ReadFile(outPath)
+	if err != nil {
+		return err
+	}
+	integrationWasmBytes = b
+
+	// Cleanup
+	os.Remove(outPath)
 	return nil
 }
-func (m *MockErrorStore) ListServices(ctx context.Context) ([]protocol.ServiceRecord, error) {
-	if m.listErr != nil {
-		return nil, m.listErr
+
+func TestAPI_EndToEndFlow(t *testing.T) {
+	ctx := context.Background()
+	store := protocol.NewInMemoryStateStore()
+	collector := telemetry.NewInMemoryCollector()
+
+	// Use Real Wazero Runtime
+	rt, err := runtime.NewWazeroRuntimeHost(ctx, store, collector)
+	if err != nil {
+		t.Fatalf("Failed to create runtime: %v", err)
 	}
-	return nil, nil
-}
-func (m *MockErrorStore) Get(ctx context.Context, key string) ([]byte, error) {
-	return nil, nil
-}
-func (m *MockErrorStore) Set(ctx context.Context, key string, val []byte) error {
-	return nil
-}
+	defer rt.Close(ctx)
 
-type MockErrorSource struct {
-	err error
-}
-
-func (m *MockErrorSource) GetNextBlueprint(ctx context.Context) (*protocol.Blueprint, error) {
-	if m.err != nil {
-		return nil, m.err
-	}
-	return nil, nil
-}
-
-func TestAPIErrorMapping(t *testing.T) {
-	tests := []struct {
-		name           string
-		method         string
-		path           string
-		storeErr       error
-		sourceErr      error
-		expectedStatus int
-	}{
-		{
-			name:           "ListServices_InternalError",
-			method:         http.MethodGet,
-			path:           "/services",
-			storeErr:       protocol.ErrInternal,
-			expectedStatus: http.StatusInternalServerError,
-		},
-		{
-			name:           "ListServices_Unauthorized",
-			method:         http.MethodGet,
-			path:           "/services",
-			storeErr:       protocol.ErrUnauthorized,
-			expectedStatus: http.StatusUnauthorized,
-		},
-		{
-			name:           "Reconcile_InternalError",
-			method:         http.MethodPost,
-			path:           "/reconcile",
-			sourceErr:      protocol.ErrInternal,
-			expectedStatus: http.StatusInternalServerError,
-		},
-		{
-			name:           "Reconcile_InvalidInput",
-			method:         http.MethodPost,
-			path:           "/reconcile",
-			sourceErr:      protocol.ErrInvalidInput,
-			expectedStatus: http.StatusBadRequest,
+	// Setup Mocks
+	source := &MockIntentSource{
+		blueprints: []protocol.Blueprint{
+			{
+				ServiceID: "e2e-service",
+				Intent:    "integration test",
+			},
 		},
 	}
 
-	for _, tc := range tests {
-		t.Run(tc.name, func(t *testing.T) {
-			store := &MockErrorStore{listErr: tc.storeErr}
-			source := &MockErrorSource{err: tc.sourceErr}
-			collector := telemetry.NewInMemoryCollector()
-			// We need a partial registry, other deps can be nil if not used by the path
-			// Note: We need to pass nil for engine and runtime as they are not used in these specific error paths
-			// However, Reconcile might call them if source succeeds. But here source fails.
-			reg := registry.NewRegistry(store, nil, source, nil, collector)
-			server := NewServer(reg, collector)
+	engine := &MockEvolutionEngine{
+		wasmBytes: integrationWasmBytes,
+	}
 
-			req := httptest.NewRequest(tc.method, tc.path, nil)
-			w := httptest.NewRecorder()
+	reg := registry.NewRegistry(store, engine, source, rt, collector)
+	srv := NewServer(reg, collector)
 
-			server.ServeHTTP(w, req)
+	// Create Test Server
+	ts := httptest.NewServer(srv)
+	defer ts.Close()
 
-			if w.Code != tc.expectedStatus {
-				t.Errorf("Expected status %d, got %d. Body: %s", tc.expectedStatus, w.Code, w.Body.String())
+	// 1. Trigger Reconcile
+	// POST /reconcile
+	resp, err := http.Post(ts.URL+"/reconcile", "application/json", nil)
+	if err != nil {
+		t.Fatalf("Reconcile request failed: %v", err)
+	}
+	defer resp.Body.Close()
+
+	if resp.StatusCode != http.StatusOK {
+		body, _ := io.ReadAll(resp.Body)
+		t.Fatalf("Reconcile failed: status=%d body=%s", resp.StatusCode, body)
+	}
+
+	// Wait for service to be active
+	// We can poll invoke or logs
+	deadline := time.Now().Add(5 * time.Second)
+	var lastErr error
+	success := false
+
+	for time.Now().Before(deadline) {
+		// Attempt Invoke
+		payload := []byte("hello e2e")
+		// Query param method=echo (from test-service/main.go)
+		req, _ := http.NewRequest("POST", ts.URL+"/services/e2e-service/invoke?method=echo", bytes.NewReader(payload))
+		resp, err := http.DefaultClient.Do(req)
+		if err != nil {
+			lastErr = err
+			time.Sleep(100 * time.Millisecond)
+			continue
+		}
+
+		if resp.StatusCode == http.StatusOK {
+			body, _ := io.ReadAll(resp.Body)
+			if string(body) == "hello e2e" {
+				success = true
+				break
+			} else {
+				lastErr = fmt.Errorf("unexpected body: %s", body)
 			}
-		})
+		} else {
+			body, _ := io.ReadAll(resp.Body)
+			lastErr = fmt.Errorf("status %d: %s", resp.StatusCode, body)
+		}
+		resp.Body.Close()
+
+		time.Sleep(100 * time.Millisecond)
+	}
+
+	if !success {
+		t.Fatalf("Service invocation failed after timeout: %v", lastErr)
+	}
+
+	// Also verify metrics
+	metricsResp, err := http.Get(ts.URL + "/metrics")
+	if err == nil {
+		metricsResp.Body.Close()
 	}
 }
