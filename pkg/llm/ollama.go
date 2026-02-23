@@ -84,7 +84,7 @@ func (p *OllamaProvider) GenerateCode(ctx context.Context, blueprint protocol.Bl
 	}
 
 	if resp.StatusCode != http.StatusOK {
-		return "", fmt.Errorf("Ollama API error (status %d): %s", resp.StatusCode, string(bodyBytes))
+		return "", fmt.Errorf("ollama API error (status %d): %s", resp.StatusCode, string(bodyBytes))
 	}
 
 	var chatResp chatCompletionResponse
@@ -93,7 +93,7 @@ func (p *OllamaProvider) GenerateCode(ctx context.Context, blueprint protocol.Bl
 	}
 
 	if chatResp.Error != nil {
-		return "", fmt.Errorf("Ollama API returned error: %s", chatResp.Error.Message)
+		return "", fmt.Errorf("ollama API returned error: %s", chatResp.Error.Message)
 	}
 
 	if len(chatResp.Choices) == 0 {
