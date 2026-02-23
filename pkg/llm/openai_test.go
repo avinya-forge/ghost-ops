@@ -67,8 +67,7 @@ func main() {
 	}))
 	defer ts.Close()
 
-	provider := NewOpenAIProvider("test-key", "gpt-4o")
-	provider.BaseURL = ts.URL // Override BaseURL for testing
+	provider := NewOpenAIProvider("test-key", "gpt-4o", ts.URL, "test-system-prompt")
 
 	blueprint := protocol.Blueprint{
 		Intent: "hello",
@@ -122,8 +121,7 @@ func TestOpenAIProvider_GenerateCode_WithConstraints(t *testing.T) {
 	}))
 	defer ts.Close()
 
-	provider := NewOpenAIProvider("test-key", "gpt-4o")
-	provider.BaseURL = ts.URL
+	provider := NewOpenAIProvider("test-key", "gpt-4o", ts.URL, "test-system-prompt")
 
 	blueprint := protocol.Blueprint{
 		Intent: "hello",
@@ -150,8 +148,7 @@ func TestOpenAIProvider_GenerateCode_APIError(t *testing.T) {
 	}))
 	defer ts.Close()
 
-	provider := NewOpenAIProvider("test-key", "gpt-4o")
-	provider.BaseURL = ts.URL
+	provider := NewOpenAIProvider("test-key", "gpt-4o", ts.URL, "test-system-prompt")
 
 	blueprint := protocol.Blueprint{Intent: "hello"}
 	_, err := provider.GenerateCode(context.Background(), blueprint)
@@ -164,7 +161,7 @@ func TestOpenAIProvider_GenerateCode_APIError(t *testing.T) {
 }
 
 func TestOpenAIProvider_GenerateCode_MissingKey(t *testing.T) {
-	provider := NewOpenAIProvider("", "gpt-4o")
+	provider := NewOpenAIProvider("", "gpt-4o", "", "test-system-prompt")
 	blueprint := protocol.Blueprint{Intent: "hello"}
 	_, err := provider.GenerateCode(context.Background(), blueprint)
 	if err == nil {

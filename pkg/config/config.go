@@ -46,11 +46,21 @@ type EngineConfig struct {
 	Type string `mapstructure:"type" json:"type" yaml:"type"`
 }
 
+// DefaultSystemPrompt is the default system prompt used for code generation.
+const DefaultSystemPrompt = `You are an expert Go programmer specializing in WebAssembly (WASM).
+Your task is to write a valid, compilable Go program that compiles to WASM (GOOS=wasip1 GOARCH=wasm).
+The program should be a standalone 'main' package.
+Do not include any markdown formatting (e.g. triple backticks).
+Output ONLY the raw Go source code.
+Ensure the code imports necessary packages and handles errors gracefully.`
+
 // LLMConfig configures the LLM provider.
 type LLMConfig struct {
-	Provider string `mapstructure:"provider" json:"provider" yaml:"provider"`
-	Model    string `mapstructure:"model" json:"model" yaml:"model"`
-	APIKey   string `mapstructure:"api_key" json:"api_key" yaml:"api_key"`
+	Provider     string `mapstructure:"provider" json:"provider" yaml:"provider"`
+	Model        string `mapstructure:"model" json:"model" yaml:"model"`
+	APIKey       string `mapstructure:"api_key" json:"api_key" yaml:"api_key"`
+	BaseURL      string `mapstructure:"base_url" json:"base_url" yaml:"base_url"`
+	SystemPrompt string `mapstructure:"system_prompt" json:"system_prompt" yaml:"system_prompt"`
 }
 
 // Load initializes the configuration system and returns the loaded Config.
@@ -65,6 +75,7 @@ func Load() (*Config, error) {
 	viper.SetDefault("paths.store", "store.json")
 	viper.SetDefault("engine.type", "mock")
 	viper.SetDefault("llm.provider", "mock")
+	viper.SetDefault("llm.system_prompt", DefaultSystemPrompt)
 
 	// 2. Configure Environment Variables
 	viper.SetEnvPrefix("GHOST")
@@ -107,6 +118,8 @@ func (c *Config) Sanitize() {
 	c.Logging.Level = strings.ToLower(strings.TrimSpace(c.Logging.Level))
 	c.Engine.Type = strings.ToLower(strings.TrimSpace(c.Engine.Type))
 	c.LLM.Provider = strings.ToLower(strings.TrimSpace(c.LLM.Provider))
+	c.LLM.BaseURL = strings.TrimSpace(c.LLM.BaseURL)
+	c.LLM.SystemPrompt = strings.TrimSpace(c.LLM.SystemPrompt)
 }
 
 // Validate checks if the configuration is valid.
@@ -129,9 +142,9 @@ func (c *Config) Validate() error {
 		return fmt.Errorf("engine.type must be one of: mock, compiler, ai")
 	}
 	if strings.ToLower(c.Engine.Type) == "ai" {
-		validProviders := map[string]bool{"mock": true, "openai": true}
+		validProviders := map[string]bool{"mock": true, "openai": true, "ollama": true}
 		if !validProviders[strings.ToLower(c.LLM.Provider)] {
-			return fmt.Errorf("llm.provider must be one of: mock, openai")
+			return fmt.Errorf("llm.provider must be one of: mock, openai, ollama")
 		}
 		// Assuming we want to validate API Key presence only if not mock, but let's stick to simple logic for now
 	}

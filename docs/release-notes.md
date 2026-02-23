@@ -30,6 +30,9 @@
 - Implemented 5s execution timeout for WASM invocations.
 - Added unit tests for `pkg/telemetry`.
 - Implemented `ghost-ops version` command.
+- **AI**: Added support for Ollama LLM provider (`llm.provider: ollama`).
+- **AI**: Added support for custom system prompts in configuration (`llm.system_prompt`).
+- **Optimization**: Benchmarked RuntimeHost performance (~0.08ms overhead), meeting <5ms target.
 
 ## v0.2.1 (Released)
 - Restructured `examples/` directory to group basic examples (`examples/basic/hello-world`).

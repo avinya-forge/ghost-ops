@@ -98,9 +98,11 @@ engine:
   type: "mock" # Options: mock, compiler, ai
 
 llm:
-  provider: "mock" # Options: mock, openai
+  provider: "mock" # Options: mock, openai, ollama
   api_key: ""
   model: "gpt-4"
+  base_url: ""
+  system_prompt: ""
 
 logging:
   level: "info" # Options: debug, info, warn, error
@@ -213,8 +215,15 @@ func runServer(version string) {
 			if model == "" {
 				model = os.Getenv("OPENAI_MODEL")
 			}
-			provider = llm.NewOpenAIProvider(apiKey, model)
+			provider = llm.NewOpenAIProvider(apiKey, model, cfg.LLM.BaseURL, cfg.LLM.SystemPrompt)
 			slog.Info("Using OpenAI LLM Provider", "model", model)
+		case "ollama":
+			model := cfg.LLM.Model
+			if model == "" {
+				model = os.Getenv("OLLAMA_MODEL")
+			}
+			provider = llm.NewOllamaProvider(cfg.LLM.BaseURL, model, cfg.LLM.SystemPrompt)
+			slog.Info("Using Ollama LLM Provider", "model", model)
 		default:
 			slog.Error("Invalid LLM provider", "provider", cfg.LLM.Provider)
 			os.Exit(1)

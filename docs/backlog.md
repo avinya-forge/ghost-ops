@@ -101,7 +101,7 @@
     - [TEST] Achieve >95% coverage for guest SDK.
 - [x] [263] | [SEC] Run `gosec` Security Scan | [INDEPENDENT] | [DONE]
     - [SEC] Audit and fix all high-severity issues.
-- [ ] [264] | [OPT] Benchmark `RuntimeHost` Performance | [INDEPENDENT] | [TODO]
+- [x] [264] | [OPT] Benchmark `RuntimeHost` Performance | [INDEPENDENT] | [DONE]
     - [OPT] Ensure overhead < 5ms per invoke.
 - [x] [265] | [TEST] Add Integration Tests for API | [INDEPENDENT] | [DONE]
     - [TEST] End-to-end flow coverage.
@@ -121,13 +121,13 @@
     - [DOC] Reflect latest capabilities.
 
 ### Epic: AI Evolution Enhancements
-- [ ] [280] | [FEAT] Support Custom System Prompts | [INDEPENDENT] | [TODO]
+- [x] [280] | [FEAT] Support Custom System Prompts | [INDEPENDENT] | [DONE]
     - [FEAT] Allow overriding default LLM prompt.
 - [ ] [281] | [FEAT] Implement Prompt Caching | [INDEPENDENT] | [TODO]
     - [OPT] Cache prompts to save tokens/cost.
 - [ ] [282] | [FEAT] Add Token Usage Metrics | [INDEPENDENT] | [TODO]
     - [OBS] Track input/output tokens per evolution.
-- [ ] [283] | [FEAT] Support Ollama Provider | [INDEPENDENT] | [TODO]
+- [x] [283] | [FEAT] Support Ollama Provider | [INDEPENDENT] | [DONE]
     - [FEAT] Add local LLM support via Ollama.
 - [ ] [284] | [TEST] Add Evals for Code Generation Quality | [INDEPENDENT] | [TODO]
     - [TEST] Automated evaluation of generated code.

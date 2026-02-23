@@ -19,22 +19,27 @@ const (
 
 // OpenAIProvider implements LLMProvider using OpenAI API.
 type OpenAIProvider struct {
-	APIKey  string
-	Model   string
-	BaseURL string
-	Client  *http.Client
+	APIKey       string
+	Model        string
+	BaseURL      string
+	SystemPrompt string
+	Client       *http.Client
 }
 
 // NewOpenAIProvider creates a new OpenAIProvider.
-func NewOpenAIProvider(apiKey string, model string) *OpenAIProvider {
+func NewOpenAIProvider(apiKey string, model string, baseURL string, systemPrompt string) *OpenAIProvider {
 	if model == "" {
 		model = defaultOpenAIModel
 	}
+	if baseURL == "" {
+		baseURL = defaultOpenAIBaseURL
+	}
 	return &OpenAIProvider{
-		APIKey:  apiKey,
-		Model:   model,
-		BaseURL: defaultOpenAIBaseURL,
-		Client:  &http.Client{},
+		APIKey:       apiKey,
+		Model:        model,
+		BaseURL:      baseURL,
+		SystemPrompt: systemPrompt,
+		Client:       &http.Client{},
 	}
 }
 
@@ -71,13 +76,6 @@ func (p *OpenAIProvider) GenerateCode(ctx context.Context, blueprint protocol.Bl
 		return "", fmt.Errorf("OpenAI API key is missing")
 	}
 
-	systemPrompt := `You are an expert Go programmer specializing in WebAssembly (WASM).
-Your task is to write a valid, compilable Go program that compiles to WASM (GOOS=wasip1 GOARCH=wasm).
-The program should be a standalone 'main' package.
-Do not include any markdown formatting (e.g. triple backticks).
-Output ONLY the raw Go source code.
-Ensure the code imports necessary packages and handles errors gracefully.`
-
 	userContent := blueprint.Intent
 	if len(blueprint.Constraints) > 0 {
 		constraintsJSON, err := json.Marshal(blueprint.Constraints)
@@ -89,7 +87,7 @@ Ensure the code imports necessary packages and handles errors gracefully.`
 	reqBody := chatCompletionRequest{
 		Model: p.Model,
 		Messages: []message{
-			{Role: "system", Content: systemPrompt},
+			{Role: "system", Content: p.SystemPrompt},
 			{Role: "user", Content: userContent},
 		},
 		Temperature: 0.2, // Low temperature for deterministic code generation
