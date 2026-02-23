@@ -28,7 +28,7 @@ func (s *InMemoryStateStore) GetService(ctx context.Context, serviceID string) (
 
 	record, ok := s.services[serviceID]
 	if !ok {
-		return nil, errors.New("service not found")
+		return nil, nil // Return nil if not found
 	}
 	return &record, nil
 }

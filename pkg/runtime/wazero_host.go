@@ -3,6 +3,8 @@ package runtime
 import (
 	"bytes"
 	"context"
+	"crypto/sha256"
+	"encoding/hex"
 	"fmt"
 	"log/slog"
 	"math"
@@ -65,10 +67,17 @@ type WazeroRuntimeHost struct {
 	activeVersions map[string]string            // Key: serviceID, Value: uniqueName
 	shadowVersions map[string]string            // Key: serviceID, Value: uniqueName
 	logBuffers     map[string]*ThreadSafeBuffer // Key: uniqueName
-	mu             sync.RWMutex
-	store          protocol.StateStore
-	collector      protocol.MetricsCollector
+
+	// Compiled Module Cache
+	compiledCache map[string]wazero.CompiledModule // Key: hash of WASM bytes
+	cacheOrder    []string                         // LRU order (oldest first)
+
+	mu        sync.RWMutex
+	store     protocol.StateStore
+	collector protocol.MetricsCollector
 }
+
+const maxCacheSize = 50
 
 // NewWazeroRuntimeHost creates a new WazeroRuntimeHost.
 func NewWazeroRuntimeHost(ctx context.Context, store protocol.StateStore, collector protocol.MetricsCollector) (*WazeroRuntimeHost, error) {
@@ -93,6 +102,8 @@ func NewWazeroRuntimeHost(ctx context.Context, store protocol.StateStore, collec
 		activeVersions: make(map[string]string),
 		shadowVersions: make(map[string]string),
 		logBuffers:     make(map[string]*ThreadSafeBuffer),
+		compiledCache:  make(map[string]wazero.CompiledModule),
+		cacheOrder:     make([]string, 0, maxCacheSize),
 		store:          store,
 		collector:      collector,
 	}
@@ -275,6 +286,10 @@ func (h *WazeroRuntimeHost) submitResult(ctx context.Context, m api.Module, ptr,
 func (h *WazeroRuntimeHost) LoadModule(ctx context.Context, serviceID, version string, wasmBytes []byte) error {
 	uniqueName := fmt.Sprintf("%s-%s", serviceID, version)
 
+	// Compute hash for cache key
+	hash := sha256.Sum256(wasmBytes)
+	hashKey := hex.EncodeToString(hash[:])
+
 	h.mu.Lock()
 	if _, exists := h.modules[uniqueName]; exists {
 		h.mu.Unlock()
@@ -292,25 +307,66 @@ func (h *WazeroRuntimeHost) LoadModule(ctx context.Context, serviceID, version s
 	logBuf := &ThreadSafeBuffer{}
 	h.logBuffers[uniqueName] = logBuf
 
+	// Check Cache
+	compiled, cached := h.compiledCache[hashKey]
+	if cached {
+		// Move to end of LRU list (mark as recently used)
+		for i, k := range h.cacheOrder {
+			if k == hashKey {
+				// Remove from current position
+				h.cacheOrder = append(h.cacheOrder[:i], h.cacheOrder[i+1:]...)
+				break
+			}
+		}
+		h.cacheOrder = append(h.cacheOrder, hashKey)
+		h.collector.Counter("module_cache_hit", 1, map[string]string{"service_id": serviceID})
+	}
+
 	h.mu.Unlock()
 
-	compiled, err := h.runtime.CompileModule(ctx, wasmBytes)
-	if err != nil {
+	if !cached {
+		var err error
+		compiled, err = h.runtime.CompileModule(ctx, wasmBytes)
+		if err != nil {
+			h.mu.Lock()
+			delete(h.requests, uniqueName)
+			delete(h.logBuffers, uniqueName)
+			h.mu.Unlock()
+			return protocol.NewAppError(protocol.ErrInternal.Code(), "failed to compile module", err)
+		}
+
 		h.mu.Lock()
-		delete(h.requests, uniqueName)
-		delete(h.logBuffers, uniqueName)
+		// Add to cache
+		if _, exists := h.compiledCache[hashKey]; !exists {
+			if len(h.compiledCache) >= maxCacheSize {
+				// Evict oldest
+				oldestKey := h.cacheOrder[0]
+				h.cacheOrder = h.cacheOrder[1:]
+				if _, ok := h.compiledCache[oldestKey]; ok {
+					delete(h.compiledCache, oldestKey)
+					// Do NOT call Close() on the evicted module because active instances might still
+					// be using it (or rather, we don't track references to know if it's safe).
+					// Wazero Runtime.Close() will eventually clean up all compiled modules.
+				}
+			}
+			h.compiledCache[hashKey] = compiled
+			h.cacheOrder = append(h.cacheOrder, hashKey)
+		}
+		h.collector.Counter("module_cache_miss", 1, map[string]string{"service_id": serviceID})
 		h.mu.Unlock()
-		return protocol.NewAppError(protocol.ErrInternal.Code(), "failed to compile module", err)
 	}
 
 	// Instantiate in goroutine
+	// Use a background context to ensure instantiation survives the request context.
+	// The runtime.Close() will handle cleanup.
+	asyncCtx := context.Background()
 	go func() {
 		config := wazero.NewModuleConfig().
 			WithName(uniqueName).
 			WithStdout(logBuf).
 			WithStderr(logBuf)
 
-		_, err := h.runtime.InstantiateModule(ctx, compiled, config)
+		_, err := h.runtime.InstantiateModule(asyncCtx, compiled, config)
 		if err != nil {
 			slog.Error("Failed to instantiate module", "unique_name", uniqueName, "error", err)
 			h.collector.Counter("module_load_failure", 1, map[string]string{"service_id": serviceID, "version": version})
@@ -469,6 +525,11 @@ func (h *WazeroRuntimeHost) Invoke(ctx context.Context, serviceID, method string
 
 // CheckHealth checks if a service is healthy (loaded and responsive).
 func (h *WazeroRuntimeHost) CheckHealth(ctx context.Context, serviceID string) error {
+	// Check context first
+	if err := ctx.Err(); err != nil {
+		return protocol.NewAppError(protocol.ErrInternal.Code(), "health check context cancelled", err)
+	}
+
 	h.mu.RLock()
 	defer h.mu.RUnlock()
 
@@ -481,8 +542,12 @@ func (h *WazeroRuntimeHost) CheckHealth(ctx context.Context, serviceID string) e
 		return protocol.NewAppError(protocol.ErrInternal.Code(), fmt.Sprintf("module %s not loaded in runtime", uniqueName), nil)
 	}
 
-	// Future: check if request channel is responsive or blocked?
-	// For now, existence is the basic health check.
+	// Ensure request channel exists and is not closed (though we can't easily check closed state without reading)
+	// We check if it exists in the map.
+	if _, exists := h.requests[uniqueName]; !exists {
+		return protocol.NewAppError(protocol.ErrInternal.Code(), fmt.Sprintf("request channel for %s missing", uniqueName), nil)
+	}
+
 	return nil
 }
 
