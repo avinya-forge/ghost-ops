@@ -342,12 +342,10 @@ func (h *WazeroRuntimeHost) LoadModule(ctx context.Context, serviceID, version s
 				// Evict oldest
 				oldestKey := h.cacheOrder[0]
 				h.cacheOrder = h.cacheOrder[1:]
-				if _, ok := h.compiledCache[oldestKey]; ok {
-					delete(h.compiledCache, oldestKey)
-					// Do NOT call Close() on the evicted module because active instances might still
-					// be using it (or rather, we don't track references to know if it's safe).
-					// Wazero Runtime.Close() will eventually clean up all compiled modules.
-				}
+				// Do NOT call Close() on the evicted module because active instances might still
+				// be using it (or rather, we don't track references to know if it's safe).
+				// Wazero Runtime.Close() will eventually clean up all compiled modules.
+				delete(h.compiledCache, oldestKey)
 			}
 			h.compiledCache[hashKey] = compiled
 			h.cacheOrder = append(h.cacheOrder, hashKey)
