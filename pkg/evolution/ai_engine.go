@@ -30,6 +30,7 @@ func (e *AIEvolutionEngine) Evolve(ctx context.Context, blueprint protocol.Bluep
 	}
 
 	// Record token usage metrics
+	// This helps in tracking the cost and volume of LLM usage per service.
 	if usage != nil && e.collector != nil {
 		e.collector.Counter("llm_tokens_total", int64(usage.InputTokens), map[string]string{"type": "input", "service_id": blueprint.ServiceID})
 		e.collector.Counter("llm_tokens_total", int64(usage.OutputTokens), map[string]string{"type": "output", "service_id": blueprint.ServiceID})

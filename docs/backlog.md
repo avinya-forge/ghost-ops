@@ -87,7 +87,7 @@
     - [OPT] Async channel. [TEST] Subscriber notification.
 - [x] [251] | [FEAT] Add Metrics for Service Lifecycle | [INDEPENDENT] | [DONE]
     - [OBS] Gauge/Histogram. [TEST] Metric emission.
-- [ ] [252] | [FEAT] Implement Dependency Graph for Services | [INDEPENDENT] | [TODO]
+- [x] [252] | [FEAT] Implement Dependency Graph for Services | [INDEPENDENT] | [DONE]
     - [ARCH] DAG traversal. [TEST] Cycle detection.
 - [x] [253] | [FEAT] Add Service Health Check Logic | [INDEPENDENT] | [DONE]
     - [REL] 10s interval. [TEST] Unhealthy service purge.
@@ -109,7 +109,7 @@
 ### Epic: Developer Experience
 - [x] [270] | [FEAT] Add Makefile `dev` target (hot reload) | [INDEPENDENT] | [DONE]
     - [DX] Auto-restart server on source change.
-- [ ] [271] | [DOCS] Generate API Swagger/OpenAPI Spec | [INDEPENDENT] | [TODO]
+- [x] [271] | [DOCS] Generate API Swagger/OpenAPI Spec | [INDEPENDENT] | [DONE]
     - [DOC] Auto-generate spec from code/comments.
 - [x] [272] | [FEAT] Add Pre-commit Hooks (Git) | [INDEPENDENT] | [DONE]
     - [DX] Enforce lint/test before commit.
@@ -123,9 +123,9 @@
 ### Epic: AI Evolution Enhancements
 - [x] [280] | [FEAT] Support Custom System Prompts | [INDEPENDENT] | [DONE]
     - [FEAT] Allow overriding default LLM prompt.
-- [ ] [281] | [FEAT] Implement Prompt Caching | [INDEPENDENT] | [TODO]
+- [x] [281] | [FEAT] Implement Prompt Caching | [INDEPENDENT] | [DONE]
     - [OPT] Cache prompts to save tokens/cost.
-- [ ] [282] | [FEAT] Add Token Usage Metrics | [INDEPENDENT] | [TODO]
+- [x] [282] | [FEAT] Add Token Usage Metrics | [INDEPENDENT] | [DONE]
     - [OBS] Track input/output tokens per evolution.
 - [x] [283] | [FEAT] Support Ollama Provider | [INDEPENDENT] | [DONE]
     - [FEAT] Add local LLM support via Ollama.

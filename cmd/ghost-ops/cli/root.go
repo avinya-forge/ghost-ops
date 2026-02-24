@@ -231,6 +231,13 @@ func runServer(version string) {
 			slog.Error("Invalid LLM provider", "provider", cfg.LLM.Provider)
 			os.Exit(1)
 		}
+
+		if cfg.LLM.CacheEnabled {
+			cache := llm.NewInMemoryCache()
+			provider = llm.NewCachedLLMProvider(provider, cache)
+			slog.Info("LLM Prompt Caching Enabled")
+		}
+
 		engine = evolution.NewAIEvolutionEngine(provider, collector)
 		slog.Info("Using AI Evolution Engine")
 	default:
