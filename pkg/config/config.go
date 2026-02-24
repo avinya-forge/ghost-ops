@@ -61,6 +61,7 @@ type LLMConfig struct {
 	APIKey       string `mapstructure:"api_key" json:"api_key" yaml:"api_key"`
 	BaseURL      string `mapstructure:"base_url" json:"base_url" yaml:"base_url"`
 	SystemPrompt string `mapstructure:"system_prompt" json:"system_prompt" yaml:"system_prompt"`
+	CacheEnabled bool   `mapstructure:"cache_enabled" json:"cache_enabled" yaml:"cache_enabled"`
 }
 
 // Load initializes the configuration system and returns the loaded Config.
@@ -76,6 +77,7 @@ func Load() (*Config, error) {
 	viper.SetDefault("engine.type", "mock")
 	viper.SetDefault("llm.provider", "mock")
 	viper.SetDefault("llm.system_prompt", DefaultSystemPrompt)
+	viper.SetDefault("llm.cache_enabled", false)
 
 	// 2. Configure Environment Variables
 	viper.SetEnvPrefix("GHOST")

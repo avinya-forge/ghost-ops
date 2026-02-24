@@ -9,6 +9,7 @@ import (
 
 // ServiceGraph represents a dependency graph of services.
 // Edges are directed from dependent to dependency (Service -> Dependency).
+// It supports cycle detection and topological sorting.
 type ServiceGraph struct {
 	nodes map[string][]string
 }

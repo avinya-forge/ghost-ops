@@ -33,6 +33,10 @@
 - **AI**: Added support for Ollama LLM provider (`llm.provider: ollama`).
 - **AI**: Added support for custom system prompts in configuration (`llm.system_prompt`).
 - **Optimization**: Benchmarked RuntimeHost performance (~0.08ms overhead), meeting <5ms target.
+- **AI**: Implemented Prompt Caching for LLM providers (`llm.cache_enabled`) to reduce costs and latency for identical intents.
+- **API**: Generated OpenAPI 3.0 Specification (`docs/openapi.yaml`) for API documentation.
+- **Observability**: Added Token Usage Metrics (`llm_tokens_total`) to track input/output costs.
+- **Registry**: Implemented Dependency Graph validation (`pkg/registry/graph.go`) to prevent cycles in service dependencies.
 
 ## v0.2.1 (Released)
 - Restructured `examples/` directory to group basic examples (`examples/basic/hello-world`).
