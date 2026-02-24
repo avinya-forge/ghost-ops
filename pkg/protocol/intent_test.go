@@ -53,6 +53,24 @@ func TestBlueprint_Validate(t *testing.T) {
 			},
 			wantErr: true,
 		},
+		{
+			name: "Invalid Dependency Format",
+			bp: Blueprint{
+				ServiceID:    "service-1",
+				Intent:       "Do something",
+				Dependencies: []string{"invalid_dependency"},
+			},
+			wantErr: true,
+		},
+		{
+			name: "Self Dependency",
+			bp: Blueprint{
+				ServiceID:    "service-1",
+				Intent:       "Do something",
+				Dependencies: []string{"service-1"},
+			},
+			wantErr: true,
+		},
 	}
 
 	for _, tt := range tests {

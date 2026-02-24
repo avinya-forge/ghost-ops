@@ -11,9 +11,10 @@ var serviceIDRegex = regexp.MustCompile(`^[a-zA-Z0-9-]+$`)
 
 // Blueprint represents the input for synthesis.
 type Blueprint struct {
-	ServiceID   string                 `json:"service_id"`
-	Intent      string                 `json:"intent"`
-	Constraints map[string]interface{} `json:"constraints"`
+	ServiceID    string                 `json:"service_id"`
+	Intent       string                 `json:"intent"`
+	Constraints  map[string]interface{} `json:"constraints"`
+	Dependencies []string               `json:"dependencies,omitempty"`
 }
 
 // Validate checks if the blueprint is valid.
@@ -29,6 +30,16 @@ func (b *Blueprint) Validate() error {
 	}
 	if len(b.Intent) > 10000 { // Arbitrary limit for now
 		return fmt.Errorf("intent is too long (max 10000 chars)")
+	}
+
+	// Validate Dependencies
+	for _, dep := range b.Dependencies {
+		if !serviceIDRegex.MatchString(dep) {
+			return fmt.Errorf("dependency service_id '%s' must contain only alphanumeric characters and hyphens", dep)
+		}
+		if dep == b.ServiceID {
+			return fmt.Errorf("service cannot depend on itself")
+		}
 	}
 
 	// Check constraints size
