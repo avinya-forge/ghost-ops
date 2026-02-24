@@ -43,37 +43,10 @@ func NewOpenAIProvider(apiKey string, model string, baseURL string, systemPrompt
 	}
 }
 
-type chatCompletionRequest struct {
-	Model       string    `json:"model"`
-	Messages    []message `json:"messages"`
-	Temperature float32   `json:"temperature"`
-}
-
-type message struct {
-	Role    string `json:"role"`
-	Content string `json:"content"`
-}
-
-type chatCompletionResponse struct {
-	Choices []choice  `json:"choices"`
-	Error   *apiError `json:"error,omitempty"`
-}
-
-type choice struct {
-	Message message `json:"message"`
-}
-
-type apiError struct {
-	Message string      `json:"message"`
-	Type    string      `json:"type"`
-	Param   string      `json:"param"`
-	Code    interface{} `json:"code"`
-}
-
 // GenerateCode calls OpenAI Chat Completion API to generate Go code based on intent.
-func (p *OpenAIProvider) GenerateCode(ctx context.Context, blueprint protocol.Blueprint) (string, error) {
+func (p *OpenAIProvider) GenerateCode(ctx context.Context, blueprint protocol.Blueprint) (string, *protocol.TokenUsage, error) {
 	if p.APIKey == "" {
-		return "", fmt.Errorf("OpenAI API key is missing")
+		return "", nil, fmt.Errorf("OpenAI API key is missing")
 	}
 
 	userContent := blueprint.Intent
@@ -95,13 +68,13 @@ func (p *OpenAIProvider) GenerateCode(ctx context.Context, blueprint protocol.Bl
 
 	jsonBody, err := json.Marshal(reqBody)
 	if err != nil {
-		return "", fmt.Errorf("failed to marshal request: %w", err)
+		return "", nil, fmt.Errorf("failed to marshal request: %w", err)
 	}
 
 	url := fmt.Sprintf("%s/chat/completions", p.BaseURL)
 	req, err := http.NewRequestWithContext(ctx, "POST", url, bytes.NewBuffer(jsonBody))
 	if err != nil {
-		return "", fmt.Errorf("failed to create request: %w", err)
+		return "", nil, fmt.Errorf("failed to create request: %w", err)
 	}
 
 	req.Header.Set("Content-Type", "application/json")
@@ -109,30 +82,30 @@ func (p *OpenAIProvider) GenerateCode(ctx context.Context, blueprint protocol.Bl
 
 	resp, err := p.Client.Do(req)
 	if err != nil {
-		return "", fmt.Errorf("failed to call OpenAI API: %w", err)
+		return "", nil, fmt.Errorf("failed to call OpenAI API: %w", err)
 	}
 	defer resp.Body.Close()
 
 	bodyBytes, err := io.ReadAll(resp.Body)
 	if err != nil {
-		return "", fmt.Errorf("failed to read response body: %w", err)
+		return "", nil, fmt.Errorf("failed to read response body: %w", err)
 	}
 
 	if resp.StatusCode != http.StatusOK {
-		return "", fmt.Errorf("OpenAI API error (status %d): %s", resp.StatusCode, string(bodyBytes))
+		return "", nil, fmt.Errorf("OpenAI API error (status %d): %s", resp.StatusCode, string(bodyBytes))
 	}
 
 	var chatResp chatCompletionResponse
 	if err := json.Unmarshal(bodyBytes, &chatResp); err != nil {
-		return "", fmt.Errorf("failed to unmarshal response: %w", err)
+		return "", nil, fmt.Errorf("failed to unmarshal response: %w", err)
 	}
 
 	if chatResp.Error != nil {
-		return "", fmt.Errorf("OpenAI API returned error: %s", chatResp.Error.Message)
+		return "", nil, fmt.Errorf("OpenAI API returned error: %s", chatResp.Error.Message)
 	}
 
 	if len(chatResp.Choices) == 0 {
-		return "", fmt.Errorf("no choices returned from OpenAI API")
+		return "", nil, fmt.Errorf("no choices returned from OpenAI API")
 	}
 
 	content := chatResp.Choices[0].Message.Content
@@ -140,7 +113,16 @@ func (p *OpenAIProvider) GenerateCode(ctx context.Context, blueprint protocol.Bl
 	// Strip markdown code blocks if the model included them despite instructions
 	content = stripMarkdown(content)
 
-	return content, nil
+	var tokenUsage *protocol.TokenUsage
+	if chatResp.Usage != nil {
+		tokenUsage = &protocol.TokenUsage{
+			InputTokens:  chatResp.Usage.PromptTokens,
+			OutputTokens: chatResp.Usage.CompletionTokens,
+			TotalTokens:  chatResp.Usage.TotalTokens,
+		}
+	}
+
+	return content, tokenUsage, nil
 }
 
 func stripMarkdown(s string) string {

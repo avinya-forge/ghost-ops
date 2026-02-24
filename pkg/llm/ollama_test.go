@@ -76,7 +76,7 @@ func main() {
 		Intent: "hello",
 	}
 
-	code, err := provider.GenerateCode(context.Background(), blueprint)
+	code, _, err := provider.GenerateCode(context.Background(), blueprint)
 	if err != nil {
 		t.Fatalf("GenerateCode failed: %v", err)
 	}
@@ -111,7 +111,7 @@ func TestOllamaProvider_GenerateCode_APIError(t *testing.T) {
 	provider := NewOllamaProvider(ts.URL, "llama3", "prompt")
 
 	blueprint := protocol.Blueprint{Intent: "hello"}
-	_, err := provider.GenerateCode(context.Background(), blueprint)
+	_, _, err := provider.GenerateCode(context.Background(), blueprint)
 	if err == nil {
 		t.Fatal("expected error, got nil")
 	}
