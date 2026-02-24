@@ -73,7 +73,7 @@ func main() {
 		Intent: "hello",
 	}
 
-	code, err := provider.GenerateCode(context.Background(), blueprint)
+	code, _, err := provider.GenerateCode(context.Background(), blueprint)
 	if err != nil {
 		t.Fatalf("GenerateCode failed: %v", err)
 	}
@@ -130,7 +130,7 @@ func TestOpenAIProvider_GenerateCode_WithConstraints(t *testing.T) {
 		},
 	}
 
-	_, err := provider.GenerateCode(context.Background(), blueprint)
+	_, _, err := provider.GenerateCode(context.Background(), blueprint)
 	if err != nil {
 		t.Fatalf("GenerateCode failed: %v", err)
 	}
@@ -151,7 +151,7 @@ func TestOpenAIProvider_GenerateCode_APIError(t *testing.T) {
 	provider := NewOpenAIProvider("test-key", "gpt-4o", ts.URL, "test-system-prompt")
 
 	blueprint := protocol.Blueprint{Intent: "hello"}
-	_, err := provider.GenerateCode(context.Background(), blueprint)
+	_, _, err := provider.GenerateCode(context.Background(), blueprint)
 	if err == nil {
 		t.Fatal("expected error, got nil")
 	}
@@ -163,7 +163,7 @@ func TestOpenAIProvider_GenerateCode_APIError(t *testing.T) {
 func TestOpenAIProvider_GenerateCode_MissingKey(t *testing.T) {
 	provider := NewOpenAIProvider("", "gpt-4o", "", "test-system-prompt")
 	blueprint := protocol.Blueprint{Intent: "hello"}
-	_, err := provider.GenerateCode(context.Background(), blueprint)
+	_, _, err := provider.GenerateCode(context.Background(), blueprint)
 	if err == nil {
 		t.Fatal("expected error for missing API key, got nil")
 	}

@@ -187,6 +187,9 @@ func runServer(version string) {
 		os.Exit(1)
 	}
 
+	// Initialize Telemetry Collector
+	collector := telemetry.NewInMemoryCollector()
+
 	// Initialize Evolution Engine
 	var engine protocol.EvolutionEngine
 	switch cfg.Engine.Type {
@@ -228,7 +231,7 @@ func runServer(version string) {
 			slog.Error("Invalid LLM provider", "provider", cfg.LLM.Provider)
 			os.Exit(1)
 		}
-		engine = evolution.NewAIEvolutionEngine(provider)
+		engine = evolution.NewAIEvolutionEngine(provider, collector)
 		slog.Info("Using AI Evolution Engine")
 	default:
 		slog.Error("Invalid engine type", "type", cfg.Engine.Type)
@@ -241,9 +244,6 @@ func runServer(version string) {
 		slog.Error("Failed to initialize state store", "path", cfg.Paths.Store, "error", err)
 		os.Exit(1)
 	}
-
-	// Initialize Telemetry Collector
-	collector := telemetry.NewInMemoryCollector()
 
 	// Initialize Runtime Host
 	host, err := runtime.NewWazeroRuntimeHost(ctx, stateStore, collector)

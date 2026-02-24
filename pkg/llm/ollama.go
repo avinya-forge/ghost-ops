@@ -41,7 +41,7 @@ func NewOllamaProvider(baseURL string, model string, systemPrompt string) *Ollam
 }
 
 // GenerateCode calls Ollama API to generate Go code based on intent.
-func (p *OllamaProvider) GenerateCode(ctx context.Context, blueprint protocol.Blueprint) (string, error) {
+func (p *OllamaProvider) GenerateCode(ctx context.Context, blueprint protocol.Blueprint) (string, *protocol.TokenUsage, error) {
 	userContent := blueprint.Intent
 	if len(blueprint.Constraints) > 0 {
 		constraintsJSON, err := json.Marshal(blueprint.Constraints)
@@ -61,43 +61,43 @@ func (p *OllamaProvider) GenerateCode(ctx context.Context, blueprint protocol.Bl
 
 	jsonBody, err := json.Marshal(reqBody)
 	if err != nil {
-		return "", fmt.Errorf("failed to marshal request: %w", err)
+		return "", nil, fmt.Errorf("failed to marshal request: %w", err)
 	}
 
 	url := fmt.Sprintf("%s/chat/completions", p.BaseURL)
 	req, err := http.NewRequestWithContext(ctx, "POST", url, bytes.NewBuffer(jsonBody))
 	if err != nil {
-		return "", fmt.Errorf("failed to create request: %w", err)
+		return "", nil, fmt.Errorf("failed to create request: %w", err)
 	}
 
 	req.Header.Set("Content-Type", "application/json")
 
 	resp, err := p.Client.Do(req)
 	if err != nil {
-		return "", fmt.Errorf("failed to call Ollama API: %w", err)
+		return "", nil, fmt.Errorf("failed to call Ollama API: %w", err)
 	}
 	defer resp.Body.Close()
 
 	bodyBytes, err := io.ReadAll(resp.Body)
 	if err != nil {
-		return "", fmt.Errorf("failed to read response body: %w", err)
+		return "", nil, fmt.Errorf("failed to read response body: %w", err)
 	}
 
 	if resp.StatusCode != http.StatusOK {
-		return "", fmt.Errorf("ollama API error (status %d): %s", resp.StatusCode, string(bodyBytes))
+		return "", nil, fmt.Errorf("ollama API error (status %d): %s", resp.StatusCode, string(bodyBytes))
 	}
 
 	var chatResp chatCompletionResponse
 	if err := json.Unmarshal(bodyBytes, &chatResp); err != nil {
-		return "", fmt.Errorf("failed to unmarshal response: %w", err)
+		return "", nil, fmt.Errorf("failed to unmarshal response: %w", err)
 	}
 
 	if chatResp.Error != nil {
-		return "", fmt.Errorf("ollama API returned error: %s", chatResp.Error.Message)
+		return "", nil, fmt.Errorf("ollama API returned error: %s", chatResp.Error.Message)
 	}
 
 	if len(chatResp.Choices) == 0 {
-		return "", fmt.Errorf("no choices returned from Ollama API")
+		return "", nil, fmt.Errorf("no choices returned from Ollama API")
 	}
 
 	content := chatResp.Choices[0].Message.Content
@@ -105,5 +105,14 @@ func (p *OllamaProvider) GenerateCode(ctx context.Context, blueprint protocol.Bl
 	// Strip markdown code blocks if the model included them despite instructions
 	content = stripMarkdown(content)
 
-	return content, nil
+	var tokenUsage *protocol.TokenUsage
+	if chatResp.Usage != nil {
+		tokenUsage = &protocol.TokenUsage{
+			InputTokens:  chatResp.Usage.PromptTokens,
+			OutputTokens: chatResp.Usage.CompletionTokens,
+			TotalTokens:  chatResp.Usage.TotalTokens,
+		}
+	}
+
+	return content, tokenUsage, nil
 }
