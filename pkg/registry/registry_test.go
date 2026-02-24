@@ -481,3 +481,57 @@ func TestRegistry_Events(t *testing.T) {
 		t.Fatal("Timeout waiting for event")
 	}
 }
+
+func TestRegistry_Reconcile_DependencyCycle(t *testing.T) {
+	// A depends on B. B depends on A.
+	store := &MockStateStore{
+		records: map[string]protocol.ServiceRecord{
+			"svc-a": {
+				ServiceID:    "svc-a",
+				Dependencies: []string{"svc-b"},
+				Version:      1,
+			},
+		},
+	}
+	engine := &MockEvolutionEngine{}
+	source := &MockIntentSource{
+		blueprints: []protocol.Blueprint{
+			{ServiceID: "svc-b", Intent: "do something", Dependencies: []string{"svc-a"}},
+		},
+	}
+	collector := telemetry.NewInMemoryCollector()
+
+	reg := NewRegistry(store, engine, source, nil, collector, nil)
+	ctx := context.Background()
+
+	// Reconcile should fail validation but return true (processed)
+	processed, err := reg.Reconcile(ctx)
+	if err != nil {
+		t.Fatalf("Reconcile failed: %v", err)
+	}
+	if !processed {
+		t.Fatal("Expected processed")
+	}
+
+	// Verify metric
+	snapshot := collector.Snapshot()
+	// reconcile_failure with phase=validation should be 1
+	found := false
+	for k, v := range snapshot {
+		if k == "reconcile_failure{phase=validation,service_id=svc-b}" {
+			if val, ok := v.(int64); ok && val == 1 {
+				found = true
+				break
+			}
+		}
+	}
+	if !found {
+		t.Errorf("Expected validation failure metric not found in: %v", snapshot)
+	}
+
+	// Verify B was NOT added to store
+	rec, _ := store.GetService(ctx, "svc-b")
+	if rec != nil {
+		t.Error("Service B should not be in store")
+	}
+}

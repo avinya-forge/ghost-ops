@@ -62,6 +62,21 @@ func (r *Registry) Reconcile(ctx context.Context) (bool, error) {
 		r.collector.Histogram("reconcile_duration_seconds", time.Since(start).Seconds(), map[string]string{"service_id": bp.ServiceID})
 	}()
 
+	// Dependency Check
+	allServices, err := r.store.ListServices(ctx)
+	if err != nil {
+		slog.Error("Failed to list services for dependency check", "error", err)
+		r.collector.Counter("reconcile_failure", 1, map[string]string{"phase": "dependency_check", "service_id": bp.ServiceID})
+		return true, nil
+	}
+
+	graph := NewServiceGraph(allServices)
+	if err := graph.AddService(bp.ServiceID, bp.Dependencies); err != nil {
+		slog.Error("Blueprint rejected due to dependency cycle", "service_id", bp.ServiceID, "error", err)
+		r.collector.Counter("reconcile_failure", 1, map[string]string{"phase": "validation", "service_id": bp.ServiceID})
+		return true, nil
+	}
+
 	// Evolve
 	evolveStart := time.Now()
 	wasmBytes, hashStr, err := r.evolveService(ctx, bp)
@@ -98,7 +113,7 @@ func (r *Registry) Reconcile(ctx context.Context) (bool, error) {
 	}
 
 	// Update Store
-	if err := r.updateStore(ctx, bp.ServiceID, newVersion, hashStr, existing, bp.Constraints); err != nil {
+	if err := r.updateStore(ctx, bp.ServiceID, newVersion, hashStr, existing, bp.Constraints, bp.Dependencies); err != nil {
 		slog.Error("Failed to update store", "service_id", bp.ServiceID, "error", err)
 		r.collector.Counter("reconcile_failure", 1, map[string]string{"phase": "update_store", "service_id": bp.ServiceID})
 		return true, nil
@@ -263,7 +278,7 @@ func (r *Registry) deployToRuntime(ctx context.Context, serviceID string, existi
 	return nil
 }
 
-func (r *Registry) updateStore(ctx context.Context, serviceID string, version int, hashStr string, existing *protocol.ServiceRecord, constraints map[string]interface{}) error {
+func (r *Registry) updateStore(ctx context.Context, serviceID string, version int, hashStr string, existing *protocol.ServiceRecord, constraints map[string]interface{}, dependencies []string) error {
 	shadowMode := false
 	if val, ok := constraints["shadow_mode"]; ok {
 		if b, ok := val.(bool); ok && b {
@@ -276,6 +291,7 @@ func (r *Registry) updateStore(ctx context.Context, serviceID string, version in
 		Version:            version,
 		WASMHash:           hashStr,
 		SynthesisTimestamp: time.Now().UTC(),
+		Dependencies:       dependencies,
 	}
 
 	if existing != nil {
