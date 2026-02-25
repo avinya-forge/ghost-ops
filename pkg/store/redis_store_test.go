@@ -102,7 +102,7 @@ func TestRedisStore(t *testing.T) {
 
 		// Verify still locked
 		acquired, err = store.AcquireLock(ctx, lockKey, "other-client", ttl)
-		require.NoError(t, err) // Fixed: Added require.NoError
+		require.NoError(t, err)
 		assert.False(t, acquired)
 
 		// Release with correct value
