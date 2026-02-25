@@ -2,6 +2,7 @@ package store
 
 import (
 	"context"
+	"encoding/json"
 	"testing"
 	"time"
 
@@ -121,5 +122,72 @@ func TestRedisStore(t *testing.T) {
 		acquired, err = store.AcquireLock(ctx, lockKey, "new-client", ttl)
 		require.NoError(t, err)
 		assert.True(t, acquired)
+	})
+
+	t.Run("Pub/Sub", func(t *testing.T) {
+		eventType := protocol.EventType("test-event")
+
+		// Subscribe
+		ch, err := store.Subscribe(ctx, eventType)
+		require.NoError(t, err)
+
+		// Publish
+		event := protocol.Event{
+			Type:      eventType,
+			ServiceID: "service-1",
+			Payload:   map[string]interface{}{"foo": "bar"},
+			Timestamp: time.Now().Unix(),
+		}
+
+		// Give subscription a moment to propagate in miniredis
+		time.Sleep(50 * time.Millisecond)
+
+		err = store.Publish(ctx, event)
+		require.NoError(t, err)
+
+		// Receive
+		select {
+		case received := <-ch:
+			assert.Equal(t, event.ServiceID, received.ServiceID)
+			assert.Equal(t, event.Type, received.Type)
+		case <-time.After(2 * time.Second):
+			t.Fatal("timeout waiting for event")
+		}
+	})
+
+	t.Run("Compression", func(t *testing.T) {
+		record := protocol.ServiceRecord{
+			ServiceID: "compressed-service",
+			Version:   1,
+			WASMHash:  "compressed-hash",
+		}
+
+		// Update (should compress)
+		err := store.UpdateService(ctx, record)
+		require.NoError(t, err)
+
+		// Verify raw data in Redis is compressed (starts with gzip magic bytes 0x1f 0x8b)
+		key := "service:compressed-service"
+		val, err := store.client.Get(ctx, key).Bytes()
+		require.NoError(t, err)
+		assert.True(t, len(val) > 2)
+		// Check for gzip magic header
+		assert.Equal(t, byte(0x1f), val[0])
+		assert.Equal(t, byte(0x8b), val[1])
+
+		// Get (should decompress)
+		got, err := store.GetService(ctx, "compressed-service")
+		require.NoError(t, err)
+		assert.Equal(t, record.ServiceID, got.ServiceID)
+
+		// Backward Compatibility: Write uncompressed data manually
+		rawJSON, _ := json.Marshal(record)
+		err = store.client.Set(ctx, "service:uncompressed-service", rawJSON, 0).Err()
+		require.NoError(t, err)
+
+		// Get uncompressed (should succeed)
+		gotUncompressed, err := store.GetService(ctx, "uncompressed-service")
+		require.NoError(t, err)
+		assert.Equal(t, record.ServiceID, gotUncompressed.ServiceID)
 	})
 }

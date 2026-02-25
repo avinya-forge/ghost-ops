@@ -141,9 +141,9 @@
     - `Get`, `Set`, `List`.
 - [x] [302] | [FEAT] Implement Distributed Lock for `Reconcile` | [BLOCKS-301] | [DONE]
     - Redis Lock.
-- [ ] [303] | [FEAT] Implement Redis Pub/Sub for Events | [BLOCKS-300] | [TODO]
+- [x] [303] | [FEAT] Implement Redis Pub/Sub for Events | [BLOCKS-300] | [DONE]
     - Broadcast updates across nodes.
-- [ ] [304] | [FEAT] Implement State Compression | [BLOCKS-301] | [TODO]
+- [x] [304] | [FEAT] Implement State Compression | [BLOCKS-301] | [DONE]
     - Compress large payloads.
 
 ### Epic: Observability (OpenTelemetry)
@@ -155,7 +155,7 @@
     - Pass trace context to guest.
 - [ ] [313] | [FEAT] Configure OTLP Exporter | [BLOCKS-310] | [TODO]
     - Export to Jaeger/Tempo.
-- [ ] [314] | [FEAT] Correlate Logs with Traces | [BLOCKS-311] | [TODO]
+- [x] [314] | [FEAT] Correlate Logs with Traces | [BLOCKS-311] | [DONE]
     - Add TraceID to logs.
 
 ### Epic: Service Mesh Lite
