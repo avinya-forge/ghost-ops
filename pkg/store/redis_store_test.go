@@ -80,4 +80,46 @@ func TestRedisStore(t *testing.T) {
 		_, err = store.Get(ctx, "unknown")
 		assert.Error(t, err)
 	})
+
+	t.Run("Distributed Lock", func(t *testing.T) {
+		lockKey := "resource-1"
+		lockVal := "client-uuid"
+		ttl := 1 * time.Second
+
+		// Acquire
+		acquired, err := store.AcquireLock(ctx, lockKey, lockVal, ttl)
+		require.NoError(t, err)
+		assert.True(t, acquired)
+
+		// Acquire again (should fail)
+		acquired, err = store.AcquireLock(ctx, lockKey, "other-client", ttl)
+		require.NoError(t, err)
+		assert.False(t, acquired)
+
+		// Release with wrong value (should not release)
+		err = store.ReleaseLock(ctx, lockKey, "wrong-client")
+		require.NoError(t, err)
+
+		// Verify still locked
+		acquired, err = store.AcquireLock(ctx, lockKey, "other-client", ttl)
+		require.NoError(t, err)
+		assert.False(t, acquired)
+
+		// Release with correct value
+		err = store.ReleaseLock(ctx, lockKey, lockVal)
+		require.NoError(t, err)
+
+		// Acquire again (should succeed)
+		acquired, err = store.AcquireLock(ctx, lockKey, "other-client", ttl)
+		require.NoError(t, err)
+		assert.True(t, acquired)
+
+		// FastForward to expire
+		mr.FastForward(ttl + 100*time.Millisecond)
+
+		// Acquire after expiry (should succeed)
+		acquired, err = store.AcquireLock(ctx, lockKey, "new-client", ttl)
+		require.NoError(t, err)
+		assert.True(t, acquired)
+	})
 }

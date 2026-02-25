@@ -4,6 +4,7 @@ import (
 	"context"
 	"encoding/json"
 	"fmt"
+	"time"
 
 	"github.com/redis/go-redis/v9"
 	"ghost-ops/pkg/protocol"
@@ -126,4 +127,25 @@ func (s *RedisStore) Get(ctx context.Context, key string) ([]byte, error) {
 func (s *RedisStore) Set(ctx context.Context, key string, value []byte) error {
 	k := fmt.Sprintf("kv:%s", key)
 	return s.client.Set(ctx, k, value, 0).Err()
+}
+
+// AcquireLock acquires a distributed lock.
+// It returns true if the lock was acquired, false otherwise.
+func (s *RedisStore) AcquireLock(ctx context.Context, key string, value string, ttl time.Duration) (bool, error) {
+	k := fmt.Sprintf("lock:%s", key)
+	return s.client.SetNX(ctx, k, value, ttl).Result()
+}
+
+// ReleaseLock releases a distributed lock if the value matches.
+func (s *RedisStore) ReleaseLock(ctx context.Context, key string, value string) error {
+	k := fmt.Sprintf("lock:%s", key)
+	script := `
+		if redis.call("get", KEYS[1]) == ARGV[1] then
+			return redis.call("del", KEYS[1])
+		else
+			return 0
+		end
+	`
+	_, err := s.client.Eval(ctx, script, []string{k}, value).Result()
+	return err
 }

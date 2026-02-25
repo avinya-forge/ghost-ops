@@ -1,6 +1,9 @@
 # Release Notes
 
 ## Unreleased
+- **Resilience**: Implemented Service Mesh Lite patterns: Retry (Exponential Backoff), Circuit Breaker, and Rate Limiting (Token Bucket).
+- **Distributed Store**: Added Distributed Lock mechanism to `RedisStore` using `SET NX` for coordination.
+- **Observability**: Integrated OpenTelemetry SDK for tracing and added Tracing Middleware to API.
 - **Registry**: Implemented an in-memory Event Bus to publish `ServiceDeployed` and `ServiceUnhealthy` events.
 - **API**: Added validation middleware (`MaxBytes`, `ContentType`, `Recover`) to harden API endpoints.
 - **Developer Experience**: Added `ghost-dev` tool for hot-reloading development server (`make dev`).
