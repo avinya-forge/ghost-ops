@@ -1,9 +1,6 @@
 # Release Notes
 
 ## Unreleased
-- **Distributed Store**: Implemented Redis Pub/Sub for event broadcasting (`Publish`/`Subscribe`).
-- **Distributed Store**: Implemented GZIP compression for service records in Redis to optimize storage.
-- **Observability**: Implemented trace correlation in logs by injecting `trace_id` and `span_id` via a custom `TraceHandler`.
 - **Resilience**: Implemented Service Mesh Lite patterns: Retry (Exponential Backoff), Circuit Breaker, and Rate Limiting (Token Bucket).
 - **Distributed Store**: Added Distributed Lock mechanism to `RedisStore` using `SET NX` for coordination.
 - **Observability**: Integrated OpenTelemetry SDK for tracing and added Tracing Middleware to API.
