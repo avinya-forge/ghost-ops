@@ -139,7 +139,7 @@
     - Use `go-redis/v9`.
 - [x] [301] | [FEAT] Implement `RedisStateStore` Adapter | [BLOCKS-300] | [DONE]
     - `Get`, `Set`, `List`.
-- [ ] [302] | [FEAT] Implement Distributed Lock for `Reconcile` | [BLOCKS-301] | [TODO]
+- [x] [302] | [FEAT] Implement Distributed Lock for `Reconcile` | [BLOCKS-301] | [DONE]
     - Redis Lock.
 - [ ] [303] | [FEAT] Implement Redis Pub/Sub for Events | [BLOCKS-300] | [TODO]
     - Broadcast updates across nodes.
@@ -147,9 +147,9 @@
     - Compress large payloads.
 
 ### Epic: Observability (OpenTelemetry)
-- [ ] [310] | [FEAT] Setup OpenTelemetry SDK | [INDEPENDENT] | [TODO]
+- [x] [310] | [FEAT] Setup OpenTelemetry SDK | [INDEPENDENT] | [DONE]
     - Configure Exporter.
-- [ ] [311] | [FEAT] Add Tracing Middleware to API | [BLOCKS-310] | [TODO]
+- [x] [311] | [FEAT] Add Tracing Middleware to API | [BLOCKS-310] | [DONE]
     - Trace HTTP requests.
 - [ ] [312] | [FEAT] Add Trace Propagation to WASM | [BLOCKS-311] | [TODO]
     - Pass trace context to guest.
@@ -163,11 +163,11 @@
     - [ARCH] Deploy sidecar for network interception.
 - [ ] [321] | [FEAT] Implement mTLS between Services | [BLOCKS-320] | [TODO]
     - [SEC] Mutual TLS for service-to-service auth.
-- [ ] [322] | [FEAT] Implement Circuit Breaker | [INDEPENDENT] | [TODO]
+- [x] [322] | [FEAT] Implement Circuit Breaker | [INDEPENDENT] | [DONE]
     - [REL] Fail fast on downstream failures.
-- [ ] [323] | [FEAT] Implement Retry Logic with Backoff | [INDEPENDENT] | [TODO]
+- [x] [323] | [FEAT] Implement Retry Logic with Backoff | [INDEPENDENT] | [DONE]
     - [REL] Exponential backoff for transient errors.
-- [ ] [324] | [FEAT] Implement Rate Limiting (Token Bucket) | [INDEPENDENT] | [TODO]
+- [x] [324] | [FEAT] Implement Rate Limiting (Token Bucket) | [INDEPENDENT] | [DONE]
     - [REL] Protect services from overload.
 
 ### Epic: Advanced Scheduling
