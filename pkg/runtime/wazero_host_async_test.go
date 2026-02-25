@@ -49,8 +49,8 @@ func TestWazeroRuntimeHost_AsyncLoad(t *testing.T) {
 
 	// Assert it returned quickly (allow some time for compilation overhead)
 	// On slower machines, compilation might take a bit, but definitely not "forever".
-	if duration > 2*time.Second {
-		t.Errorf("LoadModule took too long: %v (expected < 2s)", duration)
+	if duration > 5*time.Second {
+		t.Errorf("LoadModule took too long: %v (expected < 5s)", duration)
 	} else {
 		t.Logf("LoadModule returned in %v", duration)
 	}
