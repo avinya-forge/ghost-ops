@@ -135,9 +135,9 @@
 ## Phase 2: Scale (Distributed & Resilient)
 
 ### Epic: Distributed Store (Redis)
-- [ ] [300] | [FEAT] Implement Redis Client Setup | [INDEPENDENT] | [TODO]
+- [x] [300] | [FEAT] Implement Redis Client Setup | [INDEPENDENT] | [DONE]
     - Use `go-redis/v9`.
-- [ ] [301] | [FEAT] Implement `RedisStateStore` Adapter | [BLOCKS-300] | [TODO]
+- [x] [301] | [FEAT] Implement `RedisStateStore` Adapter | [BLOCKS-300] | [DONE]
     - `Get`, `Set`, `List`.
 - [ ] [302] | [FEAT] Implement Distributed Lock for `Reconcile` | [BLOCKS-301] | [TODO]
     - Redis Lock.
