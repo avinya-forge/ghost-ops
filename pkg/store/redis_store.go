@@ -15,6 +15,7 @@ type RedisStore struct {
 }
 
 // NewRedisStore creates a new RedisStore.
+// It initializes a Redis client and verifies the connection with a Ping.
 func NewRedisStore(addr, password string, db int) (*RedisStore, error) {
 	client := redis.NewClient(&redis.Options{
 		Addr:     addr,
