@@ -2,6 +2,7 @@ package store
 
 import (
 	"context"
+	"encoding/json"
 	"testing"
 	"time"
 
@@ -121,5 +122,92 @@ func TestRedisStore(t *testing.T) {
 		acquired, err = store.AcquireLock(ctx, lockKey, "new-client", ttl)
 		require.NoError(t, err)
 		assert.True(t, acquired)
+	})
+
+	t.Run("Service Compression", func(t *testing.T) {
+		record := protocol.ServiceRecord{
+			ServiceID:          "compressed-service",
+			Version:            1,
+			WASMHash:           "xyz",
+			CurrentState:       protocol.StateActive,
+			SynthesisTimestamp: time.Now().UTC(),
+		}
+
+		// Update (Should compress)
+		err := store.UpdateService(ctx, record)
+		require.NoError(t, err)
+
+		// Verify internal storage is compressed (by peeking into Redis via helper)
+		// We use store.Get(kv:) helper but keys are service:..., so we use client directly
+		rawVal, err := store.client.Get(ctx, "service:compressed-service").Result()
+		require.NoError(t, err)
+		// Check for gzip magic header
+		require.GreaterOrEqual(t, len(rawVal), 2)
+		assert.Equal(t, byte(0x1f), rawVal[0])
+		assert.Equal(t, byte(0x8b), rawVal[1])
+
+		// Get (Should decompress)
+		got, err := store.GetService(ctx, "compressed-service")
+		require.NoError(t, err)
+		assert.Equal(t, record.ServiceID, got.ServiceID)
+		assert.Equal(t, record.WASMHash, got.WASMHash)
+	})
+
+	t.Run("Service Backward Compatibility", func(t *testing.T) {
+		// Manually insert uncompressed JSON
+		record := protocol.ServiceRecord{
+			ServiceID:          "legacy-service",
+			Version:            1,
+			WASMHash:           "legacy",
+			CurrentState:       protocol.StateActive,
+			SynthesisTimestamp: time.Now().UTC(),
+		}
+		data, err := json.Marshal(record)
+		require.NoError(t, err)
+
+		// Bypass UpdateService to simulate legacy data
+		err = store.client.Set(ctx, "service:legacy-service", data, 0).Err()
+		require.NoError(t, err)
+
+		// Get (Should detect not compressed and just unmarshal)
+		got, err := store.GetService(ctx, "legacy-service")
+		require.NoError(t, err)
+		assert.Equal(t, record.ServiceID, got.ServiceID)
+		assert.Equal(t, record.WASMHash, got.WASMHash)
+	})
+
+	t.Run("Pub/Sub", func(t *testing.T) {
+		eventType := protocol.EventType("test_event")
+
+		// Subscribe
+		subCtx, subCancel := context.WithCancel(ctx)
+		defer subCancel()
+
+		ch, err := store.Subscribe(subCtx, eventType)
+		require.NoError(t, err)
+
+		// Publish
+		event := protocol.Event{
+			Type:      eventType,
+			ServiceID: "pubsub-service",
+			Payload:   map[string]interface{}{"foo": "bar"},
+			Timestamp: time.Now().Unix(),
+		}
+
+		// Wait a bit to ensure subscription is active (though Subscribe waits for Receive)
+		time.Sleep(50 * time.Millisecond)
+
+		err = store.Publish(ctx, event)
+		require.NoError(t, err)
+
+		// Receive
+		select {
+		case got := <-ch:
+			assert.Equal(t, event.ServiceID, got.ServiceID)
+			assert.Equal(t, event.Type, got.Type)
+			assert.Equal(t, "bar", got.Payload["foo"])
+		case <-time.After(1 * time.Second):
+			t.Fatal("timeout waiting for event")
+		}
 	})
 }

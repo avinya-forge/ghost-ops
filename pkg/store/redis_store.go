@@ -1,9 +1,12 @@
 package store
 
 import (
+	"bytes"
+	"compress/gzip"
 	"context"
 	"encoding/json"
 	"fmt"
+	"io"
 	"time"
 
 	"github.com/redis/go-redis/v9"
@@ -34,6 +37,37 @@ func NewRedisStore(addr, password string, db int) (*RedisStore, error) {
 	}, nil
 }
 
+// compress gzips the data.
+func compress(data []byte) ([]byte, error) {
+	var buf bytes.Buffer
+	w := gzip.NewWriter(&buf)
+	if _, err := w.Write(data); err != nil {
+		return nil, err
+	}
+	if err := w.Close(); err != nil {
+		return nil, err
+	}
+	return buf.Bytes(), nil
+}
+
+// decompress un-gzips the data if it has the gzip magic header.
+// Otherwise, it returns the data as is.
+func decompress(data []byte) ([]byte, error) {
+	if len(data) < 2 {
+		return data, nil
+	}
+	// Check for GZIP magic header 0x1f 0x8b
+	if data[0] == 0x1f && data[1] == 0x8b {
+		r, err := gzip.NewReader(bytes.NewReader(data))
+		if err != nil {
+			return nil, err
+		}
+		defer r.Close()
+		return io.ReadAll(r)
+	}
+	return data, nil
+}
+
 // GetService retrieves a service record by ID.
 func (s *RedisStore) GetService(ctx context.Context, serviceID string) (*protocol.ServiceRecord, error) {
 	key := fmt.Sprintf("service:%s", serviceID)
@@ -45,8 +79,14 @@ func (s *RedisStore) GetService(ctx context.Context, serviceID string) (*protoco
 		return nil, err
 	}
 
+	rawBytes := []byte(val)
+	decompressed, err := decompress(rawBytes)
+	if err != nil {
+		return nil, fmt.Errorf("failed to decompress service record: %w", err)
+	}
+
 	var record protocol.ServiceRecord
-	if err := json.Unmarshal([]byte(val), &record); err != nil {
+	if err := json.Unmarshal(decompressed, &record); err != nil {
 		return nil, fmt.Errorf("failed to unmarshal service record: %w", err)
 	}
 	return &record, nil
@@ -59,9 +99,14 @@ func (s *RedisStore) UpdateService(ctx context.Context, record protocol.ServiceR
 		return fmt.Errorf("failed to marshal service record: %w", err)
 	}
 
+	compressed, err := compress(data)
+	if err != nil {
+		return fmt.Errorf("failed to compress service record: %w", err)
+	}
+
 	key := fmt.Sprintf("service:%s", record.ServiceID)
 	pipe := s.client.TxPipeline()
-	pipe.Set(ctx, key, data, 0)
+	pipe.Set(ctx, key, compressed, 0)
 	pipe.SAdd(ctx, "services", record.ServiceID)
 	_, err = pipe.Exec(ctx)
 	if err != nil {
@@ -100,8 +145,16 @@ func (s *RedisStore) ListServices(ctx context.Context) ([]protocol.ServiceRecord
 		if !ok {
 			continue
 		}
+
+		rawBytes := []byte(strVal)
+		decompressed, err := decompress(rawBytes)
+		if err != nil {
+			// Log error? For now, skip
+			continue
+		}
+
 		var record protocol.ServiceRecord
-		if err := json.Unmarshal([]byte(strVal), &record); err != nil {
+		if err := json.Unmarshal(decompressed, &record); err != nil {
 			continue
 		}
 		records = append(records, record)
@@ -148,4 +201,58 @@ func (s *RedisStore) ReleaseLock(ctx context.Context, key string, value string) 
 	`
 	_, err := s.client.Eval(ctx, script, []string{k}, value).Result()
 	return err
+}
+
+// Publish publishes an event to the event bus.
+func (s *RedisStore) Publish(ctx context.Context, event protocol.Event) error {
+	data, err := json.Marshal(event)
+	if err != nil {
+		return fmt.Errorf("failed to marshal event: %w", err)
+	}
+	// Channel name pattern: event:<EventType>
+	channel := fmt.Sprintf("event:%s", event.Type)
+	return s.client.Publish(ctx, channel, data).Err()
+}
+
+// Subscribe subscribes to events of a specific type.
+func (s *RedisStore) Subscribe(ctx context.Context, eventType protocol.EventType) (<-chan protocol.Event, error) {
+	channel := fmt.Sprintf("event:%s", eventType)
+	pubsub := s.client.Subscribe(ctx, channel)
+
+	// Verify connection
+	if _, err := pubsub.Receive(ctx); err != nil {
+		return nil, fmt.Errorf("failed to subscribe: %w", err)
+	}
+
+	ch := make(chan protocol.Event)
+
+	// Start a goroutine to read messages
+	go func() {
+		defer close(ch)
+		defer pubsub.Close()
+
+		chRes := pubsub.Channel()
+		for {
+			select {
+			case <-ctx.Done():
+				return
+			case msg, ok := <-chRes:
+				if !ok {
+					return
+				}
+				var event protocol.Event
+				if err := json.Unmarshal([]byte(msg.Payload), &event); err != nil {
+					// Log error? For now just skip
+					continue
+				}
+				select {
+				case ch <- event:
+				case <-ctx.Done():
+					return
+				}
+			}
+		}
+	}()
+
+	return ch, nil
 }

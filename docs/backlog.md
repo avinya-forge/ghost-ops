@@ -141,9 +141,9 @@
     - `Get`, `Set`, `List`.
 - [x] [302] | [FEAT] Implement Distributed Lock for `Reconcile` | [BLOCKS-301] | [DONE]
     - Redis Lock.
-- [ ] [303] | [FEAT] Implement Redis Pub/Sub for Events | [BLOCKS-300] | [TODO]
+- [x] [303] | [FEAT] Implement Redis Pub/Sub for Events | [BLOCKS-300] | [DONE]
     - Broadcast updates across nodes.
-- [ ] [304] | [FEAT] Implement State Compression | [BLOCKS-301] | [TODO]
+- [x] [304] | [FEAT] Implement State Compression | [BLOCKS-301] | [DONE]
     - Compress large payloads.
 
 ### Epic: Observability (OpenTelemetry)
