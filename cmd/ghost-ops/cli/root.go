@@ -172,8 +172,20 @@ func runServer(version string) {
 	}
 	logging.InitLogger(logLevel)
 
-    // Watch for config changes
-    config.Watch(cfg)
+	// Initialize Tracer
+	shutdownTracer, err := telemetry.InitTracer(context.Background(), "ghost-ops", cfg.Telemetry, os.Stdout)
+	if err != nil {
+		slog.Error("Failed to initialize tracer", "error", err)
+		os.Exit(1)
+	}
+	defer func() {
+		if err := shutdownTracer(context.Background()); err != nil {
+			slog.Error("Failed to shutdown tracer", "error", err)
+		}
+	}()
+
+	// Watch for config changes
+	config.Watch(cfg)
 
 	ctx, cancel := context.WithCancel(context.Background())
 	defer cancel()
@@ -264,7 +276,7 @@ func runServer(version string) {
 	eventBus := event.NewInMemoryEventBus()
 
 	// Initialize Registry
-	reg := registry.NewRegistry(stateStore, engine, source, host, collector, eventBus)
+	reg := registry.NewRegistry(stateStore, engine, source, host, collector, eventBus, cfg.Registry)
 
 	// Start Health Check Loop
 	reg.StartHealthCheck(ctx)

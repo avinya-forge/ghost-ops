@@ -6,6 +6,7 @@ import (
 	"testing"
 	"time"
 
+	"ghost-ops/pkg/config"
 	"ghost-ops/pkg/event"
 	"ghost-ops/pkg/protocol"
 	"ghost-ops/pkg/telemetry"
@@ -13,8 +14,8 @@ import (
 
 // MockStateStore
 type MockStateStore struct {
-	records map[string]protocol.ServiceRecord
-	getServiceErr error
+	records          map[string]protocol.ServiceRecord
+	getServiceErr    error
 	updateServiceErr error
 }
 
@@ -71,7 +72,7 @@ func (m *MockIntentSource) GetNextBlueprint(ctx context.Context) (*protocol.Blue
 }
 
 // MockEvolutionEngine
-type MockEvolutionEngine struct{
+type MockEvolutionEngine struct {
 	err error
 }
 
@@ -138,6 +139,9 @@ func (m *MockRuntimeHost) CheckHealth(ctx context.Context, id string) error {
 	}
 	return nil
 }
+func (m *MockRuntimeHost) GetActiveServiceCount(ctx context.Context) (int, error) {
+	return len(m.activeVersions), nil
+}
 func (m *MockRuntimeHost) GetLogs(ctx context.Context, id string) ([]byte, error) {
 	return nil, nil
 }
@@ -159,7 +163,7 @@ func TestRegistry_Reconcile(t *testing.T) {
 	}
 	collector := telemetry.NewInMemoryCollector()
 
-	reg := NewRegistry(store, engine, source, runtime, collector, nil)
+	reg := NewRegistry(store, engine, source, runtime, collector, nil, config.RegistryConfig{})
 	ctx := context.Background()
 
 	// First call should process one blueprint
@@ -214,7 +218,7 @@ func TestRegistry_Reconcile_Versioning(t *testing.T) {
 	}
 	collector := telemetry.NewInMemoryCollector()
 
-	reg := NewRegistry(store, engine, source, runtime, collector, nil)
+	reg := NewRegistry(store, engine, source, runtime, collector, nil, config.RegistryConfig{})
 	ctx := context.Background()
 
 	// First call - Version 1
@@ -273,7 +277,7 @@ func TestRegistry_Reconcile_ShadowMode(t *testing.T) {
 	}
 	collector := telemetry.NewInMemoryCollector()
 
-	reg := NewRegistry(store, engine, source, runtime, collector, nil)
+	reg := NewRegistry(store, engine, source, runtime, collector, nil, config.RegistryConfig{})
 	ctx := context.Background()
 
 	// 1. Deploy Active (v1)
@@ -340,7 +344,7 @@ func TestRegistry_Reconcile_Errors(t *testing.T) {
 	// 1. Intent Source Error
 	t.Run("IntentSource Error", func(t *testing.T) {
 		source := &MockIntentSource{err: fmt.Errorf("intent error")}
-		reg := NewRegistry(nil, nil, source, nil, collector, nil)
+		reg := NewRegistry(nil, nil, source, nil, collector, nil, config.RegistryConfig{})
 		_, err := reg.Reconcile(ctx)
 		if err == nil {
 			t.Error("Expected error from intent source, got nil")
@@ -354,14 +358,9 @@ func TestRegistry_Reconcile_Errors(t *testing.T) {
 		}
 		store := &MockStateStore{getServiceErr: fmt.Errorf("store error")}
 		engine := &MockEvolutionEngine{}
-		reg := NewRegistry(store, engine, source, nil, collector, nil)
+		reg := NewRegistry(store, engine, source, nil, collector, nil, config.RegistryConfig{})
 		// It should NOT return error from Reconcile, but log error and continue
-		// Actually Reconcile returns (bool, error). The error is usually nil unless critical.
-		// Failures in evolve/store/runtime usually return (true, nil) but increment metrics/log.
-		// Let's check if it returns.
 		_, _ = reg.Reconcile(ctx)
-		// We can't easily check for internal error logging without a better collector or logger hook.
-		// But at least it shouldn't panic.
 	})
 
 	// 3. Evolution Engine Error
@@ -371,7 +370,8 @@ func TestRegistry_Reconcile_Errors(t *testing.T) {
 		}
 		store := &MockStateStore{records: make(map[string]protocol.ServiceRecord)}
 		engine := &MockEvolutionEngine{err: fmt.Errorf("compile error")}
-		reg := NewRegistry(store, engine, source, nil, collector, nil)
+		runtime := &MockRuntimeHost{}
+		reg := NewRegistry(store, engine, source, runtime, collector, nil, config.RegistryConfig{})
 		_, err := reg.Reconcile(ctx)
 		// Again, Reconcile swallows the error and logs it.
 		if err != nil {
@@ -387,7 +387,7 @@ func TestRegistry_Reconcile_Errors(t *testing.T) {
 		store := &MockStateStore{records: make(map[string]protocol.ServiceRecord)}
 		engine := &MockEvolutionEngine{}
 		runtime := &MockRuntimeHost{loadErr: fmt.Errorf("runtime error")}
-		reg := NewRegistry(store, engine, source, runtime, collector, nil)
+		reg := NewRegistry(store, engine, source, runtime, collector, nil, config.RegistryConfig{})
 		_, err := reg.Reconcile(ctx)
 		// Reconcile swallows runtime errors too
 		if err != nil {
@@ -410,7 +410,7 @@ func TestRegistry_Metrics(t *testing.T) {
 	}
 	collector := telemetry.NewInMemoryCollector()
 
-	reg := NewRegistry(store, engine, source, runtime, collector, nil)
+	reg := NewRegistry(store, engine, source, runtime, collector, nil, config.RegistryConfig{})
 	ctx := context.Background()
 
 	// Run Reconcile
@@ -450,7 +450,7 @@ func TestRegistry_Events(t *testing.T) {
 	collector := telemetry.NewInMemoryCollector()
 	bus := event.NewInMemoryEventBus()
 
-	reg := NewRegistry(store, engine, source, runtime, collector, bus)
+	reg := NewRegistry(store, engine, source, runtime, collector, bus, config.RegistryConfig{})
 	ctx := context.Background()
 
 	// Subscribe to ServiceDeployed
@@ -501,7 +501,7 @@ func TestRegistry_Reconcile_DependencyCycle(t *testing.T) {
 	}
 	collector := telemetry.NewInMemoryCollector()
 
-	reg := NewRegistry(store, engine, source, nil, collector, nil)
+	reg := NewRegistry(store, engine, source, nil, collector, nil, config.RegistryConfig{})
 	ctx := context.Background()
 
 	// Reconcile should fail validation but return true (processed)
@@ -533,5 +533,80 @@ func TestRegistry_Reconcile_DependencyCycle(t *testing.T) {
 	rec, _ := store.GetService(ctx, "svc-b")
 	if rec != nil {
 		t.Error("Service B should not be in store")
+	}
+}
+
+func TestRegistry_ResourceLimit(t *testing.T) {
+	store := &MockStateStore{records: make(map[string]protocol.ServiceRecord)}
+	engine := &MockEvolutionEngine{}
+	source := &MockIntentSource{
+		blueprints: []protocol.Blueprint{
+			{ServiceID: "svc-1", Intent: "v1"},
+			{ServiceID: "svc-2", Intent: "v1"},
+		},
+	}
+	runtime := &MockRuntimeHost{
+		modules:        make(map[string][]byte),
+		activeVersions: make(map[string]string),
+	}
+	collector := telemetry.NewInMemoryCollector()
+
+	// Limit 1 service
+	reg := NewRegistry(store, engine, source, runtime, collector, nil, config.RegistryConfig{MaxActiveServices: 1})
+	ctx := context.Background()
+
+	// 1. Deploy svc-1 (Should succeed)
+	processed, err := reg.Reconcile(ctx)
+	assertNoError(t, err)
+	assertTrue(t, processed)
+
+	// Check runtime
+	if len(runtime.activeVersions) != 1 {
+		t.Errorf("Expected 1 active service, got %d", len(runtime.activeVersions))
+	}
+
+	// 2. Deploy svc-2 (Should fail due to limit)
+	processed, err = reg.Reconcile(ctx)
+	assertNoError(t, err)
+	assertTrue(t, processed) // Processed but rejected
+
+	// Check runtime (should still be 1)
+	if len(runtime.activeVersions) != 1 {
+		t.Errorf("Expected 1 active service, got %d", len(runtime.activeVersions))
+	}
+
+	// Check svc-2 not in store or not active
+	rec, _ := store.GetService(ctx, "svc-2")
+	if rec != nil {
+		t.Error("Service 2 should not be in store")
+	}
+
+	// Check metrics
+	snapshot := collector.Snapshot()
+	found := false
+	for k, v := range snapshot {
+		if k == "reconcile_failure{phase=resource_limit,service_id=svc-2}" {
+			if val, ok := v.(int64); ok && val == 1 {
+				found = true
+				break
+			}
+		}
+	}
+	if !found {
+		t.Error("Expected resource_limit failure metric")
+	}
+}
+
+func assertNoError(t *testing.T, err error) {
+	if err != nil {
+		t.Helper()
+		t.Fatalf("Unexpected error: %v", err)
+	}
+}
+
+func assertTrue(t *testing.T, b bool) {
+	if !b {
+		t.Helper()
+		t.Fatal("Expected true")
 	}
 }

@@ -5,6 +5,7 @@ import (
 	"fmt"
 	"testing"
 
+	"ghost-ops/pkg/config"
 	"ghost-ops/pkg/protocol"
 	"ghost-ops/pkg/telemetry"
 )
@@ -32,6 +33,11 @@ func (m *SmartMockRuntimeHost) UnloadVersion(ctx context.Context, id, version st
 	delete(m.modules, uniqueName)
 	return nil
 }
+
+// GetActiveServiceCount promotes the embedded one, but since we define methods on *MockRuntimeHost
+// and embed MockRuntimeHost struct, method promotion works on *SmartMockRuntimeHost -> *MockRuntimeHost.
+// However, because we embed by value, the receiver is &m.MockRuntimeHost.
+// This should work fine.
 
 func TestRegistry_CheckServices_PurgesUnhealthy(t *testing.T) {
 	// Setup Store
@@ -63,7 +69,7 @@ func TestRegistry_CheckServices_PurgesUnhealthy(t *testing.T) {
 	collector := telemetry.NewInMemoryCollector()
 
 	// Registry uses the SmartMockRuntimeHost
-	reg := NewRegistry(store, &MockEvolutionEngine{}, &MockIntentSource{}, runtime, collector, nil)
+	reg := NewRegistry(store, &MockEvolutionEngine{}, &MockIntentSource{}, runtime, collector, nil, config.RegistryConfig{})
 	ctx := context.Background()
 
 	// Run CheckServices
@@ -91,10 +97,12 @@ func TestRegistry_CheckServices_PurgesUnhealthy(t *testing.T) {
 	found := false
 	for k, v := range snapshot {
 		if k == "health_check_failure{service_id=svc-unhealthy}" {
-			if v != int64(1) {
+			if val, ok := v.(int64); ok && val == 1 {
+				found = true
+			} else {
 				t.Errorf("Expected 1 failure, got %v", v)
 			}
-			found = true
+			break
 		}
 	}
 	if !found {

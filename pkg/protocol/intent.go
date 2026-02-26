@@ -15,6 +15,7 @@ type Blueprint struct {
 	Intent       string                 `json:"intent"`
 	Constraints  map[string]interface{} `json:"constraints"`
 	Dependencies []string               `json:"dependencies,omitempty"`
+	Priority     int                    `json:"priority,omitempty"` // Higher value = Higher priority
 }
 
 // Validate checks if the blueprint is valid.

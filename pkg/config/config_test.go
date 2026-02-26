@@ -24,74 +24,112 @@ func TestConfig_Validate(t *testing.T) {
 		{
 			name: "Valid Config",
 			config: Config{
-				Server:  ServerConfig{Port: 8080},
-				Logging: LoggingConfig{Level: "info"},
-				Paths:   PathsConfig{Blueprints: "b.json", Store: "s.json"},
-				Engine:  EngineConfig{Type: "mock"},
-				LLM:     LLMConfig{Provider: "mock"},
+				Server:    ServerConfig{Port: 8080},
+				Logging:   LoggingConfig{Level: "info"},
+				Paths:     PathsConfig{Blueprints: "b.json", Store: "s.json"},
+				Engine:    EngineConfig{Type: "mock"},
+				LLM:       LLMConfig{Provider: "mock"},
+				Telemetry: TelemetryConfig{Exporter: "stdout"},
+				Registry:  RegistryConfig{MaxActiveServices: 10},
 			},
 			wantErr: false,
 		},
 		{
 			name: "Invalid Port - Low",
 			config: Config{
-				Server:  ServerConfig{Port: 0},
-				Logging: LoggingConfig{Level: "info"},
-				Paths:   PathsConfig{Blueprints: "b.json", Store: "s.json"},
-				Engine:  EngineConfig{Type: "mock"},
+				Server:    ServerConfig{Port: 0},
+				Logging:   LoggingConfig{Level: "info"},
+				Paths:     PathsConfig{Blueprints: "b.json", Store: "s.json"},
+				Engine:    EngineConfig{Type: "mock"},
+				Telemetry: TelemetryConfig{Exporter: "stdout"},
+				Registry:  RegistryConfig{MaxActiveServices: 10},
 			},
 			wantErr: true,
 		},
 		{
 			name: "Invalid Port - High",
 			config: Config{
-				Server:  ServerConfig{Port: 70000},
-				Logging: LoggingConfig{Level: "info"},
-				Paths:   PathsConfig{Blueprints: "b.json", Store: "s.json"},
-				Engine:  EngineConfig{Type: "mock"},
+				Server:    ServerConfig{Port: 70000},
+				Logging:   LoggingConfig{Level: "info"},
+				Paths:     PathsConfig{Blueprints: "b.json", Store: "s.json"},
+				Engine:    EngineConfig{Type: "mock"},
+				Telemetry: TelemetryConfig{Exporter: "stdout"},
+				Registry:  RegistryConfig{MaxActiveServices: 10},
 			},
 			wantErr: true,
 		},
 		{
 			name: "Invalid Logging Level",
 			config: Config{
-				Server:  ServerConfig{Port: 8080},
-				Logging: LoggingConfig{Level: "trace"},
-				Paths:   PathsConfig{Blueprints: "b.json", Store: "s.json"},
-				Engine:  EngineConfig{Type: "mock"},
+				Server:    ServerConfig{Port: 8080},
+				Logging:   LoggingConfig{Level: "trace"},
+				Paths:     PathsConfig{Blueprints: "b.json", Store: "s.json"},
+				Engine:    EngineConfig{Type: "mock"},
+				Telemetry: TelemetryConfig{Exporter: "stdout"},
+				Registry:  RegistryConfig{MaxActiveServices: 10},
 			},
 			wantErr: true,
 		},
 		{
 			name: "Empty Paths",
 			config: Config{
-				Server:  ServerConfig{Port: 8080},
-				Logging: LoggingConfig{Level: "info"},
-				Paths:   PathsConfig{Blueprints: "", Store: "s.json"},
-				Engine:  EngineConfig{Type: "mock"},
+				Server:    ServerConfig{Port: 8080},
+				Logging:   LoggingConfig{Level: "info"},
+				Paths:     PathsConfig{Blueprints: "", Store: "s.json"},
+				Engine:    EngineConfig{Type: "mock"},
+				Telemetry: TelemetryConfig{Exporter: "stdout"},
+				Registry:  RegistryConfig{MaxActiveServices: 10},
 			},
 			wantErr: true,
 		},
 		{
 			name: "Invalid Engine",
 			config: Config{
-				Server:  ServerConfig{Port: 8080},
-				Logging: LoggingConfig{Level: "info"},
-				Paths:   PathsConfig{Blueprints: "b.json", Store: "s.json"},
-				Engine:  EngineConfig{Type: "invalid"},
+				Server:    ServerConfig{Port: 8080},
+				Logging:   LoggingConfig{Level: "info"},
+				Paths:     PathsConfig{Blueprints: "b.json", Store: "s.json"},
+				Engine:    EngineConfig{Type: "invalid"},
+				Telemetry: TelemetryConfig{Exporter: "stdout"},
+				Registry:  RegistryConfig{MaxActiveServices: 10},
 			},
 			wantErr: true,
 		},
 		{
 			name: "Valid Ollama Provider",
 			config: Config{
-				Server:  ServerConfig{Port: 8080},
-				Logging: LoggingConfig{Level: "info"},
-				Paths:   PathsConfig{Blueprints: "b.json", Store: "s.json"},
-				Engine:  EngineConfig{Type: "ai"},
-				LLM:     LLMConfig{Provider: "ollama"},
+				Server:    ServerConfig{Port: 8080},
+				Logging:   LoggingConfig{Level: "info"},
+				Paths:     PathsConfig{Blueprints: "b.json", Store: "s.json"},
+				Engine:    EngineConfig{Type: "ai"},
+				LLM:       LLMConfig{Provider: "ollama"},
+				Telemetry: TelemetryConfig{Exporter: "stdout"},
+				Registry:  RegistryConfig{MaxActiveServices: 10},
 			},
 			wantErr: false,
+		},
+		{
+			name: "Invalid Telemetry Exporter",
+			config: Config{
+				Server:    ServerConfig{Port: 8080},
+				Logging:   LoggingConfig{Level: "info"},
+				Paths:     PathsConfig{Blueprints: "b.json", Store: "s.json"},
+				Engine:    EngineConfig{Type: "mock"},
+				Telemetry: TelemetryConfig{Exporter: "invalid"},
+				Registry:  RegistryConfig{MaxActiveServices: 10},
+			},
+			wantErr: true,
+		},
+		{
+			name: "Invalid Max Active Services",
+			config: Config{
+				Server:    ServerConfig{Port: 8080},
+				Logging:   LoggingConfig{Level: "info"},
+				Paths:     PathsConfig{Blueprints: "b.json", Store: "s.json"},
+				Engine:    EngineConfig{Type: "mock"},
+				Telemetry: TelemetryConfig{Exporter: "stdout"},
+				Registry:  RegistryConfig{MaxActiveServices: 0},
+			},
+			wantErr: true,
 		},
 	}
 
@@ -122,6 +160,8 @@ func TestLoad_Defaults(t *testing.T) {
 	assert.Equal(t, "store.json", cfg.Paths.Store)
 	assert.Equal(t, "mock", cfg.Engine.Type)
 	assert.Equal(t, DefaultSystemPrompt, cfg.LLM.SystemPrompt)
+	assert.Equal(t, "stdout", cfg.Telemetry.Exporter)
+	assert.Equal(t, 10, cfg.Registry.MaxActiveServices)
 }
 
 func TestLoad_FileOverride(t *testing.T) {

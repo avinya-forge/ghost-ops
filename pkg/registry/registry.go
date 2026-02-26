@@ -8,6 +8,7 @@ import (
 	"log/slog"
 	"time"
 
+	"ghost-ops/pkg/config"
 	"ghost-ops/pkg/protocol"
 )
 
@@ -19,6 +20,7 @@ type Registry struct {
 	runtime   protocol.RuntimeHost
 	collector protocol.MetricsCollector
 	eventBus  protocol.EventBus
+	config    config.RegistryConfig
 }
 
 // NewRegistry creates a new Registry.
@@ -29,6 +31,7 @@ func NewRegistry(
 	runtime protocol.RuntimeHost,
 	collector protocol.MetricsCollector,
 	eventBus protocol.EventBus,
+	cfg config.RegistryConfig,
 ) *Registry {
 	return &Registry{
 		store:     store,
@@ -37,6 +40,7 @@ func NewRegistry(
 		runtime:   runtime,
 		collector: collector,
 		eventBus:  eventBus,
+		config:    cfg,
 	}
 }
 
@@ -77,6 +81,28 @@ func (r *Registry) Reconcile(ctx context.Context) (bool, error) {
 		return true, nil
 	}
 
+	// Check if service already exists
+	existing, err := r.store.GetService(ctx, bp.ServiceID)
+	if err != nil {
+		slog.Error("Failed to get service state", "service_id", bp.ServiceID, "error", err)
+		return true, nil
+	}
+
+	// Resource Limit Check for New Services
+	if existing == nil || existing.ActiveVersion == 0 {
+		count, err := r.runtime.GetActiveServiceCount(ctx)
+		if err != nil {
+			slog.Error("Failed to get active service count", "error", err)
+			r.collector.Counter("reconcile_failure", 1, map[string]string{"phase": "resource_check", "service_id": bp.ServiceID})
+			return true, nil
+		}
+		if r.config.MaxActiveServices > 0 && count >= r.config.MaxActiveServices {
+			slog.Warn("Max active services limit reached, skipping blueprint", "limit", r.config.MaxActiveServices, "current", count, "service_id", bp.ServiceID)
+			r.collector.Counter("reconcile_failure", 1, map[string]string{"phase": "resource_limit", "service_id": bp.ServiceID})
+			return true, nil
+		}
+	}
+
 	// Evolve
 	evolveStart := time.Now()
 	wasmBytes, hashStr, err := r.evolveService(ctx, bp)
@@ -86,13 +112,6 @@ func (r *Registry) Reconcile(ctx context.Context) (bool, error) {
 		slog.Error("Failed to evolve service", "service_id", bp.ServiceID, "error", err)
 		r.collector.Counter("reconcile_failure", 1, map[string]string{"phase": "evolve", "service_id": bp.ServiceID})
 		return true, nil // Return true to continue processing next blueprint even if this one failed
-	}
-
-	// Check if service already exists
-	existing, err := r.store.GetService(ctx, bp.ServiceID)
-	if err != nil {
-		slog.Error("Failed to get service state", "service_id", bp.ServiceID, "error", err)
-		return true, nil
 	}
 
 	// Calculate new version

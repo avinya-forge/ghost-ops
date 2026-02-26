@@ -15,11 +15,13 @@ import (
 
 // Config represents the application configuration.
 type Config struct {
-	Server  ServerConfig  `mapstructure:"server" json:"server" yaml:"server"`
-	Logging LoggingConfig `mapstructure:"logging" json:"logging" yaml:"logging"`
-	Paths   PathsConfig   `mapstructure:"paths" json:"paths" yaml:"paths"`
-	Engine  EngineConfig  `mapstructure:"engine" json:"engine" yaml:"engine"`
-	LLM     LLMConfig     `mapstructure:"llm" json:"llm" yaml:"llm"`
+	Server    ServerConfig    `mapstructure:"server" json:"server" yaml:"server"`
+	Logging   LoggingConfig   `mapstructure:"logging" json:"logging" yaml:"logging"`
+	Paths     PathsConfig     `mapstructure:"paths" json:"paths" yaml:"paths"`
+	Engine    EngineConfig    `mapstructure:"engine" json:"engine" yaml:"engine"`
+	LLM       LLMConfig       `mapstructure:"llm" json:"llm" yaml:"llm"`
+	Telemetry TelemetryConfig `mapstructure:"telemetry" json:"telemetry" yaml:"telemetry"`
+	Registry  RegistryConfig  `mapstructure:"registry" json:"registry" yaml:"registry"`
 }
 
 // ServerConfig configures the HTTP server.
@@ -64,6 +66,17 @@ type LLMConfig struct {
 	CacheEnabled bool   `mapstructure:"cache_enabled" json:"cache_enabled" yaml:"cache_enabled"`
 }
 
+// TelemetryConfig configures OpenTelemetry.
+type TelemetryConfig struct {
+	Exporter string `mapstructure:"exporter" json:"exporter" yaml:"exporter"`
+	Endpoint string `mapstructure:"endpoint" json:"endpoint" yaml:"endpoint"`
+}
+
+// RegistryConfig configures the service registry.
+type RegistryConfig struct {
+	MaxActiveServices int `mapstructure:"max_active_services" json:"max_active_services" yaml:"max_active_services"`
+}
+
 // Load initializes the configuration system and returns the loaded Config.
 // It sets defaults, configures environment variable reading, and attempts to read a config file.
 func Load() (*Config, error) {
@@ -78,6 +91,8 @@ func Load() (*Config, error) {
 	viper.SetDefault("llm.provider", "mock")
 	viper.SetDefault("llm.system_prompt", DefaultSystemPrompt)
 	viper.SetDefault("llm.cache_enabled", false)
+	viper.SetDefault("telemetry.exporter", "stdout")
+	viper.SetDefault("registry.max_active_services", 10)
 
 	// 2. Configure Environment Variables
 	viper.SetEnvPrefix("GHOST")
@@ -122,6 +137,8 @@ func (c *Config) Sanitize() {
 	c.LLM.Provider = strings.ToLower(strings.TrimSpace(c.LLM.Provider))
 	c.LLM.BaseURL = strings.TrimSpace(c.LLM.BaseURL)
 	c.LLM.SystemPrompt = strings.TrimSpace(c.LLM.SystemPrompt)
+	c.Telemetry.Exporter = strings.ToLower(strings.TrimSpace(c.Telemetry.Exporter))
+	c.Telemetry.Endpoint = strings.TrimSpace(c.Telemetry.Endpoint)
 }
 
 // Validate checks if the configuration is valid.
@@ -149,6 +166,13 @@ func (c *Config) Validate() error {
 			return fmt.Errorf("llm.provider must be one of: mock, openai, ollama")
 		}
 		// Assuming we want to validate API Key presence only if not mock, but let's stick to simple logic for now
+	}
+	validExporters := map[string]bool{"stdout": true, "otlp-http": true, "otlp-grpc": true}
+	if !validExporters[c.Telemetry.Exporter] {
+		return fmt.Errorf("telemetry.exporter must be one of: stdout, otlp-http, otlp-grpc")
+	}
+	if c.Registry.MaxActiveServices <= 0 {
+		return fmt.Errorf("registry.max_active_services must be greater than 0")
 	}
 	return nil
 }

@@ -14,6 +14,7 @@ import (
 	"github.com/tetratelabs/wazero"
 	"github.com/tetratelabs/wazero/api"
 	"github.com/tetratelabs/wazero/imports/wasi_snapshot_preview1"
+	"go.opentelemetry.io/otel/trace"
 
 	"ghost-ops/pkg/protocol"
 )
@@ -22,6 +23,8 @@ import (
 type Request struct {
 	method     string
 	payload    []byte
+	traceID    string
+	spanID     string
 	responseCh chan Response
 }
 
@@ -115,6 +118,7 @@ func NewWazeroRuntimeHost(ctx context.Context, store protocol.StateStore, collec
 		NewFunctionBuilder().WithFunc(h.nextCommand).Export("next_command").
 		NewFunctionBuilder().WithFunc(h.readPayload).Export("read_payload").
 		NewFunctionBuilder().WithFunc(h.submitResult).Export("submit_result").
+		NewFunctionBuilder().WithFunc(h.getTraceContext).Export("get_trace_context").
 		Instantiate(ctx)
 
 	if err != nil {
@@ -280,6 +284,41 @@ func (h *WazeroRuntimeHost) submitResult(ctx context.Context, m api.Module, ptr,
 	case req.responseCh <- Response{payload: res}:
 	default:
 	}
+}
+
+func (h *WazeroRuntimeHost) getTraceContext(ctx context.Context, m api.Module, ptr, cap uint32) uint32 {
+	moduleName := m.Name()
+	h.mu.RLock()
+	req, ok := h.currentReq[moduleName]
+	h.mu.RUnlock()
+	if !ok {
+		return 0
+	}
+
+	var val string
+	if req.traceID != "" {
+		val = fmt.Sprintf("trace_id=%s;span_id=%s", req.traceID, req.spanID)
+	}
+
+	if len(val) == 0 {
+		return 0
+	}
+
+	if uint64(len(val)) > uint64(cap) {
+		if !m.Memory().Write(ptr, []byte(val)[:cap]) {
+			return 0
+		}
+	} else {
+		if !m.Memory().Write(ptr, []byte(val)) {
+			return 0
+		}
+	}
+
+	l := len(val)
+	if l > math.MaxUint32 {
+		l = math.MaxUint32
+	}
+	return uint32(l)
 }
 
 // LoadModule loads a WASM binary for a specific version.
@@ -454,6 +493,14 @@ func (h *WazeroRuntimeHost) Invoke(ctx context.Context, serviceID, method string
 		return nil, protocol.NewAppError(protocol.ErrNotFound.Code(), fmt.Sprintf("module %s not found or not ready", uniqueName), nil)
 	}
 
+	// Capture Trace Context
+	spanCtx := trace.SpanFromContext(ctx).SpanContext()
+	var traceID, spanID string
+	if spanCtx.IsValid() {
+		traceID = spanCtx.TraceID().String()
+		spanID = spanCtx.SpanID().String()
+	}
+
 	// Shadow Invocation
 	if shadow && shadowReqCh != nil {
 		go func() {
@@ -468,6 +515,8 @@ func (h *WazeroRuntimeHost) Invoke(ctx context.Context, serviceID, method string
 			sReq := Request{
 				method:     method,
 				payload:    payloadCopy,
+				traceID:    traceID,
+				spanID:     spanID,
 				responseCh: sResponseCh,
 			}
 
@@ -496,6 +545,8 @@ func (h *WazeroRuntimeHost) Invoke(ctx context.Context, serviceID, method string
 	req := Request{
 		method:     method,
 		payload:    payload,
+		traceID:    traceID,
+		spanID:     spanID,
 		responseCh: responseCh,
 	}
 
@@ -584,6 +635,13 @@ func (h *WazeroRuntimeHost) UnloadVersion(ctx context.Context, serviceID, versio
 	delete(h.logBuffers, uniqueName)
 
 	return nil
+}
+
+// GetActiveServiceCount returns the number of active services.
+func (h *WazeroRuntimeHost) GetActiveServiceCount(ctx context.Context) (int, error) {
+	h.mu.RLock()
+	defer h.mu.RUnlock()
+	return len(h.activeVersions), nil
 }
 
 // GetLogs retrieves the logs for a specific service.
