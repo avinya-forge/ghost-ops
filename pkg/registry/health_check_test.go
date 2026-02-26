@@ -25,19 +25,11 @@ func (m *SmartMockRuntimeHost) CheckHealth(ctx context.Context, id string) error
 }
 
 // UnloadVersion overrides the embedded UnloadVersion to ensure we use the embedded map correctly.
-// Actually, since MockRuntimeHost methods are defined on *MockRuntimeHost, and we embed MockRuntimeHost (not *MockRuntimeHost),
-// the promoted methods operate on the embedded field.
-// But to be safe and explicit, let's reimplement UnloadVersion here to ensure it modifies the map we expect.
 func (m *SmartMockRuntimeHost) UnloadVersion(ctx context.Context, id, version string) error {
 	uniqueName := fmt.Sprintf("%s-%s", id, version)
 	delete(m.modules, uniqueName)
 	return nil
 }
-
-// GetActiveServiceCount promotes the embedded one, but since we define methods on *MockRuntimeHost
-// and embed MockRuntimeHost struct, method promotion works on *SmartMockRuntimeHost -> *MockRuntimeHost.
-// However, because we embed by value, the receiver is &m.MockRuntimeHost.
-// This should work fine.
 
 func TestRegistry_CheckServices_PurgesUnhealthy(t *testing.T) {
 	// Setup Store
@@ -87,13 +79,6 @@ func TestRegistry_CheckServices_PurgesUnhealthy(t *testing.T) {
 
 	// Verify Metrics
 	snapshot := collector.Snapshot()
-	// Metric name might need check if it includes labels in key for InMemoryCollector?
-	// The InMemoryCollector keys usually look like "name{label=val,...}" or similar depending on implementation.
-	// Let's check telemetry/inmem.go later if this fails.
-	// For now assume standard format.
-
-	// Check for failure count
-	// We might need to iterate or check exact key format.
 	found := false
 	for k, v := range snapshot {
 		if k == "health_check_failure{service_id=svc-unhealthy}" {

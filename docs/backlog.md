@@ -115,7 +115,7 @@
     - [DX] Enforce lint/test before commit.
 - [x] [273] | [FEAT] Add `ghost-ops init` command | [INDEPENDENT] | [DONE]
     - [DX] Bootstrap new project structure.
-- [x] [274] | [DOCS] Create Architecture Diagrams (PlantUML/Mermaid) | [INDEPENDENT] | [DONE]
+- [ ] [274] | [DOCS] Create Architecture Diagrams (PlantUML/Mermaid) | [INDEPENDENT] | [TODO]
     - [DOC] Visualize system components and flow.
 - [x] [275] | [DOCS] Update `README.md` with new features | [INDEPENDENT] | [DONE]
     - [DOC] Reflect latest capabilities.
@@ -129,7 +129,7 @@
     - [OBS] Track input/output tokens per evolution.
 - [x] [283] | [FEAT] Support Ollama Provider | [INDEPENDENT] | [DONE]
     - [FEAT] Add local LLM support via Ollama.
-- [x] [284] | [TEST] Add Evals for Code Generation Quality | [INDEPENDENT] | [DONE]
+- [ ] [284] | [TEST] Add Evals for Code Generation Quality | [INDEPENDENT] | [TODO]
     - [TEST] Automated evaluation of generated code.
 
 ## Phase 2: Scale (Distributed & Resilient)
@@ -151,11 +151,11 @@
     - Configure Exporter.
 - [x] [311] | [FEAT] Add Tracing Middleware to API | [BLOCKS-310] | [DONE]
     - Trace HTTP requests.
-- [x] [312] | [FEAT] Add Trace Propagation to WASM | [BLOCKS-311] | [DONE]
+- [ ] [312] | [FEAT] Add Trace Propagation to WASM | [BLOCKS-311] | [TODO]
     - Pass trace context to guest.
-- [x] [313] | [FEAT] Configure OTLP Exporter | [BLOCKS-310] | [DONE]
+- [ ] [313] | [FEAT] Configure OTLP Exporter | [BLOCKS-310] | [TODO]
     - Export to Jaeger/Tempo.
-- [x] [314] | [FEAT] Correlate Logs with Traces | [BLOCKS-311] | [DONE]
+- [ ] [314] | [FEAT] Correlate Logs with Traces | [BLOCKS-311] | [TODO]
     - Add TraceID to logs.
 
 ### Epic: Service Mesh Lite
@@ -171,9 +171,9 @@
     - [REL] Protect services from overload.
 
 ### Epic: Advanced Scheduling
-- [x] [330] | [FEAT] Implement Priority Queues for Evolution | [INDEPENDENT] | [DONE]
+- [ ] [330] | [FEAT] Implement Priority Queues for Evolution | [INDEPENDENT] | [TODO]
     - [ALG] Min-heap for task priority. [TEST] Priority order.
-- [x] [331] | [FEAT] Implement Resource-Aware Scheduling | [BLOCKS-330] | [DONE]
+- [ ] [331] | [FEAT] Implement Resource-Aware Scheduling | [BLOCKS-330] | [TODO]
     - [OPT] Bin packing algorithm. [TEST] Maximize density.
 
 ## Phase 3: Future (Autonomous Evolution)

@@ -115,28 +115,6 @@ func Call(service, method string, payload []byte) ([]byte, error) {
 	return out[:actualLen], nil
 }
 
-// GetTraceContext retrieves the current trace context from the host.
-func GetTraceContext() (string, error) {
-	// Initial buffer size
-	bufLen := uint32(256)
-	buf := make([]byte, bufLen)
-
-	actualLen := get_trace_context(ptr(buf), bufLen)
-
-	if actualLen == 0 {
-		return "", nil
-	}
-
-	if actualLen > bufLen {
-		// Retry with correct size
-		bufLen = actualLen
-		buf = make([]byte, bufLen)
-		actualLen = get_trace_context(ptr(buf), bufLen)
-	}
-
-	return string(buf[:actualLen]), nil
-}
-
 func ptr(b []byte) uint32 {
 	if len(b) == 0 {
 		return 0

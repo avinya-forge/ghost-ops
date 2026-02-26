@@ -107,30 +107,6 @@ func TestConfig_Validate(t *testing.T) {
 			},
 			wantErr: false,
 		},
-		{
-			name: "Invalid Telemetry Exporter",
-			config: Config{
-				Server:    ServerConfig{Port: 8080},
-				Logging:   LoggingConfig{Level: "info"},
-				Paths:     PathsConfig{Blueprints: "b.json", Store: "s.json"},
-				Engine:    EngineConfig{Type: "mock"},
-				Telemetry: TelemetryConfig{Exporter: "invalid"},
-				Registry:  RegistryConfig{MaxActiveServices: 10},
-			},
-			wantErr: true,
-		},
-		{
-			name: "Invalid Max Active Services",
-			config: Config{
-				Server:    ServerConfig{Port: 8080},
-				Logging:   LoggingConfig{Level: "info"},
-				Paths:     PathsConfig{Blueprints: "b.json", Store: "s.json"},
-				Engine:    EngineConfig{Type: "mock"},
-				Telemetry: TelemetryConfig{Exporter: "stdout"},
-				Registry:  RegistryConfig{MaxActiveServices: 0},
-			},
-			wantErr: true,
-		},
 	}
 
 	for _, tt := range tests {

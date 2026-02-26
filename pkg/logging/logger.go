@@ -19,8 +19,7 @@ func InitLoggerWithWriter(level slog.Level, w io.Writer) {
 	opts := &slog.HandlerOptions{
 		Level: logLevel,
 	}
-	handler := &TraceHandler{Handler: slog.NewJSONHandler(w, opts)}
-	logger := slog.New(handler)
+	logger := slog.New(slog.NewJSONHandler(w, opts))
 	slog.SetDefault(logger)
 }
 

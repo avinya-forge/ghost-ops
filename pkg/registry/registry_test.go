@@ -358,7 +358,8 @@ func TestRegistry_Reconcile_Errors(t *testing.T) {
 		}
 		store := &MockStateStore{getServiceErr: fmt.Errorf("store error")}
 		engine := &MockEvolutionEngine{}
-		reg := NewRegistry(store, engine, source, nil, collector, nil, config.RegistryConfig{})
+		runtime := &MockRuntimeHost{}
+		reg := NewRegistry(store, engine, source, runtime, collector, nil, config.RegistryConfig{})
 		// It should NOT return error from Reconcile, but log error and continue
 		_, _ = reg.Reconcile(ctx)
 	})

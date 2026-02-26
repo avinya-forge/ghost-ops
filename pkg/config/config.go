@@ -169,7 +169,8 @@ func (c *Config) Validate() error {
 	}
 	validExporters := map[string]bool{"stdout": true, "otlp-http": true, "otlp-grpc": true}
 	if !validExporters[c.Telemetry.Exporter] {
-		return fmt.Errorf("telemetry.exporter must be one of: stdout, otlp-http, otlp-grpc")
+		// Temporary debugging
+		return fmt.Errorf("telemetry.exporter must be one of: stdout, otlp-http, otlp-grpc (got: '%s')", c.Telemetry.Exporter)
 	}
 	if c.Registry.MaxActiveServices <= 0 {
 		return fmt.Errorf("registry.max_active_services must be greater than 0")

@@ -1,7 +1,6 @@
 package intent
 
 import (
-	"container/heap"
 	"context"
 	"encoding/json"
 	"fmt"
@@ -12,38 +11,11 @@ import (
 	"ghost-ops/pkg/protocol"
 )
 
-// PriorityQueue implements heap.Interface and holds Blueprints.
-type PriorityQueue []*protocol.Blueprint
-
-func (pq PriorityQueue) Len() int { return len(pq) }
-
-func (pq PriorityQueue) Less(i, j int) bool {
-	// We want Pop to give us the highest priority so we use Greater than.
-	return pq[i].Priority > pq[j].Priority
-}
-
-func (pq PriorityQueue) Swap(i, j int) {
-	pq[i], pq[j] = pq[j], pq[i]
-}
-
-func (pq *PriorityQueue) Push(x any) {
-	item := x.(*protocol.Blueprint)
-	*pq = append(*pq, item)
-}
-
-func (pq *PriorityQueue) Pop() any {
-	old := *pq
-	n := len(old)
-	item := old[n-1]
-	old[n-1] = nil // avoid memory leak
-	*pq = old[0 : n-1]
-	return item
-}
-
 // FileIntentSource reads blueprints from a JSON file.
 type FileIntentSource struct {
-	pq           PriorityQueue
+	blueprints   []protocol.Blueprint
 	mu           sync.Mutex
+	index        int
 	filePath     string
 	lastModified time.Time
 }
@@ -52,7 +24,7 @@ type FileIntentSource struct {
 func NewFileIntentSource(filepath string) (*FileIntentSource, error) {
 	f := &FileIntentSource{
 		filePath: filepath,
-		pq:       make(PriorityQueue, 0),
+		index:    0,
 	}
 
 	if _, err := f.load(); err != nil {
@@ -87,38 +59,32 @@ func (f *FileIntentSource) load() (bool, error) {
 		}
 	}
 
-	// Rebuild Priority Queue
-	f.pq = make(PriorityQueue, 0, len(blueprints))
-	for i := range blueprints {
-		// Store pointers to elements
-		bp := blueprints[i]
-		heap.Push(&f.pq, &bp)
-	}
-
+	f.blueprints = blueprints
 	f.lastModified = info.ModTime()
 	return true, nil
 }
 
-// GetNextBlueprint returns the next pending blueprint for processing.
+// GetNextBlueprint returns the next pending blueprint from the loaded list.
 // It returns nil, nil when all blueprints have been consumed.
 func (f *FileIntentSource) GetNextBlueprint(ctx context.Context) (*protocol.Blueprint, error) {
 	f.mu.Lock()
 	defer f.mu.Unlock()
 
-	if f.pq.Len() == 0 {
+	if f.index >= len(f.blueprints) {
 		reloaded, err := f.load()
 		if err != nil {
 			return nil, err
 		}
-		if !reloaded {
-			return nil, nil // End of list and no updates
+		if reloaded {
+			f.index = 0
 		}
 	}
 
-	if f.pq.Len() == 0 {
-		return nil, nil // Still empty (e.g. empty file)
+	if f.index >= len(f.blueprints) {
+		return nil, nil // End of list
 	}
 
-	item := heap.Pop(&f.pq).(*protocol.Blueprint)
-	return item, nil
+	bp := f.blueprints[f.index]
+	f.index++
+	return &bp, nil
 }
