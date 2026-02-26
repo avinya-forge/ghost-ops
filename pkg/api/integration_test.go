@@ -13,6 +13,7 @@ import (
 	"testing"
 	"time"
 
+	"ghost-ops/pkg/config"
 	"ghost-ops/pkg/protocol"
 	"ghost-ops/pkg/registry"
 	"ghost-ops/pkg/runtime"
@@ -83,7 +84,7 @@ func TestAPI_EndToEndFlow(t *testing.T) {
 		wasmBytes: integrationWasmBytes,
 	}
 
-	reg := registry.NewRegistry(store, engine, source, rt, collector, nil)
+	reg := registry.NewRegistry(store, engine, source, rt, collector, nil, config.RegistryConfig{})
 	srv := NewServer(reg, collector, 1024*1024)
 
 	// Create Test Server

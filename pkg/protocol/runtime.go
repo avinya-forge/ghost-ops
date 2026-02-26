@@ -25,6 +25,9 @@ type RuntimeHost interface {
 	// CheckHealth checks if a service is healthy (loaded and responsive).
 	CheckHealth(ctx context.Context, serviceID string) error
 
+	// GetActiveServiceCount returns the number of active services.
+	GetActiveServiceCount(ctx context.Context) (int, error)
+
 	// GetLogs retrieves the logs for a specific service.
 	GetLogs(ctx context.Context, serviceID string) ([]byte, error)
 
