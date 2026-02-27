@@ -4,6 +4,7 @@ package guest
 
 import (
 	"fmt"
+	"strings"
 	"unsafe"
 )
 
@@ -113,6 +114,36 @@ func Call(service, method string, payload []byte) ([]byte, error) {
 	}
 
 	return out[:actualLen], nil
+}
+
+// GetTraceContext retrieves the current trace context as a map.
+func GetTraceContext() (map[string]string, error) {
+	bufLen := uint32(512)
+	buf := make([]byte, bufLen)
+
+	actualLen := get_trace_context(ptr(buf), bufLen)
+	if actualLen == 0 {
+		return nil, nil
+	}
+
+	if actualLen > bufLen {
+		bufLen = actualLen
+		buf = make([]byte, bufLen)
+		actualLen = get_trace_context(ptr(buf), bufLen)
+	}
+
+	traceStr := string(buf[:actualLen])
+	parts := strings.Split(traceStr, ";")
+	result := make(map[string]string)
+
+	for _, part := range parts {
+		kv := strings.SplitN(part, "=", 2)
+		if len(kv) == 2 {
+			result[kv[0]] = kv[1]
+		}
+	}
+
+	return result, nil
 }
 
 func ptr(b []byte) uint32 {

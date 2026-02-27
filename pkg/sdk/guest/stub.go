@@ -27,3 +27,8 @@ func Get(key string) ([]byte, error) {
 func Call(service, method string, payload []byte) ([]byte, error) {
 	return nil, fmt.Errorf("guest SDK functions are only available in WASM/WASI environment")
 }
+
+// GetTraceContext retrieves the current trace context as a map.
+func GetTraceContext() (map[string]string, error) {
+	return nil, fmt.Errorf("guest SDK functions are only available in WASM/WASI environment")
+}
