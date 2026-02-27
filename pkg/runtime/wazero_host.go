@@ -178,30 +178,7 @@ func (h *WazeroRuntimeHost) rpc(ctx context.Context, m api.Module, svcPtr, svcLe
 	payloadCopy := make([]byte, len(payload))
 	copy(payloadCopy, payload)
 
-	// Propagate trace context from the caller
-	moduleName := m.Name()
-	h.mu.RLock()
-	currentReq, ok := h.currentReq[moduleName]
-	h.mu.RUnlock()
-
-	// Create a new context with the trace information if available
-	invokeCtx := ctx
-	if ok && currentReq.traceID != "" && currentReq.spanID != "" {
-		traceID, err := trace.TraceIDFromHex(currentReq.traceID)
-		if err == nil {
-			spanID, err := trace.SpanIDFromHex(currentReq.spanID)
-			if err == nil {
-				spanCtx := trace.NewSpanContext(trace.SpanContextConfig{
-					TraceID:    traceID,
-					SpanID:     spanID,
-					TraceFlags: trace.FlagsSampled,
-				})
-				invokeCtx = trace.ContextWithSpanContext(ctx, spanCtx)
-			}
-		}
-	}
-
-	result, err := h.Invoke(invokeCtx, targetServiceID, method, payloadCopy)
+	result, err := h.Invoke(ctx, targetServiceID, method, payloadCopy)
 	if err != nil {
 		return 0
 	}

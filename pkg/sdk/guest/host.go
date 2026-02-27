@@ -16,6 +16,3 @@ func read_payload(ptr, cap uint32)
 
 //go:wasmimport ghost_ops submit_result
 func submit_result(ptr, len uint32)
-
-//go:wasmimport ghost_ops get_trace_context
-func get_trace_context(ptr, cap uint32) uint32
