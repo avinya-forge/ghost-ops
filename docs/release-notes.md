@@ -1,6 +1,8 @@
 # Release Notes
 
 ## Unreleased
+
+## v0.3.0 (Released)
 - **Resilience**: Implemented Service Mesh Lite patterns: Retry (Exponential Backoff), Circuit Breaker, and Rate Limiting (Token Bucket).
 - **Distributed Store**: Added Distributed Lock mechanism to `RedisStore` using `SET NX` for coordination.
 - **Observability**: Integrated OpenTelemetry SDK for tracing and added Tracing Middleware to API.
@@ -40,7 +42,132 @@
 - **API**: Generated OpenAPI 3.0 Specification (`docs/openapi.yaml`) for API documentation.
 - **Observability**: Added Token Usage Metrics (`llm_tokens_total`) to track input/output costs.
 - **Registry**: Implemented Dependency Graph validation (`pkg/registry/graph.go`) to prevent cycles in service dependencies.
-
+- [LINT] Add `.golangci.yml` configuration
+    - [LINT] Enable `staticcheck`, `gofmt`, `govet`.
+- [LINT] Fix `staticcheck` issues (SA4006 unused variables)
+    - [LINT] Run linter and fix reported issues.
+- [TEST] Add Unit Tests for `Registry` Error Paths
+    - [UNIT] Coverage for `Reconcile` failure scenarios.
+- [TEST] Add Unit Tests for `WazeroRuntimeHost` Edge Cases
+    - [UNIT] Coverage for `LoadModule` with invalid WASM.
+- [TEST] Add Unit Tests for `IntentSource` Edge Cases
+    - [UNIT] Coverage for empty file, invalid JSON.
+- [REFACTOR] Restructure `examples/` directory
+    - Move `hello-world` to `examples/basic/`.
+- [DOCS] Create `CONTRIBUTING.md`
+    - [DOC] detailed guide on how to contribute.
+- [FEAT] Add Viper Dependency & Setup
+    - [SEC] Ensure secure defaults. [TEST] Verify precedence. [OPT] Lazy load.
+- [FEAT] Define `Config` Struct
+    - [LINT] Add struct tags. [TEST] JSON/YAML serialization.
+- [FEAT] Migrate CLI Flags to Viper Config
+    - [TEST] Verify flag overrides. [SEC] No secrets in flags.
+- [FEAT] Add Config Validation Logic
+    - [SEC] Sanitize inputs. [TEST] Invalid config cases.
+- [FEAT] Add Hot-Reload for Config
+    - [OPT] Debounce events. [TEST] Verify dynamic update.
+- [FEAT] Add Environment Variable Overrides
+    - [SEC] Mask secrets in logs. [TEST] Env var mapping.
+- [FEAT] Define `AppError` Interface in `pkg/protocol`
+    - [LINT] GoDoc. [TEST] Interface compliance. [OPT] O(1) error wrapping.
+- [FEAT] Implement Sentinel Errors
+    - [TEST] Error type assertions. [LINT] Constant naming.
+- [FEAT] Refactor `Registry` to use `AppError`
+    - [TEST] Verify error propagation. [OPT] Minimize allocation.
+- [FEAT] Refactor `Runtime` to use `AppError`
+    - [TEST] Map Wazero exit codes. [SEC] Mask internal details.
+- [FEAT] Add Error Codes to API Responses
+    - [TEST] HTTP 4xx/5xx mappings. [SEC] No stack traces in production.
+- [FEAT] Add Stack Trace to Internal Errors
+    - [OPT] Capture only on debug. [SEC] Redact sensitive paths.
+- [FEAT] Define JSON Schema for `Blueprint`
+    - [LINT] Valid JSON. [TEST] Schema validation tests.
+- [FEAT] Implement `Blueprint` Validation Logic
+    - [SEC] Sanitize inputs. [TEST] Boundary checks.
+- [FEAT] Validate `service_id` format
+    - [SEC] Regex `^[a-zA-Z0-9-]+$`. [TEST] Inject special chars.
+- [FEAT] Validate `constraints` size limits
+    - [SEC] Max size 1MB. [TEST] Large payload DoS.
+- [FEAT] Add Validation Middleware to API
+    - [OPT] Fail fast. [TEST] Middleware chain order.
+- [FEAT] Add `ghost-ops version` command
+    - [TEST] Compare output with runtime. [LINT] Flag parsing.
+- [FEAT] Add `ghost-ops service list` command
+    - [OPT] Pagination support. [TEST] Empty/Large list.
+- [FEAT] Add `ghost-ops service inspect` command
+    - [SEC] Redact secrets. [TEST] Not found case.
+- [FEAT] Add `ghost-ops service logs` command
+    - [OPT] Stream buffer size. [TEST] Connection drop handling.
+- [FEAT] Add `ghost-ops config show` command
+    - [SEC] Mask sensitive keys. [TEST] Verify output matches loaded config.
+- [FEAT] Configure Wazero Memory Limits
+    - [SEC] Max 128MB/guest. [TEST] OOM handling.
+- [FEAT] Configure Wazero CPU Limits
+    - [SEC] Max instructions/call. [TEST] Infinite loop break.
+- [FEAT] Implement Execution Timeouts
+    - [REL] 5s default. [TEST] Context cancellation.
+- [FEAT] Verify Async Module Instantiation
+    - [OPT] Non-blocking I/O. [TEST] Load module under load.
+- [FEAT] Implement Module Cache Eviction
+    - [OPT] LRU policy. [TEST] Cache hit/miss ratio.
+- [FEAT] Implement Event Bus for Service Updates
+    - [OPT] Async channel. [TEST] Subscriber notification.
+- [FEAT] Add Metrics for Service Lifecycle
+    - [OBS] Gauge/Histogram. [TEST] Metric emission.
+- [FEAT] Implement Dependency Graph for Services
+    - [ARCH] DAG traversal. [TEST] Cycle detection.
+- [FEAT] Add Service Health Check Logic
+    - [REL] 10s interval. [TEST] Unhealthy service purge.
+- [TEST] Add Unit Tests for `pkg/telemetry`
+    - [TEST] Achieve >95% coverage for metrics collector.
+- [TEST] Add Unit Tests for pkg/logging
+    - [TEST] Achieve >95% coverage for structured logger.
+- [TEST] Add Unit Tests for pkg/sdk/guest
+    - [TEST] Achieve >95% coverage for guest SDK.
+- [SEC] Run `gosec` Security Scan
+    - [SEC] Audit and fix all high-severity issues.
+- [OPT] Benchmark `RuntimeHost` Performance
+    - [OPT] Ensure overhead < 5ms per invoke.
+- [TEST] Add Integration Tests for API
+    - [TEST] End-to-end flow coverage.
+- [FEAT] Add Makefile `dev` target (hot reload)
+    - [DX] Auto-restart server on source change.
+- [DOCS] Generate API Swagger/OpenAPI Spec
+    - [DOC] Auto-generate spec from code/comments.
+- [FEAT] Add Pre-commit Hooks (Git)
+    - [DX] Enforce lint/test before commit.
+- [FEAT] Add `ghost-ops init` command
+    - [DX] Bootstrap new project structure.
+- [DOCS] Update `README.md` with new features
+    - [DOC] Reflect latest capabilities.
+- [FEAT] Support Custom System Prompts
+    - [FEAT] Allow overriding default LLM prompt.
+- [FEAT] Implement Prompt Caching
+    - [OPT] Cache prompts to save tokens/cost.
+- [FEAT] Add Token Usage Metrics
+    - [OBS] Track input/output tokens per evolution.
+- [FEAT] Support Ollama Provider
+    - [FEAT] Add local LLM support via Ollama.
+- [FEAT] Implement Redis Client Setup
+    - Use `go-redis/v9`.
+- [FEAT] Implement `RedisStateStore` Adapter
+    - `Get`, `Set`, `List`.
+- [FEAT] Implement Distributed Lock for `Reconcile`
+    - Redis Lock.
+- [FEAT] Implement Redis Pub/Sub for Events
+    - Broadcast updates across nodes.
+- [FEAT] Implement State Compression
+    - Compress large payloads.
+- [FEAT] Setup OpenTelemetry SDK
+    - Configure Exporter.
+- [FEAT] Add Tracing Middleware to API
+    - Trace HTTP requests.
+- [FEAT] Implement Circuit Breaker
+    - [REL] Fail fast on downstream failures.
+- [FEAT] Implement Retry Logic with Backoff
+    - [REL] Exponential backoff for transient errors.
+- [FEAT] Implement Rate Limiting (Token Bucket)
+    - [REL] Protect services from overload.
 ## v0.2.1 (Released)
 - Restructured `examples/` directory to group basic examples (`examples/basic/hello-world`).
 - Added `CONTRIBUTING.md` for development guidelines.

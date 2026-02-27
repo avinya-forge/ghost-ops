@@ -1,156 +1,18 @@
 # Backlog
 
-## Phase 0: Hygiene (Foundations)
-- [x] [100] | [LINT] Add `.golangci.yml` configuration | [INDEPENDENT] | [DONE]
-    - [LINT] Enable `staticcheck`, `gofmt`, `govet`.
-- [x] [101] | [LINT] Fix `staticcheck` issues (SA4006 unused variables) | [BLOCKS-100] | [DONE]
-    - [LINT] Run linter and fix reported issues.
-- [x] [102] | [TEST] Add Unit Tests for `Registry` Error Paths | [INDEPENDENT] | [DONE]
-    - [UNIT] Coverage for `Reconcile` failure scenarios.
-- [x] [103] | [TEST] Add Unit Tests for `WazeroRuntimeHost` Edge Cases | [INDEPENDENT] | [DONE]
-    - [UNIT] Coverage for `LoadModule` with invalid WASM.
-- [x] [104] | [TEST] Add Unit Tests for `IntentSource` Edge Cases | [INDEPENDENT] | [DONE]
-    - [UNIT] Coverage for empty file, invalid JSON.
-- [x] [105] | [REFACTOR] Restructure `examples/` directory | [INDEPENDENT] | [DONE]
-    - Move `hello-world` to `examples/basic/`.
-- [x] [106] | [DOCS] Create `CONTRIBUTING.md` | [INDEPENDENT] | [DONE]
-    - [DOC] detailed guide on how to contribute.
-
 ## Phase 1: MVP (The Self-Healing Loop)
 
-### Epic: Configuration Management
-- [x] [200] | [FEAT] Add Viper Dependency & Setup | [INDEPENDENT] | [DONE]
-    - [SEC] Ensure secure defaults. [TEST] Verify precedence. [OPT] Lazy load.
-- [x] [201] | [FEAT] Define `Config` Struct | [BLOCKS-200] | [DONE]
-    - [LINT] Add struct tags. [TEST] JSON/YAML serialization.
-- [x] [202] | [FEAT] Migrate CLI Flags to Viper Config | [BLOCKS-201] | [DONE]
-    - [TEST] Verify flag overrides. [SEC] No secrets in flags.
-- [x] [203] | [FEAT] Add Config Validation Logic | [BLOCKS-201] | [DONE]
-    - [SEC] Sanitize inputs. [TEST] Invalid config cases.
-- [x] [204] | [FEAT] Add Hot-Reload for Config | [BLOCKS-200] | [DONE]
-    - [OPT] Debounce events. [TEST] Verify dynamic update.
-- [x] [205] | [FEAT] Add Environment Variable Overrides | [BLOCKS-200] | [DONE]
-    - [SEC] Mask secrets in logs. [TEST] Env var mapping.
-
-### Epic: Error Handling
-- [x] [210] | [FEAT] Define `AppError` Interface in `pkg/protocol` | [INDEPENDENT] | [DONE]
-    - [LINT] GoDoc. [TEST] Interface compliance. [OPT] O(1) error wrapping.
-- [x] [211] | [FEAT] Implement Sentinel Errors | [BLOCKS-210] | [DONE]
-    - [TEST] Error type assertions. [LINT] Constant naming.
-- [x] [212] | [FEAT] Refactor `Registry` to use `AppError` | [BLOCKS-211] | [DONE]
-    - [TEST] Verify error propagation. [OPT] Minimize allocation.
-- [x] [213] | [FEAT] Refactor `Runtime` to use `AppError` | [BLOCKS-211] | [DONE]
-    - [TEST] Map Wazero exit codes. [SEC] Mask internal details.
-- [x] [214] | [FEAT] Add Error Codes to API Responses | [BLOCKS-210] | [DONE]
-    - [TEST] HTTP 4xx/5xx mappings. [SEC] No stack traces in production.
-- [x] [215] | [FEAT] Add Stack Trace to Internal Errors | [BLOCKS-210] | [DONE]
-    - [OPT] Capture only on debug. [SEC] Redact sensitive paths.
-
-### Epic: Validation
-- [x] [220] | [FEAT] Define JSON Schema for `Blueprint` | [INDEPENDENT] | [DONE]
-    - [LINT] Valid JSON. [TEST] Schema validation tests.
-- [x] [221] | [FEAT] Implement `Blueprint` Validation Logic | [BLOCKS-220] | [DONE]
-    - [SEC] Sanitize inputs. [TEST] Boundary checks.
-- [x] [222] | [FEAT] Validate `service_id` format | [BLOCKS-220] | [DONE]
-    - [SEC] Regex `^[a-zA-Z0-9-]+$`. [TEST] Inject special chars.
-- [x] [223] | [FEAT] Validate `constraints` size limits | [BLOCKS-220] | [DONE]
-    - [SEC] Max size 1MB. [TEST] Large payload DoS.
-- [x] [224] | [FEAT] Add Validation Middleware to API | [BLOCKS-221] | [DONE]
-    - [OPT] Fail fast. [TEST] Middleware chain order.
-
-### Epic: CLI Enhancements
-- [x] [230] | [FEAT] Add `ghost-ops version` command | [INDEPENDENT] | [DONE]
-    - [TEST] Compare output with runtime. [LINT] Flag parsing.
-- [x] [231] | [FEAT] Add `ghost-ops service list` command | [INDEPENDENT] | [DONE]
-    - [OPT] Pagination support. [TEST] Empty/Large list.
-- [x] [232] | [FEAT] Add `ghost-ops service inspect` command | [BLOCKS-231] | [DONE]
-    - [SEC] Redact secrets. [TEST] Not found case.
-- [x] [233] | [FEAT] Add `ghost-ops service logs` command | [BLOCKS-231] | [DONE]
-    - [OPT] Stream buffer size. [TEST] Connection drop handling.
-- [x] [234] | [FEAT] Add `ghost-ops config show` command | [BLOCKS-201] | [DONE]
-    - [SEC] Mask sensitive keys. [TEST] Verify output matches loaded config.
-
-### Epic: Runtime Hardening
-- [x] [240] | [FEAT] Configure Wazero Memory Limits | [INDEPENDENT] | [DONE]
-    - [SEC] Max 128MB/guest. [TEST] OOM handling.
-- [x] [241] | [FEAT] Configure Wazero CPU Limits | [INDEPENDENT] | [DONE]
-    - [SEC] Max instructions/call. [TEST] Infinite loop break.
-- [x] [242] | [FEAT] Implement Execution Timeouts | [INDEPENDENT] | [DONE]
-    - [REL] 5s default. [TEST] Context cancellation.
-- [x] [243] | [FEAT] Verify Async Module Instantiation | [INDEPENDENT] | [DONE]
-    - [OPT] Non-blocking I/O. [TEST] Load module under load.
-- [x] [244] | [FEAT] Implement Module Cache Eviction | [INDEPENDENT] | [DONE]
-    - [OPT] LRU policy. [TEST] Cache hit/miss ratio.
-
-### Epic: Registry Enhancements
-- [x] [250] | [FEAT] Implement Event Bus for Service Updates | [INDEPENDENT] | [DONE]
-    - [OPT] Async channel. [TEST] Subscriber notification.
-- [x] [251] | [FEAT] Add Metrics for Service Lifecycle | [INDEPENDENT] | [DONE]
-    - [OBS] Gauge/Histogram. [TEST] Metric emission.
-- [x] [252] | [FEAT] Implement Dependency Graph for Services | [INDEPENDENT] | [DONE]
-    - [ARCH] DAG traversal. [TEST] Cycle detection.
-- [x] [253] | [FEAT] Add Service Health Check Logic | [INDEPENDENT] | [DONE]
-    - [REL] 10s interval. [TEST] Unhealthy service purge.
-
-### Epic: Hardening (Observability & Security)
-- [x] [260] | [TEST] Add Unit Tests for `pkg/telemetry` | [INDEPENDENT] | [DONE]
-    - [TEST] Achieve >95% coverage for metrics collector.
-- [x] [261] | [TEST] Add Unit Tests for pkg/logging | [INDEPENDENT] | [DONE]
-    - [TEST] Achieve >95% coverage for structured logger.
-- [x] [262] | [TEST] Add Unit Tests for pkg/sdk/guest | [INDEPENDENT] | [DONE]
-    - [TEST] Achieve >95% coverage for guest SDK.
-- [x] [263] | [SEC] Run `gosec` Security Scan | [INDEPENDENT] | [DONE]
-    - [SEC] Audit and fix all high-severity issues.
-- [x] [264] | [OPT] Benchmark `RuntimeHost` Performance | [INDEPENDENT] | [DONE]
-    - [OPT] Ensure overhead < 5ms per invoke.
-- [x] [265] | [TEST] Add Integration Tests for API | [INDEPENDENT] | [DONE]
-    - [TEST] End-to-end flow coverage.
-
 ### Epic: Developer Experience
-- [x] [270] | [FEAT] Add Makefile `dev` target (hot reload) | [INDEPENDENT] | [DONE]
-    - [DX] Auto-restart server on source change.
-- [x] [271] | [DOCS] Generate API Swagger/OpenAPI Spec | [INDEPENDENT] | [DONE]
-    - [DOC] Auto-generate spec from code/comments.
-- [x] [272] | [FEAT] Add Pre-commit Hooks (Git) | [INDEPENDENT] | [DONE]
-    - [DX] Enforce lint/test before commit.
-- [x] [273] | [FEAT] Add `ghost-ops init` command | [INDEPENDENT] | [DONE]
-    - [DX] Bootstrap new project structure.
 - [ ] [274] | [DOCS] Create Architecture Diagrams (PlantUML/Mermaid) | [INDEPENDENT] | [TODO]
     - [DOC] Visualize system components and flow.
-- [x] [275] | [DOCS] Update `README.md` with new features | [INDEPENDENT] | [DONE]
-    - [DOC] Reflect latest capabilities.
 
 ### Epic: AI Evolution Enhancements
-- [x] [280] | [FEAT] Support Custom System Prompts | [INDEPENDENT] | [DONE]
-    - [FEAT] Allow overriding default LLM prompt.
-- [x] [281] | [FEAT] Implement Prompt Caching | [INDEPENDENT] | [DONE]
-    - [OPT] Cache prompts to save tokens/cost.
-- [x] [282] | [FEAT] Add Token Usage Metrics | [INDEPENDENT] | [DONE]
-    - [OBS] Track input/output tokens per evolution.
-- [x] [283] | [FEAT] Support Ollama Provider | [INDEPENDENT] | [DONE]
-    - [FEAT] Add local LLM support via Ollama.
 - [ ] [284] | [TEST] Add Evals for Code Generation Quality | [INDEPENDENT] | [TODO]
     - [TEST] Automated evaluation of generated code.
 
 ## Phase 2: Scale (Distributed & Resilient)
 
-### Epic: Distributed Store (Redis)
-- [x] [300] | [FEAT] Implement Redis Client Setup | [INDEPENDENT] | [DONE]
-    - Use `go-redis/v9`.
-- [x] [301] | [FEAT] Implement `RedisStateStore` Adapter | [BLOCKS-300] | [DONE]
-    - `Get`, `Set`, `List`.
-- [x] [302] | [FEAT] Implement Distributed Lock for `Reconcile` | [BLOCKS-301] | [DONE]
-    - Redis Lock.
-- [x] [303] | [FEAT] Implement Redis Pub/Sub for Events | [BLOCKS-300] | [DONE]
-    - Broadcast updates across nodes.
-- [x] [304] | [FEAT] Implement State Compression | [BLOCKS-301] | [DONE]
-    - Compress large payloads.
-
 ### Epic: Observability (OpenTelemetry)
-- [x] [310] | [FEAT] Setup OpenTelemetry SDK | [INDEPENDENT] | [DONE]
-    - Configure Exporter.
-- [x] [311] | [FEAT] Add Tracing Middleware to API | [BLOCKS-310] | [DONE]
-    - Trace HTTP requests.
 - [ ] [312] | [FEAT] Add Trace Propagation to WASM | [BLOCKS-311] | [TODO]
     - Pass trace context to guest.
 - [ ] [313] | [FEAT] Configure OTLP Exporter | [BLOCKS-310] | [TODO]
@@ -163,12 +25,6 @@
     - [ARCH] Deploy sidecar for network interception.
 - [ ] [321] | [FEAT] Implement mTLS between Services | [BLOCKS-320] | [TODO]
     - [SEC] Mutual TLS for service-to-service auth.
-- [x] [322] | [FEAT] Implement Circuit Breaker | [INDEPENDENT] | [DONE]
-    - [REL] Fail fast on downstream failures.
-- [x] [323] | [FEAT] Implement Retry Logic with Backoff | [INDEPENDENT] | [DONE]
-    - [REL] Exponential backoff for transient errors.
-- [x] [324] | [FEAT] Implement Rate Limiting (Token Bucket) | [INDEPENDENT] | [DONE]
-    - [REL] Protect services from overload.
 
 ### Epic: Advanced Scheduling
 - [ ] [330] | [FEAT] Implement Priority Queues for Evolution | [INDEPENDENT] | [TODO]
@@ -183,3 +39,113 @@
     - [STRAT] Design support for Rust/Python.
 - [ ] [402] | [PROPOSAL] Automated Vulnerability Scanning | [INDEPENDENT] | [TODO]
     - [STRAT] Design security scanner for generated code.
+
+### Epic: Autonomous Optimization Loop
+- [ ] [500] | [PROPOSAL] Define Metric Thresholds for Optimization | [INDEPENDENT] | [TODO]
+    - [STRAT] Establish baseline metrics.
+- [ ] [501] | [FEAT] Implement Observer Agent | [BLOCKS-500] | [TODO]
+    - [OBS] Continuously monitor runtime state.
+- [ ] [502] | [FEAT] Trigger Re-Prompt on Latency Spike | [BLOCKS-501] | [TODO]
+    - [REL] Auto-trigger LLM re-prompt if P99 > 500ms.
+- [ ] [503] | [FEAT] Trigger Re-Prompt on Error Rate Spike | [BLOCKS-501] | [TODO]
+    - [REL] Auto-trigger LLM re-prompt if 5xx > 1%.
+- [ ] [504] | [FEAT] Validate Synthesized Code in Shadow Mode | [BLOCKS-502] | [TODO]
+    - [TEST] Run new code against mirrored traffic.
+- [ ] [505] | [FEAT] Compare Shadow and Primary Metrics | [BLOCKS-504] | [TODO]
+    - [OPT] Ensure new code is actually better.
+- [ ] [506] | [FEAT] Implement Hot-Swap Promotion | [BLOCKS-505] | [TODO]
+    - [REL] Promote shadow to primary gracefully.
+- [ ] [507] | [FEAT] Implement Auto-Rollback | [BLOCKS-506] | [TODO]
+    - [REL] Revert if new version degrades.
+- [ ] [508] | [DOCS] Document Optimization Loop | [INDEPENDENT] | [TODO]
+    - [DOC] Detail the ZHO feedback cycle.
+- [ ] [509] | [TEST] End-to-End Optimization Test | [BLOCKS-507] | [TODO]
+    - [TEST] Full simulation of failure and self-healing.
+
+### Epic: Multi-Language Expansion
+- [ ] [600] | [PROPOSAL] Rust Guest SDK Design | [INDEPENDENT] | [TODO]
+    - [STRAT] Map host functions to Rust interfaces.
+- [ ] [601] | [FEAT] Implement Rust Guest SDK Base | [BLOCKS-600] | [TODO]
+    - [FEAT] Basic memory sharing for Rust.
+- [ ] [602] | [FEAT] Implement Rust Guest SDK Logger | [BLOCKS-601] | [TODO]
+    - [FEAT] Hook up structured logging.
+- [ ] [603] | [FEAT] Rust Compiler Evolution Engine | [BLOCKS-601] | [TODO]
+    - [FEAT] Support `cargo build --target wasm32-wasi`.
+- [ ] [604] | [TEST] Test Rust Compiler Engine | [BLOCKS-603] | [TODO]
+    - [TEST] Validate WASM output from Rust source.
+- [ ] [605] | [PROPOSAL] Python (Wasm) Guest SDK Design | [INDEPENDENT] | [TODO]
+    - [STRAT] Evaluate CPython vs MicroPython for WASM.
+- [ ] [606] | [FEAT] Implement Python Guest SDK Base | [BLOCKS-605] | [TODO]
+    - [FEAT] Bootstrapping Python environment in WASM.
+- [ ] [607] | [FEAT] Python Evolution Engine | [BLOCKS-606] | [TODO]
+    - [FEAT] Bundle Python scripts into WASM modules.
+- [ ] [608] | [DOCS] Update Examples with Rust/Python | [BLOCKS-604] | [TODO]
+    - [DOC] Add basic examples.
+- [ ] [609] | [TEST] Cross-Language Interop Testing | [BLOCKS-607] | [TODO]
+    - [TEST] Verify Go host can invoke Rust/Python guests uniformly.
+
+### Epic: Advanced Security Hardening
+- [ ] [700] | [PROPOSAL] Wasm Sandboxing Review | [INDEPENDENT] | [TODO]
+    - [STRAT] Identify potential host escapes.
+- [ ] [701] | [FEAT] Implement Capability-based Security | [BLOCKS-700] | [TODO]
+    - [SEC] Fine-grained permissions per module.
+- [ ] [702] | [FEAT] Enforce Network Egress Policies | [BLOCKS-701] | [TODO]
+    - [SEC] Block unauthorized outgoing calls from WASM.
+- [ ] [703] | [FEAT] Implement File System Jails | [BLOCKS-701] | [TODO]
+    - [SEC] Restrict WASM disk access strictly to allowed dirs.
+- [ ] [704] | [FEAT] Automated Vulnerability Scanning | [INDEPENDENT] | [TODO]
+    - [SEC] Scan generated code for common CVEs.
+- [ ] [705] | [FEAT] LLM Prompt Injection Defenses | [INDEPENDENT] | [TODO]
+    - [SEC] Sanitize user intents before LLM processing.
+- [ ] [706] | [TEST] Security Chaos Engineering | [BLOCKS-705] | [TODO]
+    - [TEST] Inject malicious payloads into intents.
+- [ ] [707] | [FEAT] Audit Logging for State Changes | [INDEPENDENT] | [TODO]
+    - [SEC] Immutable logs for registry modifications.
+- [ ] [708] | [FEAT] Secret Management Integration | [INDEPENDENT] | [TODO]
+    - [SEC] Fetch secrets securely (Vault/AWS SM).
+- [ ] [709] | [DOCS] Security Architecture Guide | [BLOCKS-708] | [TODO]
+    - [DOC] Document trust boundaries.
+
+### Epic: Cluster State Management
+- [ ] [800] | [PROPOSAL] Etcd Integration Strategy | [INDEPENDENT] | [TODO]
+    - [STRAT] Evaluate Etcd vs Redis for consensus.
+- [ ] [801] | [FEAT] Implement Etcd Client Setup | [BLOCKS-800] | [TODO]
+    - [FEAT] Basic connection handling.
+- [ ] [802] | [FEAT] Etcd StateStore Adapter | [BLOCKS-801] | [TODO]
+    - [FEAT] CRUD operations using Etcd.
+- [ ] [803] | [FEAT] Distributed Leader Election | [BLOCKS-802] | [TODO]
+    - [REL] Ensure single active reconciler loop.
+- [ ] [804] | [FEAT] State Synchronization Protocol | [BLOCKS-803] | [TODO]
+    - [REL] Propagate state changes to worker nodes.
+- [ ] [805] | [TEST] Partition Tolerance Testing | [BLOCKS-804] | [TODO]
+    - [TEST] Simulate network splits.
+- [ ] [806] | [FEAT] Cluster Health Dashboard Data | [INDEPENDENT] | [TODO]
+    - [OBS] Aggregate node status.
+- [ ] [807] | [FEAT] Node Auto-Discovery | [BLOCKS-804] | [TODO]
+    - [REL] Dynamic scaling of worker pool.
+- [ ] [808] | [FEAT] Graceful Node Draining | [BLOCKS-807] | [TODO]
+    - [REL] Safely evict services on shutdown.
+- [ ] [809] | [DOCS] Cluster Setup Guide | [BLOCKS-808] | [TODO]
+    - [DOC] Steps to run a multi-node deployment.
+
+### Epic: Dynamic Routing
+- [ ] [900] | [PROPOSAL] Layer 7 Gateway Design | [INDEPENDENT] | [TODO]
+    - [STRAT] Define routing rules format.
+- [ ] [901] | [FEAT] Implement HTTP Gateway | [BLOCKS-900] | [TODO]
+    - [FEAT] Map external routes to internal services.
+- [ ] [902] | [FEAT] Dynamic Route Reconfiguration | [BLOCKS-901] | [TODO]
+    - [REL] Update routes without dropping connections.
+- [ ] [903] | [FEAT] Blue/Green Deployment Support | [BLOCKS-902] | [TODO]
+    - [REL] Route traffic weights (e.g., 90/10).
+- [ ] [904] | [FEAT] Path-based Routing | [BLOCKS-901] | [TODO]
+    - [FEAT] e.g., /api/v1/auth -> auth-service.
+- [ ] [905] | [FEAT] Header-based Routing | [BLOCKS-901] | [TODO]
+    - [FEAT] e.g., X-Beta: true -> beta-service.
+- [ ] [906] | [TEST] Gateway Load Testing | [BLOCKS-905] | [TODO]
+    - [TEST] Ensure minimal overhead (<2ms).
+- [ ] [907] | [FEAT] Websocket Support in Gateway | [BLOCKS-901] | [TODO]
+    - [FEAT] Proxy WS connections to WASM.
+- [ ] [908] | [FEAT] Gateway Rate Limiting | [BLOCKS-901] | [TODO]
+    - [SEC] Global limits per IP.
+- [ ] [909] | [DOCS] Routing Configuration Guide | [BLOCKS-908] | [TODO]
+    - [DOC] Document gateway usage.

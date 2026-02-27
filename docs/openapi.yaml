@@ -1,7 +1,7 @@
 openapi: 3.0.0
 info:
   title: Ghost Ops API
-  version: 0.2.1
+  version: 0.3.0
   description: API for Ghost Ops platform.
 paths:
   /services:
