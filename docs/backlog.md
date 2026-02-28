@@ -95,9 +95,9 @@
     - [SEC] Restrict WASM disk access strictly to allowed dirs.
 - [ ] [704] | [FEAT] Automated Vulnerability Scanning | [INDEPENDENT] | [TODO]
     - [SEC] Scan generated code for common CVEs.
-- [ ] [705] | [FEAT] LLM Prompt Injection Defenses | [INDEPENDENT] | [TODO]
+- [x] [705] | [FEAT] LLM Prompt Injection Defenses | [INDEPENDENT] | [DONE]
     - [SEC] Sanitize user intents before LLM processing.
-- [ ] [706] | [TEST] Security Chaos Engineering | [BLOCKS-705] | [TODO]
+- [x] [706] | [TEST] Security Chaos Engineering | [BLOCKS-705] | [DONE]
     - [TEST] Inject malicious payloads into intents.
 - [ ] [707] | [FEAT] Audit Logging for State Changes | [INDEPENDENT] | [TODO]
     - [SEC] Immutable logs for registry modifications.
