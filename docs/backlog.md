@@ -13,11 +13,11 @@
 ## Phase 2: Scale (Distributed & Resilient)
 
 ### Epic: Observability (OpenTelemetry)
-- [ ] [312] | [FEAT] Add Trace Propagation to WASM | [BLOCKS-311] | [TODO]
+- [x] [312] | [FEAT] Add Trace Propagation to WASM | [BLOCKS-311] | [DONE]
     - Pass trace context to guest.
 - [ ] [313] | [FEAT] Configure OTLP Exporter | [BLOCKS-310] | [TODO]
     - Export to Jaeger/Tempo.
-- [ ] [314] | [FEAT] Correlate Logs with Traces | [BLOCKS-311] | [TODO]
+- [x] [314] | [FEAT] Correlate Logs with Traces | [BLOCKS-311] | [DONE]
     - Add TraceID to logs.
 
 ### Epic: Service Mesh Lite

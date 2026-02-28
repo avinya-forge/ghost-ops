@@ -8,6 +8,7 @@ import (
 	"testing"
 
 	"github.com/stretchr/testify/assert"
+	"go.opentelemetry.io/otel/trace"
 )
 
 func TestSetLevel(t *testing.T) {
@@ -53,4 +54,48 @@ func TestInitLoggerWithWriter_Level(t *testing.T) {
 	output := buf.String()
 	assert.NotContains(t, output, "should not appear")
 	assert.Contains(t, output, "should appear")
+}
+
+func TestInitLoggerWithWriter_TraceHandler(t *testing.T) {
+	var buf bytes.Buffer
+	InitLoggerWithWriter(slog.LevelInfo, &buf)
+
+	// Create a dummy tracer and context
+	ctx := context.Background()
+
+	// Use slog.InfoContext directly to pass the context down.
+	slog.InfoContext(ctx, "test message")
+
+	var logEntry map[string]interface{}
+	err := json.Unmarshal(buf.Bytes(), &logEntry)
+	assert.NoError(t, err)
+
+	assert.NotContains(t, logEntry, "trace_id")
+	assert.NotContains(t, logEntry, "span_id")
+}
+
+func TestInitLoggerWithWriter_TraceHandlerWithTrace(t *testing.T) {
+	var buf bytes.Buffer
+	InitLoggerWithWriter(slog.LevelInfo, &buf)
+
+	// Create a dummy trace ID and span ID
+	traceID, _ := trace.TraceIDFromHex("0102030405060708090a0b0c0d0e0f10")
+	spanID, _ := trace.SpanIDFromHex("0102030405060708")
+
+	spanCtx := trace.NewSpanContext(trace.SpanContextConfig{
+		TraceID:    traceID,
+		SpanID:     spanID,
+		TraceFlags: trace.FlagsSampled,
+	})
+
+	ctx := trace.ContextWithSpanContext(context.Background(), spanCtx)
+
+	slog.InfoContext(ctx, "test message")
+
+	var logEntry map[string]interface{}
+	err := json.Unmarshal(buf.Bytes(), &logEntry)
+	assert.NoError(t, err)
+
+	assert.Equal(t, "0102030405060708090a0b0c0d0e0f10", logEntry["trace_id"])
+	assert.Equal(t, "0102030405060708", logEntry["span_id"])
 }
