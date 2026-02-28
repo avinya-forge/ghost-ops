@@ -5,6 +5,8 @@ import (
 	"encoding/json"
 	"fmt"
 	"regexp"
+	"strings"
+	"unicode"
 )
 
 var serviceIDRegex = regexp.MustCompile(`^[a-zA-Z0-9-]+$`)
@@ -15,6 +17,20 @@ type Blueprint struct {
 	Intent       string                 `json:"intent"`
 	Constraints  map[string]interface{} `json:"constraints"`
 	Dependencies []string               `json:"dependencies,omitempty"`
+}
+
+// Sanitize cleans up the blueprint by removing potentially malicious characters.
+func (b *Blueprint) Sanitize() {
+	b.ServiceID = strings.TrimSpace(b.ServiceID)
+
+	// Remove non-printable characters and null bytes from Intent
+	var cleanIntent strings.Builder
+	for _, r := range b.Intent {
+		if unicode.IsPrint(r) || r == '\n' || r == '\r' || r == '\t' {
+			cleanIntent.WriteRune(r)
+		}
+	}
+	b.Intent = strings.TrimSpace(cleanIntent.String())
 }
 
 // Validate checks if the blueprint is valid.

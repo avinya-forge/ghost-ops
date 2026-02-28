@@ -23,6 +23,9 @@ func NewAIEvolutionEngine(llm protocol.LLMProvider, collector protocol.MetricsCo
 
 // Evolve generates a WASM binary from the given blueprint using AI.
 func (e *AIEvolutionEngine) Evolve(ctx context.Context, blueprint protocol.Blueprint) ([]byte, error) {
+	// Sanitize the blueprint before processing
+	blueprint.Sanitize()
+
 	// 1. Generate Source Code from Blueprint
 	sourceCode, usage, err := e.llm.GenerateCode(ctx, blueprint)
 	if err != nil {
