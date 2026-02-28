@@ -27,7 +27,7 @@
     - [SEC] Mutual TLS for service-to-service auth.
 
 ### Epic: Advanced Scheduling
-- [ ] [330] | [FEAT] Implement Priority Queues for Evolution | [INDEPENDENT] | [TODO]
+- [x] [330] | [FEAT] Implement Priority Queues for Evolution | [INDEPENDENT] | [DONE]
     - [ALG] Min-heap for task priority. [TEST] Priority order.
 - [ ] [331] | [FEAT] Implement Resource-Aware Scheduling | [BLOCKS-330] | [TODO]
     - [OPT] Bin packing algorithm. [TEST] Maximize density.
