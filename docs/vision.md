@@ -10,7 +10,7 @@ The system patches, optimizes, and evolves itself. Human intervention is a failu
 3.  **Simple-First:** Complexity is the enemy. If a feature serves <1% of use cases, defer it.
 
 ## 3. Definition of Done (DoD)
-Every Work Unit (WU) must satisfy the **Adversarial Triad**:
+Every Work Unit (WU) must satisfy the **Adversarial Triad** (Optimizer, Hardener, Pragmatist):
 *   **Test (95%):** Unit coverage > 95%. Integration tests for critical paths.
 *   **Lint (0-err):** No linting errors (staticcheck, go vet).
 *   **Opt (Big O):** O(n) or better complexity verified.
@@ -39,4 +39,4 @@ The system observes runtime metrics (latency, error rates), identifies inefficie
 ### [PHASE-3: Future - Autonomous Evolution]
 *Focus: The system becomes self-aware.*
 - **Goal:** Autonomous optimization based on runtime feedback.
-- **Key Deliverables:** Runtime Metrics -> Re-Prompting Loop, Multi-Language SDKs, Automated Security.
+- **Key Deliverables:** Runtime Metrics -> Re-Prompting Loop, Multi-Language SDKs, Automated Security, Cluster State Management, Dynamic Routing.
