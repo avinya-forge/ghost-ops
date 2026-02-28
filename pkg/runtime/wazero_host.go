@@ -158,6 +158,25 @@ func (h *WazeroRuntimeHost) kvGet(ctx context.Context, m api.Module, keyPtr, key
 }
 
 func (h *WazeroRuntimeHost) rpc(ctx context.Context, m api.Module, svcPtr, svcLen, methPtr, methLen, payPtr, payLen, outPtr, outLen uint32) uint32 {
+	moduleName := m.Name()
+	h.mu.RLock()
+	req, reqOk := h.currentReq[moduleName]
+	h.mu.RUnlock()
+
+	// Inject trace context from caller
+	if reqOk && req.traceID != "" && req.spanID != "" {
+		if traceID, err := trace.TraceIDFromHex(req.traceID); err == nil {
+			if spanID, err := trace.SpanIDFromHex(req.spanID); err == nil {
+				spanCtx := trace.NewSpanContext(trace.SpanContextConfig{
+					TraceID:    traceID,
+					SpanID:     spanID,
+					TraceFlags: trace.FlagsSampled,
+				})
+				ctx = trace.ContextWithSpanContext(ctx, spanCtx)
+			}
+		}
+	}
+
 	mem := m.Memory()
 	svcBytes, ok := mem.Read(svcPtr, svcLen)
 	if !ok {
