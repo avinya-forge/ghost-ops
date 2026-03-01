@@ -51,6 +51,7 @@ func NewServer(r *registry.Registry, c protocol.MetricsCollector, maxBodySize in
 	mux.HandleFunc("/reconcile", commonMiddleware(s.handleReconcile))
 	mux.HandleFunc("/metrics", s.handleMetrics)
 	mux.HandleFunc("/healthz", s.handleHealthz)
+	mux.HandleFunc("/cluster/health", commonMiddleware(s.handleClusterHealth))
 
 	return s
 }
@@ -206,4 +207,42 @@ func (s *Server) writeError(w http.ResponseWriter, err error) {
 	}
 
 	http.Error(w, message, statusCode)
+}
+
+func (s *Server) handleClusterHealth(w http.ResponseWriter, r *http.Request) {
+	if r.Method != http.MethodGet {
+		http.Error(w, "Method not allowed", http.StatusMethodNotAllowed)
+		return
+	}
+
+	services, err := s.registry.ListServices(r.Context())
+	if err != nil {
+		s.writeError(w, err)
+		return
+	}
+
+	var activeCount int
+	for _, svc := range services {
+		if svc.ActiveVersion > 0 {
+			activeCount++
+		}
+	}
+
+	// This is a minimal cluster health response for a single node.
+	health := map[string]interface{}{
+		"status": "healthy",
+		"nodes": []map[string]interface{}{
+			{
+				"id": "node-1",
+				"status": "up",
+				"active_services": activeCount,
+			},
+		},
+		"total_active_services": activeCount,
+	}
+
+	w.Header().Set("Content-Type", "application/json")
+	if err := json.NewEncoder(w).Encode(health); err != nil {
+		slog.Error("Failed to encode cluster health", "error", err)
+	}
 }
