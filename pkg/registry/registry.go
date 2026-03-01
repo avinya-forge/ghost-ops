@@ -9,6 +9,7 @@ import (
 	"time"
 
 	"ghost-ops/pkg/config"
+	"ghost-ops/pkg/logging"
 	"ghost-ops/pkg/protocol"
 )
 
@@ -206,6 +207,12 @@ func (r *Registry) CheckServices(ctx context.Context) {
 				if unloadErr := r.runtime.UnloadVersion(ctx, svc.ServiceID, versionStr); unloadErr != nil {
 					slog.Error("Failed to purge unhealthy service", "service_id", svc.ServiceID, "error", unloadErr)
 				}
+
+				logging.Audit(ctx, "purge_unhealthy_service", map[string]interface{}{
+					"service_id": svc.ServiceID,
+					"version":    versionStr,
+					"error":      err.Error(),
+				})
 			}
 		}
 	}
@@ -340,6 +347,14 @@ func (r *Registry) updateStore(ctx context.Context, serviceID string, version in
 	if err := r.store.UpdateService(ctx, record); err != nil {
 		return wrapError(protocol.ErrInternal.Code(), "failed to update store", err)
 	}
+
+	logging.Audit(ctx, "update_service", map[string]interface{}{
+		"service_id": serviceID,
+		"version":    version,
+		"hash":       hashStr,
+		"state":      record.CurrentState,
+	})
+
 	return nil
 }
 

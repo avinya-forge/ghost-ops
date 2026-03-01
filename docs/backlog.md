@@ -7,7 +7,7 @@
     - [DOC] Visualize system components and flow.
 
 ### Epic: AI Evolution Enhancements
-- [ ] [284] | [TEST] Add Evals for Code Generation Quality | [INDEPENDENT] | [TODO]
+- [x] [284] | [TEST] Add Evals for Code Generation Quality | [INDEPENDENT] | [DONE]
     - [TEST] Automated evaluation of generated code.
 
 ## Phase 2: Scale (Distributed & Resilient)
@@ -119,7 +119,7 @@
     - [REL] Propagate state changes to worker nodes.
 - [ ] [805] | [TEST] Partition Tolerance Testing | [BLOCKS-804] | [TODO]
     - [TEST] Simulate network splits.
-- [ ] [806] | [FEAT] Cluster Health Dashboard Data | [INDEPENDENT] | [TODO]
+- [x] [806] | [FEAT] Cluster Health Dashboard Data | [INDEPENDENT] | [DONE]
     - [OBS] Aggregate node status.
 - [ ] [807] | [FEAT] Node Auto-Discovery | [BLOCKS-804] | [TODO]
     - [REL] Dynamic scaling of worker pool.
