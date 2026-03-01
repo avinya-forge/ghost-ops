@@ -64,3 +64,11 @@ func InitLoggerWithWriter(level slog.Level, w io.Writer) {
 func SetLevel(level slog.Level) {
 	logLevel.Set(level)
 }
+
+// Audit records an immutable state change with an "event_type": "audit" field.
+func Audit(ctx context.Context, action string, details map[string]interface{}) {
+	slog.InfoContext(ctx, action,
+		slog.String("event_type", "audit"),
+		slog.Any("details", details),
+	)
+}

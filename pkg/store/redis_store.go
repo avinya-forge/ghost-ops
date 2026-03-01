@@ -186,7 +186,16 @@ func (s *RedisStore) Set(ctx context.Context, key string, value []byte) error {
 // It returns true if the lock was acquired, false otherwise.
 func (s *RedisStore) AcquireLock(ctx context.Context, key string, value string, ttl time.Duration) (bool, error) {
 	k := fmt.Sprintf("lock:%s", key)
-	return s.client.SetNX(ctx, k, value, ttl).Result()
+	err := s.client.SetArgs(ctx, k, value, redis.SetArgs{
+		TTL:  ttl,
+		Mode: "NX",
+	}).Err()
+	if err == redis.Nil {
+		return false, nil // Not acquired
+	} else if err != nil {
+		return false, err
+	}
+	return true, nil // Acquired
 }
 
 // ReleaseLock releases a distributed lock if the value matches.
