@@ -2,6 +2,18 @@
 
 ## Unreleased
 
+## v0.4.0 (Released)
+- Create Architecture Diagrams (PlantUML/Mermaid)
+- Add Evals for Code Generation Quality
+- Add Trace Propagation to WASM
+- Configure OTLP Exporter
+- Correlate Logs with Traces
+- Implement Priority Queues for Evolution
+- LLM Prompt Injection Defenses
+- Security Chaos Engineering
+- Audit Logging for State Changes
+- Cluster Health Dashboard Data
+
 ## v0.3.0 (Released)
 - **Resilience**: Implemented Service Mesh Lite patterns: Retry (Exponential Backoff), Circuit Breaker, and Rate Limiting (Token Bucket).
 - **Distributed Store**: Added Distributed Lock mechanism to `RedisStore` using `SET NX` for coordination.

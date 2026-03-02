@@ -12,3 +12,4 @@ ghost-ops
 
 # OS
 .DS_Store
+.memory/
