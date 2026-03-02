@@ -40,3 +40,11 @@ The system observes runtime metrics (latency, error rates), identifies inefficie
 *Focus: The system becomes self-aware.*
 - **Goal:** Autonomous optimization based on runtime feedback.
 - **Key Deliverables:** Runtime Metrics -> Re-Prompting Loop, Multi-Language SDKs, Automated Security, Cluster State Management, Dynamic Routing.
+
+## 6. Execution Workflow
+1. SCAN: Full-tree analysis. Identify Implementation vs. Vision Gaps.
+2. CONSTITUTE: Sync `vision.md` (Laws, Pipeline, Ideal State).
+3. PLAN (RECURSIVE): Execute [Drill-Down/Up] logic. Update `.memory/` to track traversal.
+4. VAULT: Move "Done" to `release-notes.md` (Reverse-Chronological). Bump version and sync code-side VERSION files.
+5. RECOVERY CHECK: Verify `docs/backlog.md` for consistency.
+6. EXIT: Raise PR.
