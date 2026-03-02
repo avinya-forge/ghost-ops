@@ -15,7 +15,7 @@
 ### Epic: Observability (OpenTelemetry)
 - [x] [312] | [FEAT] Add Trace Propagation to WASM | [BLOCKS-311] | [DONE]
     - Pass trace context to guest.
-- [ ] [313] | [FEAT] Configure OTLP Exporter | [BLOCKS-310] | [TODO]
+- [x] [313] | [FEAT] Configure OTLP Exporter | [BLOCKS-310] | [DONE]
     - Export to Jaeger/Tempo.
 - [x] [314] | [FEAT] Correlate Logs with Traces | [BLOCKS-311] | [DONE]
     - Add TraceID to logs.
