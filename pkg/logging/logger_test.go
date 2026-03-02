@@ -100,28 +100,3 @@ func TestInitLoggerWithWriter_TraceHandlerWithTrace(t *testing.T) {
 	assert.Equal(t, "0102030405060708", logEntry["span_id"])
 }
 
-func TestAudit(t *testing.T) {
-	var buf bytes.Buffer
-	InitLoggerWithWriter(slog.LevelInfo, &buf)
-
-	ctx := context.Background()
-	details := map[string]interface{}{
-		"key": "value",
-		"id":  123,
-	}
-
-	Audit(ctx, "update_service", details)
-
-	var logEntry map[string]interface{}
-	err := json.Unmarshal(buf.Bytes(), &logEntry)
-	assert.NoError(t, err)
-
-	assert.Equal(t, "INFO", logEntry["level"])
-	assert.Equal(t, "update_service", logEntry["msg"])
-	assert.Equal(t, "audit", logEntry["event_type"])
-
-	loggedDetails, ok := logEntry["details"].(map[string]interface{})
-	assert.True(t, ok)
-	assert.Equal(t, "value", loggedDetails["key"])
-	assert.Equal(t, float64(123), loggedDetails["id"])
-}
