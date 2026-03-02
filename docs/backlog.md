@@ -3,7 +3,7 @@
 ## Phase 1: MVP (The Self-Healing Loop)
 
 ### Epic: Developer Experience
-- [ ] [274] | [DOCS] Create Architecture Diagrams (PlantUML/Mermaid) | [INDEPENDENT] | [TODO]
+- [x] [274] | [DOCS] Create Architecture Diagrams (PlantUML/Mermaid) | [INDEPENDENT] | [DONE]
     - [DOC] Visualize system components and flow.
 
 ### Epic: AI Evolution Enhancements
