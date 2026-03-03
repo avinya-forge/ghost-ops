@@ -105,12 +105,12 @@ func (g *ServiceGraph) TopologicalSort() ([]string, error) {
 	visited := make(map[string]bool)
 	order := make([]string, 0)
 
-    // Sort keys for deterministic output
-    keys := make([]string, 0, len(g.nodes))
-    for k := range g.nodes {
-        keys = append(keys, k)
-    }
-    sort.Strings(keys)
+	// Sort keys for deterministic output
+	keys := make([]string, 0, len(g.nodes))
+	for k := range g.nodes {
+		keys = append(keys, k)
+	}
+	sort.Strings(keys)
 
 	for _, node := range keys {
 		if !visited[node] {
@@ -125,9 +125,9 @@ func (g *ServiceGraph) visit(node string, visited map[string]bool, order *[]stri
 	visited[node] = true
 	for _, dep := range g.nodes[node] {
 		// Only traverse known nodes in the graph
-        if _, known := g.nodes[dep]; known && !visited[dep] {
-            g.visit(dep, visited, order)
-        }
+		if _, known := g.nodes[dep]; known && !visited[dep] {
+			g.visit(dep, visited, order)
+		}
 	}
 	*order = append(*order, node)
 }

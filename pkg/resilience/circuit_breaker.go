@@ -20,11 +20,11 @@ var ErrCircuitOpen = errors.New("circuit breaker is open")
 
 // CircuitBreaker implements the circuit breaker pattern.
 type CircuitBreaker struct {
-	mu             sync.Mutex
-	state          CircuitState
-	failureCount   int
-	successCount   int
-	lastFailure    time.Time
+	mu           sync.Mutex
+	state        CircuitState
+	failureCount int
+	successCount int
+	lastFailure  time.Time
 
 	failureThreshold int
 	successThreshold int

@@ -11,7 +11,7 @@ import (
 type RetryOption func(*retryConfig)
 
 type retryConfig struct {
-	maxAttempts int
+	maxAttempts    int
 	initialBackoff time.Duration
 	maxBackoff     time.Duration
 	jitter         float64

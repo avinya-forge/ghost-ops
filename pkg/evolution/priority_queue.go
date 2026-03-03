@@ -30,13 +30,16 @@ func NewPriorityQueue() *PriorityQueue {
 }
 
 // Push adds a new task with the given priority to the queue.
-func (pq *PriorityQueue) Push(bp protocol.Blueprint, priority int) {
+// It returns a pointer to the created Task, which can be used for Update or Remove.
+func (pq *PriorityQueue) Push(bp protocol.Blueprint, priority int) *Task {
 	pq.mu.Lock()
 	defer pq.mu.Unlock()
-	heap.Push(&pq.items, &Task{
+	task := &Task{
 		Blueprint: bp,
 		Priority:  priority,
-	})
+	}
+	heap.Push(&pq.items, task)
+	return task
 }
 
 // Pop removes and returns the task with the highest priority (lowest priority value).
@@ -83,4 +86,26 @@ func (h *taskHeap) Pop() interface{} {
 	item.Index = -1 // for safety
 	*h = old[0 : n-1]
 	return item
+}
+
+// Update changes the priority of a specific task in the queue.
+func (pq *PriorityQueue) Update(task *Task, bp protocol.Blueprint, priority int) {
+	pq.mu.Lock()
+	defer pq.mu.Unlock()
+	if task.Index < 0 || task.Index >= len(pq.items) || pq.items[task.Index] != task {
+		return
+	}
+	task.Blueprint = bp
+	task.Priority = priority
+	heap.Fix(&pq.items, task.Index)
+}
+
+// Remove removes a specific task from the queue.
+func (pq *PriorityQueue) Remove(task *Task) {
+	pq.mu.Lock()
+	defer pq.mu.Unlock()
+	if task.Index < 0 || task.Index >= len(pq.items) || pq.items[task.Index] != task {
+		return
+	}
+	heap.Remove(&pq.items, task.Index)
 }

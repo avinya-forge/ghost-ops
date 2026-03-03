@@ -1,6 +1,7 @@
 # Release Notes
 
 ## Unreleased
+- [FEAT] Build the Evolution Engine Priority Queue
 
 ## v0.4.0 (Released)
 - Create Architecture Diagrams (PlantUML/Mermaid)

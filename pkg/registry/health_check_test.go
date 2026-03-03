@@ -12,7 +12,7 @@ import (
 
 // SmartMockRuntimeHost extends MockRuntimeHost to support custom health check logic.
 type SmartMockRuntimeHost struct {
-	MockRuntimeHost // Embeds the struct defined in registry_test.go
+	MockRuntimeHost   // Embeds the struct defined in registry_test.go
 	unhealthyServices map[string]bool
 }
 

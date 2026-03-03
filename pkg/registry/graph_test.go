@@ -8,36 +8,36 @@ import (
 
 func TestServiceGraph_CycleDetection(t *testing.T) {
 	tests := []struct {
-		name         string
-		existing     []protocol.ServiceRecord
-		newService   string
-		newDeps      []string
-		wantError    bool
+		name       string
+		existing   []protocol.ServiceRecord
+		newService string
+		newDeps    []string
+		wantError  bool
 	}{
 		{
-			name:         "No Cycle - Empty Graph",
-			existing:     nil,
-			newService:   "A",
-			newDeps:      []string{"B"},
-			wantError:    false,
+			name:       "No Cycle - Empty Graph",
+			existing:   nil,
+			newService: "A",
+			newDeps:    []string{"B"},
+			wantError:  false,
 		},
 		{
 			name: "No Cycle - Linear",
 			existing: []protocol.ServiceRecord{
 				{ServiceID: "B", Dependencies: []string{"C"}},
 			},
-			newService:   "A",
-			newDeps:      []string{"B"},
-			wantError:    false,
+			newService: "A",
+			newDeps:    []string{"B"},
+			wantError:  false,
 		},
 		{
 			name: "Cycle - Direct",
 			existing: []protocol.ServiceRecord{
 				{ServiceID: "B", Dependencies: []string{"A"}},
 			},
-			newService:   "A",
-			newDeps:      []string{"B"},
-			wantError:    true,
+			newService: "A",
+			newDeps:    []string{"B"},
+			wantError:  true,
 		},
 		{
 			name: "Cycle - Indirect",
@@ -45,16 +45,16 @@ func TestServiceGraph_CycleDetection(t *testing.T) {
 				{ServiceID: "B", Dependencies: []string{"C"}},
 				{ServiceID: "C", Dependencies: []string{"A"}},
 			},
-			newService:   "A",
-			newDeps:      []string{"B"},
-			wantError:    true,
+			newService: "A",
+			newDeps:    []string{"B"},
+			wantError:  true,
 		},
 		{
-			name: "Cycle - Self Loop",
-			existing:     nil,
-			newService:   "A",
-			newDeps:      []string{"A"},
-			wantError:    true,
+			name:       "Cycle - Self Loop",
+			existing:   nil,
+			newService: "A",
+			newDeps:    []string{"A"},
+			wantError:  true,
 		},
 	}
 

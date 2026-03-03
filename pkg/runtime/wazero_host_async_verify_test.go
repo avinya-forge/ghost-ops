@@ -56,7 +56,7 @@ func compileTestWasm() error {
 // MockStore for runtime tests
 type MockStore struct{}
 
-func (m *MockStore) Get(ctx context.Context, key string) ([]byte, error) { return nil, nil }
+func (m *MockStore) Get(ctx context.Context, key string) ([]byte, error)   { return nil, nil }
 func (m *MockStore) Set(ctx context.Context, key string, val []byte) error { return nil }
 func (m *MockStore) GetService(ctx context.Context, id string) (*protocol.ServiceRecord, error) {
 	return nil, nil

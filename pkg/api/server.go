@@ -233,8 +233,8 @@ func (s *Server) handleClusterHealth(w http.ResponseWriter, r *http.Request) {
 		"status": "healthy",
 		"nodes": []map[string]interface{}{
 			{
-				"id": "node-1",
-				"status": "up",
+				"id":              "node-1",
+				"status":          "up",
 				"active_services": activeCount,
 			},
 		},
