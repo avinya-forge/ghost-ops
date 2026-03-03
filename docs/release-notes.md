@@ -1,7 +1,10 @@
 # Release Notes
 
 ## Unreleased
-- [FEAT] Build the Evolution Engine Priority Queue
+
+## v0.4.1 (Released)
+- [1200] | [FEAT] Build the Evolution Engine Priority Queue | [INDEPENDENT] | [DONE]
+    - [FEAT] Build the evolution engine priority queue. [TEST] 95% coverage. [LINT] 0-err. [OPT] O(n). [SEC] Sanitize.
 
 ## v0.4.0 (Released)
 - Create Architecture Diagrams (PlantUML/Mermaid)
