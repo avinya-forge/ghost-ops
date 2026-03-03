@@ -1,6 +1,8 @@
 # Release Notes
 
 ## Unreleased
+
+## v0.5.0 (Released)
 - [FEAT] Build the Evolution Engine Priority Queue
 
 ## v0.4.0 (Released)
