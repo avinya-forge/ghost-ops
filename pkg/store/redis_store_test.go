@@ -25,10 +25,10 @@ func TestRedisStore(t *testing.T) {
 
 	t.Run("Service CRUD", func(t *testing.T) {
 		record := protocol.ServiceRecord{
-			ServiceID: "test-service",
-			Version:   1,
-			WASMHash:  "abc",
-			CurrentState: protocol.StateActive,
+			ServiceID:          "test-service",
+			Version:            1,
+			WASMHash:           "abc",
+			CurrentState:       protocol.StateActive,
 			SynthesisTimestamp: time.Now().UTC(),
 		}
 

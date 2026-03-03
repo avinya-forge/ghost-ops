@@ -9,8 +9,8 @@ import (
 	"io"
 	"time"
 
-	"github.com/redis/go-redis/v9"
 	"ghost-ops/pkg/protocol"
+	"github.com/redis/go-redis/v9"
 )
 
 // RedisStore implements protocol.StateStore using Redis.

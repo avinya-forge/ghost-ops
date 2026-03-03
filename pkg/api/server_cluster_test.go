@@ -1,24 +1,24 @@
 package api
 
 import (
+	"context"
 	"encoding/json"
 	"net/http"
 	"net/http/httptest"
 	"testing"
-	"context"
 
-	"ghost-ops/pkg/registry"
-	"ghost-ops/pkg/evolution"
-	"ghost-ops/pkg/telemetry"
-	"ghost-ops/pkg/protocol"
 	"ghost-ops/pkg/config"
+	"ghost-ops/pkg/evolution"
+	"ghost-ops/pkg/protocol"
+	"ghost-ops/pkg/registry"
+	"ghost-ops/pkg/telemetry"
 )
 
 func TestClusterHealth(t *testing.T) {
 	ctx := context.Background()
 	stateStore := protocol.NewInMemoryStateStore()
 	err := stateStore.UpdateService(ctx, protocol.ServiceRecord{
-		ServiceID: "test-svc",
+		ServiceID:     "test-svc",
 		ActiveVersion: 1,
 	})
 	if err != nil {

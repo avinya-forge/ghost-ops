@@ -16,13 +16,13 @@ type mockCompiledModule struct {
 	name string
 }
 
-func (m *mockCompiledModule) Name() string { return m.name }
-func (m *mockCompiledModule) ImportedFunctions() []api.FunctionDefinition { return nil }
+func (m *mockCompiledModule) Name() string                                         { return m.name }
+func (m *mockCompiledModule) ImportedFunctions() []api.FunctionDefinition          { return nil }
 func (m *mockCompiledModule) ExportedFunctions() map[string]api.FunctionDefinition { return nil }
-func (m *mockCompiledModule) Close(context.Context) error { return nil }
-func (m *mockCompiledModule) ImportedMemories() []api.MemoryDefinition { return nil }
-func (m *mockCompiledModule) ExportedMemories() map[string]api.MemoryDefinition { return nil }
-func (m *mockCompiledModule) CustomSections() []api.CustomSection { return nil }
+func (m *mockCompiledModule) Close(context.Context) error                          { return nil }
+func (m *mockCompiledModule) ImportedMemories() []api.MemoryDefinition             { return nil }
+func (m *mockCompiledModule) ExportedMemories() map[string]api.MemoryDefinition    { return nil }
+func (m *mockCompiledModule) CustomSections() []api.CustomSection                  { return nil }
 
 func TestWazeroRuntimeHost_Cache_Hit(t *testing.T) {
 	ctx := context.Background()

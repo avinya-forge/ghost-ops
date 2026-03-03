@@ -60,7 +60,7 @@ func (m *MockIntentSource) GetNextBlueprint(ctx context.Context) (*protocol.Blue
 }
 
 // MockEvolutionEngine
-type MockEvolutionEngine struct{
+type MockEvolutionEngine struct {
 	wasmBytes []byte
 }
 

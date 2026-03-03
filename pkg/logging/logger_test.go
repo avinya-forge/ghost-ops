@@ -99,4 +99,3 @@ func TestInitLoggerWithWriter_TraceHandlerWithTrace(t *testing.T) {
 	assert.Equal(t, "0102030405060708090a0b0c0d0e0f10", logEntry["trace_id"])
 	assert.Equal(t, "0102030405060708", logEntry["span_id"])
 }
-

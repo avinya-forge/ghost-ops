@@ -48,9 +48,9 @@ func Execute(version string) {
 	viper.BindPFlag("engine.type", pflag.Lookup("engine"))
 	viper.BindPFlag("llm.provider", pflag.Lookup("llm"))
 
-    // Load configuration early to support CLI commands
-    // We ignore error here because some commands might not need valid config file (e.g. version)
-    // But defaults should be loaded.
+	// Load configuration early to support CLI commands
+	// We ignore error here because some commands might not need valid config file (e.g. version)
+	// But defaults should be loaded.
 	_, _ = config.Load()
 
 	args := pflag.Args()

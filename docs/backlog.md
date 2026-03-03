@@ -563,3 +563,7 @@
     - [FEAT] Implement test decentralized registry under network partition. [TEST] 95% coverage. [LINT] 0-err. [OPT] O(n). [SEC] Sanitize.
 - [ ] [1199] | [FEAT] Document decentralized registry architecture | [INDEPENDENT] | [TODO]
     - [FEAT] Implement document decentralized registry architecture. [TEST] 95% coverage. [LINT] 0-err. [OPT] O(n). [SEC] Sanitize.
+
+### Epic: Evolution Engine Enhancements
+- [x] [1200] | [FEAT] Build the Evolution Engine Priority Queue | [INDEPENDENT] | [DONE]
+    - [FEAT] Build the evolution engine priority queue. [TEST] 95% coverage. [LINT] 0-err. [OPT] O(n). [SEC] Sanitize.
