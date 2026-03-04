@@ -1,5 +1,9 @@
 # Backlog
 ## Phase 1: MVP (The Self-Healing Loop)
+### Epic: Codebase Pruning & API Parity
+| ID | User Story (As/I want/So that) | Technical Scope (Modules/Files) | Acceptance Criteria | Priority (MoSCoW) | Effort | Estimated LOC | Implementation Logic | Task Index | Next Task |
+|---|---|---|---|---|---|---|---|---|---|
+| 1358 | As a user, I want to remove the undocumented /cluster/health API so that the system maintains API parity and drops dead code. | pkg/api/ | [CLEANUP] Remove /cluster/health and tests | Must-Have | 1-2hr | 50-200 | [Done] Remove code, sync health table. | 411/411 | None |
 ## Phase 2: Scale (Distributed & Resilient)
 ### Epic: Service Mesh Lite
 | ID | User Story (As/I want/So that) | Technical Scope (Modules/Files) | Acceptance Criteria | Priority (MoSCoW) | Effort | Estimated LOC | Implementation Logic | Task Index | Next Task |
@@ -507,13 +511,14 @@
 | PHASE | 1, 2, 3 |
 | TOTAL LOC | ~40000 |
 | PR DELTA LOC | 0 |
-| TASKS DONE | 2 |
-| IMPLEMENTED IDs | 1357, 320 |
+| TASKS DONE | 3 |
+| IMPLEMENTED IDs | 1357, 320, 1358 |
 | READY RATIO | 100% |
 | SAY/DO % | 100% |
 | VELOCITY | 1 |
 | TECH DEBT % | 0 |
 | COVERAGE % | 95 |
+| CLEANLINESS SCORE | 98% (TDR < 5%) |
 | BLOCKERS | None |
 | ETA | TBD |
 | NEXT TASK | 321 |
