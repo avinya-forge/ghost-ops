@@ -4,7 +4,7 @@
 > ![Version](https://img.shields.io/badge/version-v0.4.0-blue)
 
 ## The Pulse
-| Milestone | Version | Phase | Status | Tech Debt | Backlog Density |
+| Milestone | Version | Phase | Status | Debt | Density |
 | :--- | :--- | :--- | :--- | :--- | :--- |
 | MVP | v0.4.0 | 1 | ACTIVE | 0% | 60/60 |
 
