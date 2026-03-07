@@ -1,4 +1,4 @@
-# Contributing to Ghost Ops
+# Development Standards and Contributing to Ghost Ops
 
 Ghost Ops is a high-velocity, automated operations platform. We prioritize simplicity, reliability, and automation.
 
@@ -26,20 +26,39 @@ Ghost Ops is a high-velocity, automated operations platform. We prioritize simpl
    - Describe your changes clearly.
    - Reference the Task ID from the backlog.
 
-## Coding Standards
+## Languages
+- **Host:** Go (Latest Stable)
+- **WASM Modules:** Go, Rust, or AssemblyScript (compiled to WASM)
 
-- **Go**: Follow standard Go conventions. Use `gofmt`.
-- **Linting**: We use `staticcheck` and `go vet`. Zero tolerance for lint errors.
-- **Testing**:
-   - Unit tests for all logic.
-   - Integration tests for major flows.
-   - Use table-driven tests where appropriate.
-- **Documentation**: Update `docs/` as needed. Keep comments concise.
+## Style Guide
+- **Go:** `gofmt`, `go vet`, `staticcheck`. Follow standard Go conventions.
+- **Commits:** Conventional Commits (e.g., `feat: add intent interface`).
+
+## Package Management
+- **Go:** Go Modules (`go.mod`).
+
+## Testing
+- Unit tests required for all new logic.
+- Table-driven tests preferred for Go.
+- Integration tests for major flows.
+- **95% unit coverage**.
+- O(n) check on optimizations.
+- Security input validation and output sanitization required.
+
+## Dependency Specs
+- Latest stable dependencies only.
+- No version conflicts allowed.
+- Use `[VERSION-CHECK-REQ]` tag when unsure about a dependency version.
+
+## Hygiene Specs
+- 0 style violations. We use `staticcheck` and `go vet`. Zero tolerance for lint errors.
+- Strict adherence to this ultra-lean standard.
+- Update `docs/` as needed. Keep comments concise.
 
 ## Release Process
 
 1. Update `VERSION`.
-2. Update `docs/releasenotes.md`.
+2. Update `docs/release-notes.md`.
 3. Create a git tag.
 
 ## Reporting Issues
