@@ -9,8 +9,9 @@
 - **SPEC:** Deploy sidecar for network interception.
 - **TASK 321: Implement Mtls Between Services** | DONE | Resilience
 - **SPEC:** Mutual TLS for service-to-service auth.
-- **TASK 331: Implement Resource-Aware Scheduling** | PENDING | Resilience
+- **TASK 331: Implement Resource-Aware Scheduling** | DONE | Resilience
 - **SPEC:** Bin packing algorithm. Maximize density.
+- **UPDATE:** Resource scheduler now derives bin-packing priority from `cpu_milli` and `memory_mb` constraints.
 
 - **MILESTONE AUTONOMY** | **PHASE 3** | **GATEKEEPER** [0-Hygiene-Error | 95% Test | Build-Pass]
 - **TASK 400: Autonomous Feedback Loop Architecture** | PENDING | Evolution

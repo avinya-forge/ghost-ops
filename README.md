@@ -14,6 +14,7 @@
 - [Release Notes](./docs/release-notes.md)
 - [Rules: Habits](./docs/rules/habits.md)
 - [Rules: Hygiene](./docs/rules/hygiene.md)
+- [Rules: Decisions](./docs/rules/decisions.md)
 - [Standards: Ultra-Lean](./docs/standards/ultra-lean.md)
 
 ## Quick Start (Active Milestone: MVP - The Self-Healing Loop)
