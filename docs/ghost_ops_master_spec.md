@@ -63,4 +63,4 @@ interface GhostOps { kv_get(k): bytes; rpc(svc, meth, pay): bytes; }
 ## 4. Operational Layout
 *   **Brain:** `~/.gemini/antigravity` (Intent & Task Context)
 *   **Body:** `/generated/services` (Ephemeral WASM binaries & Go source)
-*   **Docs:** `/docs/Ghost_Ops_Master_Spec.md` (This file)
+*   **Docs:** `/docs/ghost_ops_master_spec.md` (This file)

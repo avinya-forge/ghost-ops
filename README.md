@@ -64,12 +64,12 @@ export OPENAI_API_KEY=your-key
 
 ## Architecture
 
-See [Vision](docs/vision.md) for the detailed architectural vision and [Master Spec](docs/Ghost_Ops_Master_Spec.md) for technical details.
+See [Vision](docs/vision.md) for the detailed architectural vision and [Master Spec](docs/ghost_ops_master_spec.md) for technical details.
 
 ## Roadmap
 
-Check [Backlog](docs/backlog.md) for the current task list and [Release Notes](docs/release-notes.md) for version history.
+Check [Backlog](docs/backlog.md) for the current task list and [Release Notes](docs/releasenotes.md) for version history.
 
 ## Contributing
 
-See [Development Standards](docs/development-standards.md).
+See [Development Standards](docs/standards/ultra_lean.md).

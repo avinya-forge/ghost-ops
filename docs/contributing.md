@@ -39,7 +39,7 @@ Ghost Ops is a high-velocity, automated operations platform. We prioritize simpl
 ## Release Process
 
 1. Update `VERSION`.
-2. Update `docs/release-notes.md`.
+2. Update `docs/releasenotes.md`.
 3. Create a git tag.
 
 ## Reporting Issues
