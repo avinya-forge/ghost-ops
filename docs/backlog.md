@@ -112,11 +112,11 @@
 - **SPEC:** Global limits per IP.
 - **TASK 909: Routing Configuration Guide** | PENDING | Evolution
 - **SPEC:** Document gateway usage.
-- **TASK 1000: Implement Log Streaming Pipeline For Ai Analysis** | PENDING | Evolution
+- **TASK 1000: Implement Log Streaming Pipeline For Ai Analysis** | DONE | Evolution
 - **SPEC:** Implement implement log streaming pipeline for ai analysis. 95% coverage. 0-err. O(n). Sanitize.
-- **TASK 1001: Design Anomaly Detection Prompt For Llm** | PENDING | Evolution
+- **TASK 1001: Design Anomaly Detection Prompt For Llm** | DONE | Evolution
 - **SPEC:** Implement design anomaly detection prompt for llm. 95% coverage. 0-err. O(n). Sanitize.
-- **TASK 1002: Integrate Anomaly Detection Into Log Observer** | PENDING | Evolution
+- **TASK 1002: Integrate Anomaly Detection Into Log Observer** | DONE | Evolution
 - **SPEC:** Implement integrate anomaly detection into log observer. 95% coverage. 0-err. O(n). Sanitize.
 
 - **TASK 1003: Expand Log Retention Policies** | PENDING | Evolution
