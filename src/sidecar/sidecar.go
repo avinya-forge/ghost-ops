@@ -2,6 +2,7 @@ package sidecar
 
 import (
 	"context"
+	"crypto/tls"
 	"io"
 	"log"
 	"net"
@@ -10,10 +11,12 @@ import (
 
 // Proxy represents a sidecar proxy for network interception.
 type Proxy struct {
-	targetAddr string
-	listener   net.Listener
-	mu         sync.Mutex
-	active     bool
+	targetAddr      string
+	listener        net.Listener
+	mu              sync.Mutex
+	active          bool
+	ServerTLSConfig *tls.Config
+	ClientTLSConfig *tls.Config
 }
 
 // NewProxy creates a new sidecar proxy.
@@ -27,7 +30,11 @@ func NewProxy(targetAddr string) *Proxy {
 func (p *Proxy) Start(ctx context.Context, listenAddr string) error {
 	var err error
 	p.mu.Lock()
-	p.listener, err = net.Listen("tcp", listenAddr)
+	if p.ServerTLSConfig != nil {
+		p.listener, err = tls.Listen("tcp", listenAddr, p.ServerTLSConfig)
+	} else {
+		p.listener, err = net.Listen("tcp", listenAddr)
+	}
 	if err != nil {
 		p.mu.Unlock()
 		return err
@@ -79,7 +86,15 @@ func (p *Proxy) Stop() {
 
 func (p *Proxy) handleConnection(clientConn net.Conn) {
 	// Intercept and forward
-	targetConn, err := net.Dial("tcp", p.targetAddr)
+	var targetConn net.Conn
+	var err error
+
+	if p.ClientTLSConfig != nil {
+		targetConn, err = tls.Dial("tcp", p.targetAddr, p.ClientTLSConfig)
+	} else {
+		targetConn, err = net.Dial("tcp", p.targetAddr)
+	}
+
 	if err != nil {
 		log.Printf("Proxy dial error: %v", err)
 		clientConn.Close()

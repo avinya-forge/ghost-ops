@@ -9,7 +9,7 @@
 | ID | User Story (As/I want/So that) | Technical Scope (Modules/Files) | Acceptance Criteria | Priority (MoSCoW) | Effort | Estimated LOC | Implementation Logic | Task Index | Next Task |
 |---|---|---|---|---|---|---|---|---|---|
 | 320 | As a user, I want to implement sidecar proxy pattern so that the system is improved. | src/, tests/ | [ARCH] Deploy sidecar for network interception. | Must-Have | 1-2hr | 50-200 | [Done] Implement logic, add tests, verify. | 1/410 | 321 |
-| 321 | As a user, I want to implement mtls between services so that the system is improved. | src/, tests/ | [SEC] Mutual TLS for service-to-service auth. | Must-Have | 1-2hr | 50-200 | Implement logic, add tests, verify. | 2/410 | 322 |
+| 321 | As a user, I want to implement mtls between services so that the system is improved. | src/, tests/ | [SEC] Mutual TLS for service-to-service auth. | Must-Have | 1-2hr | 50-200 | [Done] Implement logic, add tests, verify. | 2/410 | 322 |
 ### Epic: Advanced Scheduling
 | ID | User Story (As/I want/So that) | Technical Scope (Modules/Files) | Acceptance Criteria | Priority (MoSCoW) | Effort | Estimated LOC | Implementation Logic | Task Index | Next Task |
 |---|---|---|---|---|---|---|---|---|---|
@@ -92,8 +92,8 @@
 | PHASE | 1, 2, 3 |
 | TOTAL LOC | ~40000 |
 | PR DELTA LOC | 0 |
-| TASKS DONE | 3 |
-| IMPLEMENTED IDs | 1357, 320, 1358 |
+| TASKS DONE | 4 |
+| IMPLEMENTED IDs | 1357, 320, 1358, 321 |
 | READY RATIO | 100% |
 | SAY/DO % | 100% |
 | VELOCITY | 1 |
@@ -102,5 +102,5 @@
 | CLEANLINESS SCORE | 98% (TDR < 5%) |
 | BLOCKERS | None |
 | ETA | TBD |
-| NEXT TASK | 321 |
+| NEXT TASK | 322 |
 | ACTION | Review |
