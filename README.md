@@ -3,18 +3,18 @@
 > **North Star:** Zero-Human Operations (ZHO). The system patches, optimizes, and evolves itself.
 > ![Version](https://img.shields.io/badge/version-v0.4.0-blue)
 
-## The Pulse
+## Pulse Table
 | Milestone | Version | Phase | Status | Debt | Density |
 | :--- | :--- | :--- | :--- | :--- | :--- |
 | MVP | v0.4.0 | 1 | ACTIVE | 0% | 60/60 |
 
 ## Documentation Map
-- [Vision & Architecture](./docs/vision.md)
-- [Backlog](./docs/backlog.md)
-- [Release Notes](./docs/release-notes.md)
-- [Rules: Habits](./docs/rules/habits.md)
-- [Rules: Hygiene](./docs/rules/hygiene.md)
-- [Standards: Ultra-Lean](./docs/standards/ultra-lean.md)
+- [vision & architecture](./docs/vision.md)
+- [backlog](./docs/backlog.md)
+- [release notes](./docs/release-notes.md)
+- [rules: habits](./docs/rules/habits.md)
+- [rules: hygiene](./docs/rules/hygiene.md)
+- [standards: ultra-lean](./docs/standards/ultra-lean.md)
 
 ## Quick Start (Active Milestone: MVP - The Self-Healing Loop)
 Closing the loop between Intent, Code, and Runtime.

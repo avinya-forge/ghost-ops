@@ -1,3 +1,6 @@
+**Current Session ID:** SESSION-001
+**Last Action:** S3 [EVOLVE/ALIGN] - Audited docs, enforced schema, and synced memory.
+
 # Release Notes
 
 ## Unreleased
@@ -72,7 +75,7 @@
     - [UNIT] Coverage for empty file, invalid JSON.
 - [REFACTOR] Restructure `examples/` directory
     - Move `hello-world` to `examples/basic/`.
-- [DOCS] Create `CONTRIBUTING.md`
+- [DOCS] Create `contributing.md`
     - [DOC] detailed guide on how to contribute.
 - [FEAT] Add Viper Dependency & Setup
     - [SEC] Ensure secure defaults. [TEST] Verify precedence. [OPT] Lazy load.
@@ -156,7 +159,7 @@
     - [DX] Enforce lint/test before commit.
 - [FEAT] Add `ghost-ops init` command
     - [DX] Bootstrap new project structure.
-- [DOCS] Update `README.md` with new features
+- [DOCS] Update `readme.md` with new features
     - [DOC] Reflect latest capabilities.
 - [FEAT] Support Custom System Prompts
     - [FEAT] Allow overriding default LLM prompt.
@@ -188,7 +191,7 @@
     - [REL] Protect services from overload.
 ## v0.2.1 (Released)
 - Restructured `examples/` directory to group basic examples (`examples/basic/hello-world`).
-- Added `CONTRIBUTING.md` for development guidelines.
+- Added `contributing.md` for development guidelines.
 
 ## v0.2.0 (Released)
 - Implemented Telemetry Collection (runtime metrics) via `MetricsCollector`.

@@ -9,120 +9,120 @@
 - **SPEC:** Deploy sidecar for network interception.
 - **TASK 321: Implement Mtls Between Services** | DONE | Resilience
 - **SPEC:** Mutual TLS for service-to-service auth.
-- **TASK 331: Implement Resource-Aware Scheduling** | PENDING | Resilience
+- **TASK 331: Implement Resource-Aware Scheduling** | TODO | Resilience
 - **SPEC:** Bin packing algorithm. Maximize density.
 
 - **MILESTONE AUTONOMY** | **PHASE 3** | **GATEKEEPER** [0-Hygiene-Error | 95% Test | Build-Pass]
-- **TASK 400: Autonomous Feedback Loop Architecture** | PENDING | Evolution
+- **TASK 400: Autonomous Feedback Loop Architecture** | TODO | Evolution
 - **SPEC:** Design self-optimizing loop.
-- **TASK 401: Multi-Language Guest Sdk Support** | PENDING | Evolution
+- **TASK 401: Multi-Language Guest Sdk Support** | TODO | Evolution
 - **SPEC:** Design support for Rust/Python.
-- **TASK 402: Automated Vulnerability Scanning** | PENDING | Evolution
+- **TASK 402: Automated Vulnerability Scanning** | TODO | Evolution
 - **SPEC:** Design security scanner for generated code.
-- **TASK 500: Define Metric Thresholds For Optimization** | PENDING | Evolution
+- **TASK 500: Define Metric Thresholds For Optimization** | TODO | Evolution
 - **SPEC:** Establish baseline metrics.
-- **TASK 501: Implement Observer Agent** | PENDING | Evolution
+- **TASK 501: Implement Observer Agent** | TODO | Evolution
 - **SPEC:** Continuously monitor runtime state.
-- **TASK 502: Trigger Re-Prompt On Latency Spike** | PENDING | Evolution
+- **TASK 502: Trigger Re-Prompt On Latency Spike** | TODO | Evolution
 - **SPEC:** Auto-trigger LLM re-prompt if P99 > 500ms.
-- **TASK 503: Trigger Re-Prompt On Error Rate Spike** | PENDING | Evolution
+- **TASK 503: Trigger Re-Prompt On Error Rate Spike** | TODO | Evolution
 - **SPEC:** Auto-trigger LLM re-prompt if 5xx > 1%.
-- **TASK 504: Validate Synthesized Code In Shadow Mode** | PENDING | Evolution
+- **TASK 504: Validate Synthesized Code In Shadow Mode** | TODO | Evolution
 - **SPEC:** Run new code against mirrored traffic.
-- **TASK 505: Compare Shadow And Primary Metrics** | PENDING | Evolution
+- **TASK 505: Compare Shadow And Primary Metrics** | TODO | Evolution
 - **SPEC:** Ensure new code is actually better.
-- **TASK 506: Implement Hot-Swap Promotion** | PENDING | Evolution
+- **TASK 506: Implement Hot-Swap Promotion** | TODO | Evolution
 - **SPEC:** Promote shadow to primary gracefully.
-- **TASK 507: Implement Auto-Rollback** | PENDING | Evolution
+- **TASK 507: Implement Auto-Rollback** | TODO | Evolution
 - **SPEC:** Revert if new version degrades.
-- **TASK 508: Document Optimization Loop** | PENDING | Evolution
+- **TASK 508: Document Optimization Loop** | TODO | Evolution
 - **SPEC:** Detail the ZHO feedback cycle.
-- **TASK 509: End-To-End Optimization Test** | PENDING | Evolution
+- **TASK 509: End-To-End Optimization Test** | TODO | Evolution
 - **SPEC:** Full simulation of failure and self-healing.
-- **TASK 600: Rust Guest Sdk Design** | PENDING | Evolution
+- **TASK 600: Rust Guest Sdk Design** | TODO | Evolution
 - **SPEC:** Map host functions to Rust interfaces.
-- **TASK 601: Implement Rust Guest Sdk Base** | PENDING | Evolution
+- **TASK 601: Implement Rust Guest Sdk Base** | TODO | Evolution
 - **SPEC:** Basic memory sharing for Rust.
-- **TASK 602: Implement Rust Guest Sdk Logger** | PENDING | Evolution
+- **TASK 602: Implement Rust Guest Sdk Logger** | TODO | Evolution
 - **SPEC:** Hook up structured logging.
-- **TASK 603: Rust Compiler Evolution Engine** | PENDING | Evolution
+- **TASK 603: Rust Compiler Evolution Engine** | TODO | Evolution
 - **SPEC:** Support `cargo build --target wasm32-wasi`.
-- **TASK 604: Test Rust Compiler Engine** | PENDING | Evolution
+- **TASK 604: Test Rust Compiler Engine** | TODO | Evolution
 - **SPEC:** Validate WASM output from Rust source.
-- **TASK 605: Python (Wasm) Guest Sdk Design** | PENDING | Evolution
+- **TASK 605: Python (Wasm) Guest Sdk Design** | TODO | Evolution
 - **SPEC:** Evaluate CPython vs MicroPython for WASM.
-- **TASK 606: Implement Python Guest Sdk Base** | PENDING | Evolution
+- **TASK 606: Implement Python Guest Sdk Base** | TODO | Evolution
 - **SPEC:** Bootstrapping Python environment in WASM.
-- **TASK 607: Python Evolution Engine** | PENDING | Evolution
+- **TASK 607: Python Evolution Engine** | TODO | Evolution
 - **SPEC:** Bundle Python scripts into WASM modules.
-- **TASK 608: Update Examples With Rust/Python** | PENDING | Evolution
+- **TASK 608: Update Examples With Rust/Python** | TODO | Evolution
 - **SPEC:** Add basic examples.
-- **TASK 609: Cross-Language Interop Testing** | PENDING | Evolution
+- **TASK 609: Cross-Language Interop Testing** | TODO | Evolution
 - **SPEC:** Verify Go host can invoke Rust/Python guests uniformly.
-- **TASK 700: Wasm Sandboxing Review** | PENDING | Evolution
+- **TASK 700: Wasm Sandboxing Review** | TODO | Evolution
 - **SPEC:** Identify potential host escapes.
-- **TASK 701: Implement Capability-Based Security** | PENDING | Evolution
+- **TASK 701: Implement Capability-Based Security** | TODO | Evolution
 - **SPEC:** Fine-grained permissions per module.
-- **TASK 702: Enforce Network Egress Policies** | PENDING | Evolution
+- **TASK 702: Enforce Network Egress Policies** | TODO | Evolution
 - **SPEC:** Block unauthorized outgoing calls from WASM.
-- **TASK 703: Implement File System Jails** | PENDING | Evolution
+- **TASK 703: Implement File System Jails** | TODO | Evolution
 - **SPEC:** Restrict WASM disk access strictly to allowed dirs.
-- **TASK 704: Automated Vulnerability Scanning** | PENDING | Evolution
+- **TASK 704: Automated Vulnerability Scanning** | TODO | Evolution
 - **SPEC:** Scan generated code for common CVEs.
-- **TASK 708: Secret Management Integration** | PENDING | Evolution
+- **TASK 708: Secret Management Integration** | TODO | Evolution
 - **SPEC:** Fetch secrets securely (Vault/AWS SM).
-- **TASK 709: Security Architecture Guide** | PENDING | Evolution
+- **TASK 709: Security Architecture Guide** | TODO | Evolution
 - **SPEC:** Document trust boundaries.
-- **TASK 800: Etcd Integration Strategy** | PENDING | Evolution
+- **TASK 800: Etcd Integration Strategy** | TODO | Evolution
 - **SPEC:** Evaluate Etcd vs Redis for consensus.
-- **TASK 801: Implement Etcd Client Setup** | PENDING | Evolution
+- **TASK 801: Implement Etcd Client Setup** | TODO | Evolution
 - **SPEC:** Basic connection handling.
-- **TASK 802: Etcd Statestore Adapter** | PENDING | Evolution
+- **TASK 802: Etcd Statestore Adapter** | TODO | Evolution
 - **SPEC:** CRUD operations using Etcd.
-- **TASK 803: Distributed Leader Election** | PENDING | Evolution
+- **TASK 803: Distributed Leader Election** | TODO | Evolution
 - **SPEC:** Ensure single active reconciler loop.
-- **TASK 804: State Synchronization Protocol** | PENDING | Evolution
+- **TASK 804: State Synchronization Protocol** | TODO | Evolution
 - **SPEC:** Propagate state changes to worker nodes.
-- **TASK 805: Partition Tolerance Testing** | PENDING | Evolution
+- **TASK 805: Partition Tolerance Testing** | TODO | Evolution
 - **SPEC:** Simulate network splits.
-- **TASK 807: Node Auto-Discovery** | PENDING | Evolution
+- **TASK 807: Node Auto-Discovery** | TODO | Evolution
 - **SPEC:** Dynamic scaling of worker pool.
-- **TASK 808: Graceful Node Draining** | PENDING | Evolution
+- **TASK 808: Graceful Node Draining** | TODO | Evolution
 - **SPEC:** Safely evict services on shutdown.
-- **TASK 809: Cluster Setup Guide** | PENDING | Evolution
+- **TASK 809: Cluster Setup Guide** | TODO | Evolution
 - **SPEC:** Steps to run a multi-node deployment.
-- **TASK 900: Layer 7 Gateway Design** | PENDING | Evolution
+- **TASK 900: Layer 7 Gateway Design** | TODO | Evolution
 - **SPEC:** Define routing rules format.
-- **TASK 901: Implement Http Gateway** | PENDING | Evolution
+- **TASK 901: Implement Http Gateway** | TODO | Evolution
 - **SPEC:** Map external routes to internal services.
-- **TASK 902: Dynamic Route Reconfiguration** | PENDING | Evolution
+- **TASK 902: Dynamic Route Reconfiguration** | TODO | Evolution
 - **SPEC:** Update routes without dropping connections.
-- **TASK 903: Blue/Green Deployment Support** | PENDING | Evolution
+- **TASK 903: Blue/Green Deployment Support** | TODO | Evolution
 - **SPEC:** Route traffic weights (e.g., 90/10).
-- **TASK 904: Path-Based Routing** | PENDING | Evolution
+- **TASK 904: Path-Based Routing** | TODO | Evolution
 - **SPEC:** e.g., /api/v1/auth -> auth-service.
-- **TASK 905: Header-Based Routing** | PENDING | Evolution
+- **TASK 905: Header-Based Routing** | TODO | Evolution
 - **SPEC:** e.g., X-Beta: true -> beta-service.
-- **TASK 906: Gateway Load Testing** | PENDING | Evolution
+- **TASK 906: Gateway Load Testing** | TODO | Evolution
 - **SPEC:** Ensure minimal overhead (<2ms).
-- **TASK 907: Websocket Support In Gateway** | PENDING | Evolution
+- **TASK 907: Websocket Support In Gateway** | TODO | Evolution
 - **SPEC:** Proxy WS connections to WASM.
-- **TASK 908: Gateway Rate Limiting** | PENDING | Evolution
+- **TASK 908: Gateway Rate Limiting** | TODO | Evolution
 - **SPEC:** Global limits per IP.
-- **TASK 909: Routing Configuration Guide** | PENDING | Evolution
+- **TASK 909: Routing Configuration Guide** | TODO | Evolution
 - **SPEC:** Document gateway usage.
-- **TASK 1000: Implement Log Streaming Pipeline For Ai Analysis** | PENDING | Evolution
+- **TASK 1000: Implement Log Streaming Pipeline For Ai Analysis** | TODO | Evolution
 - **SPEC:** Implement implement log streaming pipeline for ai analysis. 95% coverage. 0-err. O(n). Sanitize.
-- **TASK 1001: Design Anomaly Detection Prompt For Llm** | PENDING | Evolution
+- **TASK 1001: Design Anomaly Detection Prompt For Llm** | TODO | Evolution
 - **SPEC:** Implement design anomaly detection prompt for llm. 95% coverage. 0-err. O(n). Sanitize.
-- **TASK 1002: Integrate Anomaly Detection Into Log Observer** | PENDING | Evolution
+- **TASK 1002: Integrate Anomaly Detection Into Log Observer** | TODO | Evolution
 - **SPEC:** Implement integrate anomaly detection into log observer. 95% coverage. 0-err. O(n). Sanitize.
 
-- **TASK 1003: Expand Log Retention Policies** | PENDING | Evolution
+- **TASK 1003: Expand Log Retention Policies** | TODO | Evolution
 - **SPEC:** Implement configurable TTL for streaming logs.
-- **TASK 1004: Enhance Log Filtering Ui** | PENDING | Evolution
+- **TASK 1004: Enhance Log Filtering Ui** | TODO | Evolution
 - **SPEC:** Design UI components for advanced log filtering.
-- **TASK 1005: Integrate External Auth Providers** | PENDING | Evolution
+- **TASK 1005: Integrate External Auth Providers** | TODO | Evolution
 - **SPEC:** Support OAuth2 authentication for gateway.
-- **TASK 1006: Optimize Runtime Memory Allocation** | PENDING | Evolution
+- **TASK 1006: Optimize Runtime Memory Allocation** | TODO | Evolution
 - **SPEC:** Improve Wazero memory pooling and reuse.
