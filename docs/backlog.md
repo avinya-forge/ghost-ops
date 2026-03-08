@@ -1,18 +1,5 @@
 # Backlog
 
-- **MILESTONE MVP** | **PHASE 1** | **GATEKEEPER** [0-Hygiene-Error | 95% Test | Build-Pass]
-- **TASK 1358: Remove The Undocumented /Cluster/Health Api** | DONE | Core
-- **SPEC:** Remove /cluster/health and tests
-
-- **MILESTONE SCALE** | **PHASE 2** | **GATEKEEPER** [0-Hygiene-Error | 95% Test | Build-Pass]
-- **TASK 320: Implement Sidecar Proxy Pattern** | DONE | Resilience
-- **SPEC:** Deploy sidecar for network interception.
-- **TASK 321: Implement Mtls Between Services** | DONE | Resilience
-- **SPEC:** Mutual TLS for service-to-service auth.
-- **TASK 331: Implement Resource-Aware Scheduling** | DONE | Resilience
-- **SPEC:** Bin packing algorithm. Maximize density.
-- **UPDATE:** Resource scheduler now derives bin-packing priority from `cpu_milli` and `memory_mb` constraints.
-
 - **MILESTONE AUTONOMY** | **PHASE 3** | **GATEKEEPER** [0-Hygiene-Error | 95% Test | Build-Pass]
 - **TASK 400: Autonomous Feedback Loop Architecture** | PENDING | Evolution
 - **SPEC:** Design self-optimizing loop.
@@ -112,13 +99,6 @@
 - **SPEC:** Global limits per IP.
 - **TASK 909: Routing Configuration Guide** | PENDING | Evolution
 - **SPEC:** Document gateway usage.
-- **TASK 1000: Implement Log Streaming Pipeline For Ai Analysis** | DONE | Evolution
-- **SPEC:** Implement implement log streaming pipeline for ai analysis. 95% coverage. 0-err. O(n). Sanitize.
-- **TASK 1001: Design Anomaly Detection Prompt For Llm** | DONE | Evolution
-- **SPEC:** Implement design anomaly detection prompt for llm. 95% coverage. 0-err. O(n). Sanitize.
-- **TASK 1002: Integrate Anomaly Detection Into Log Observer** | DONE | Evolution
-- **SPEC:** Implement integrate anomaly detection into log observer. 95% coverage. 0-err. O(n). Sanitize.
-
 - **TASK 1003: Expand Log Retention Policies** | PENDING | Evolution
 - **SPEC:** Implement configurable TTL for streaming logs.
 - **TASK 1004: Enhance Log Filtering Ui** | PENDING | Evolution

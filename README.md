@@ -1,12 +1,12 @@
 # Ghost Ops
 > **"Dark Software"**: Code that writes itself, runs itself, and fixes itself.
 > **North Star:** Zero-Human Operations (ZHO). The system patches, optimizes, and evolves itself.
-> ![Version](https://img.shields.io/badge/version-v0.4.0-blue)
+> ![Version](https://img.shields.io/badge/version-v0.5.0-blue)
 
 ## The Pulse
 | Milestone | Version | Phase | Status | Debt | Density |
 | :--- | :--- | :--- | :--- | :--- | :--- |
-| MVP | v0.4.0 | 1 | ACTIVE | 0% | 63/60 |
+| AUTONOMY | v0.5.0 | 3 | ACTIVE | 0% | 63/60 |
 
 ## Documentation Map
 - [Vision & Architecture](./docs/vision.md)
@@ -17,7 +17,7 @@
 - [Rules: Decisions](./docs/rules/decisions.md)
 - [Standards: Ultra-Lean](./docs/standards/ultra-lean.md)
 
-## Quick Start (Active Milestone: MVP - The Self-Healing Loop)
+## Quick Start (Active Milestone: AUTONOMY - The Self-Healing Loop)
 Closing the loop between Intent, Code, and Runtime.
 - **Goal:** Intent -> Code -> WASM -> Runtime -> Feedback.
 - **Key Deliverables:** AI Evolution Engine, Shadow Mode, persistent state, basic CLI.
