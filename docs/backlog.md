@@ -1,24 +1,11 @@
 # Backlog
 
-- **MILESTONE MVP** | **PHASE 1** | **GATEKEEPER** [0-Hygiene-Error | 95% Test | Build-Pass]
-- **TASK 1358: Remove The Undocumented /Cluster/Health Api** | DONE | Core
-- **SPEC:** Remove /cluster/health and tests
-
-- **MILESTONE SCALE** | **PHASE 2** | **GATEKEEPER** [0-Hygiene-Error | 95% Test | Build-Pass]
-- **TASK 320: Implement Sidecar Proxy Pattern** | DONE | Resilience
-- **SPEC:** Deploy sidecar for network interception.
-- **TASK 321: Implement Mtls Between Services** | DONE | Resilience
-- **SPEC:** Mutual TLS for service-to-service auth.
-- **TASK 331: Implement Resource-Aware Scheduling** | DONE | Resilience
-- **SPEC:** Bin packing algorithm. Maximize density.
-- **UPDATE:** Resource scheduler now derives bin-packing priority from `cpu_milli` and `memory_mb` constraints.
-
 - **MILESTONE AUTONOMY** | **PHASE 3** | **GATEKEEPER** [0-Hygiene-Error | 95% Test | Build-Pass]
-- **TASK 400: Autonomous Feedback Loop Architecture** | PENDING | Evolution
+- **TASK 400: Autonomous Feedback Loop Architecture** | [BLOCKED] | Evolution
 - **SPEC:** Design self-optimizing loop.
-- **TASK 401: Multi-Language Guest Sdk Support** | PENDING | Evolution
+- **TASK 401: Multi-Language Guest Sdk Support** | [BLOCKED] | Evolution
 - **SPEC:** Design support for Rust/Python.
-- **TASK 402: Automated Vulnerability Scanning** | PENDING | Evolution
+- **TASK 402: Automated Vulnerability Scanning** | [BLOCKED] | Evolution
 - **SPEC:** Design security scanner for generated code.
 - **TASK 500: Define Metric Thresholds For Optimization** | PENDING | Evolution
 - **SPEC:** Establish baseline metrics.
@@ -36,11 +23,11 @@
 - **SPEC:** Promote shadow to primary gracefully.
 - **TASK 507: Implement Auto-Rollback** | PENDING | Evolution
 - **SPEC:** Revert if new version degrades.
-- **TASK 508: Document Optimization Loop** | PENDING | Evolution
+- **TASK 508: Document Optimization Loop** | [BLOCKED] | Evolution
 - **SPEC:** Detail the ZHO feedback cycle.
 - **TASK 509: End-To-End Optimization Test** | PENDING | Evolution
 - **SPEC:** Full simulation of failure and self-healing.
-- **TASK 600: Rust Guest Sdk Design** | PENDING | Evolution
+- **TASK 600: Rust Guest Sdk Design** | [BLOCKED] | Evolution
 - **SPEC:** Map host functions to Rust interfaces.
 - **TASK 601: Implement Rust Guest Sdk Base** | PENDING | Evolution
 - **SPEC:** Basic memory sharing for Rust.
@@ -50,7 +37,7 @@
 - **SPEC:** Support `cargo build --target wasm32-wasi`.
 - **TASK 604: Test Rust Compiler Engine** | PENDING | Evolution
 - **SPEC:** Validate WASM output from Rust source.
-- **TASK 605: Python (Wasm) Guest Sdk Design** | PENDING | Evolution
+- **TASK 605: Python (Wasm) Guest Sdk Design** | [BLOCKED] | Evolution
 - **SPEC:** Evaluate CPython vs MicroPython for WASM.
 - **TASK 606: Implement Python Guest Sdk Base** | PENDING | Evolution
 - **SPEC:** Bootstrapping Python environment in WASM.
@@ -60,7 +47,7 @@
 - **SPEC:** Add basic examples.
 - **TASK 609: Cross-Language Interop Testing** | PENDING | Evolution
 - **SPEC:** Verify Go host can invoke Rust/Python guests uniformly.
-- **TASK 700: Wasm Sandboxing Review** | PENDING | Evolution
+- **TASK 700: Wasm Sandboxing Review** | [BLOCKED] | Evolution
 - **SPEC:** Identify potential host escapes.
 - **TASK 701: Implement Capability-Based Security** | PENDING | Evolution
 - **SPEC:** Fine-grained permissions per module.
@@ -72,9 +59,9 @@
 - **SPEC:** Scan generated code for common CVEs.
 - **TASK 708: Secret Management Integration** | PENDING | Evolution
 - **SPEC:** Fetch secrets securely (Vault/AWS SM).
-- **TASK 709: Security Architecture Guide** | PENDING | Evolution
+- **TASK 709: Security Architecture Guide** | [BLOCKED] | Evolution
 - **SPEC:** Document trust boundaries.
-- **TASK 800: Etcd Integration Strategy** | PENDING | Evolution
+- **TASK 800: Etcd Integration Strategy** | [BLOCKED] | Evolution
 - **SPEC:** Evaluate Etcd vs Redis for consensus.
 - **TASK 801: Implement Etcd Client Setup** | PENDING | Evolution
 - **SPEC:** Basic connection handling.
@@ -92,7 +79,7 @@
 - **SPEC:** Safely evict services on shutdown.
 - **TASK 809: Cluster Setup Guide** | PENDING | Evolution
 - **SPEC:** Steps to run a multi-node deployment.
-- **TASK 900: Layer 7 Gateway Design** | PENDING | Evolution
+- **TASK 900: Layer 7 Gateway Design** | [BLOCKED] | Evolution
 - **SPEC:** Define routing rules format.
 - **TASK 901: Implement Http Gateway** | PENDING | Evolution
 - **SPEC:** Map external routes to internal services.
@@ -110,7 +97,7 @@
 - **SPEC:** Proxy WS connections to WASM.
 - **TASK 908: Gateway Rate Limiting** | PENDING | Evolution
 - **SPEC:** Global limits per IP.
-- **TASK 909: Routing Configuration Guide** | PENDING | Evolution
+- **TASK 909: Routing Configuration Guide** | [BLOCKED] | Evolution
 - **SPEC:** Document gateway usage.
 - **TASK 1000: Implement Log Streaming Pipeline For Ai Analysis** | DONE | Evolution
 - **SPEC:** Implement implement log streaming pipeline for ai analysis. 95% coverage. 0-err. O(n). Sanitize.
@@ -121,7 +108,7 @@
 
 - **TASK 1003: Expand Log Retention Policies** | PENDING | Evolution
 - **SPEC:** Implement configurable TTL for streaming logs.
-- **TASK 1004: Enhance Log Filtering Ui** | PENDING | Evolution
+- **TASK 1004: Enhance Log Filtering Ui** | [BLOCKED] | Evolution
 - **SPEC:** Design UI components for advanced log filtering.
 - **TASK 1005: Integrate External Auth Providers** | PENDING | Evolution
 - **SPEC:** Support OAuth2 authentication for gateway.

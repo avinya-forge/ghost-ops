@@ -8,6 +8,17 @@
 |---|---|---|---|---|---|---|---|---|---|
 | 1200 | As a user, I want to build the evolution engine priority queue so that the system is improved. | src/, tests/ | [FEAT] Build the evolution engine priority queue. [TEST] 95% coverage. [LINT] 0-err. [OPT] O(n). [SEC] Sanitize. | Must-Have | 1-2hr | 50-200 | Implement logic, add tests, verify. | 253/410 | 1201 |
 
+## v0.5.0 (Released)
+- **TASK 1358: Remove The Undocumented /Cluster/Health Api** | DONE | Core
+- **SPEC:** Remove /cluster/health and tests
+- **TASK 320: Implement Sidecar Proxy Pattern** | DONE | Resilience
+- **SPEC:** Deploy sidecar for network interception.
+- **TASK 321: Implement Mtls Between Services** | DONE | Resilience
+- **SPEC:** Mutual TLS for service-to-service auth.
+- **TASK 331: Implement Resource-Aware Scheduling** | DONE | Resilience
+- **SPEC:** Bin packing algorithm. Maximize density.
+- **UPDATE:** Resource scheduler now derives bin-packing priority from `cpu_milli` and `memory_mb` constraints.
+
 ## v0.4.0 (Released)
 - Create Architecture Diagrams (PlantUML/Mermaid)
 - Add Evals for Code Generation Quality
