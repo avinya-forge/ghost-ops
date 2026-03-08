@@ -1,12 +1,28 @@
 # Release Notes
 
 ## Unreleased
-- [FEAT] Build the Evolution Engine Priority Queue
 
 ## Vault - Completed Tasks
-| ID | User Story (As/I want/So that) | Technical Scope (Modules/Files) | Acceptance Criteria | Priority (MoSCoW) | Effort | Estimated LOC | Implementation Logic | Task Index | Next Task |
-|---|---|---|---|---|---|---|---|---|---|
-| 1200 | As a user, I want to build the evolution engine priority queue so that the system is improved. | src/, tests/ | [FEAT] Build the evolution engine priority queue. [TEST] 95% coverage. [LINT] 0-err. [OPT] O(n). [SEC] Sanitize. | Must-Have | 1-2hr | 50-200 | Implement logic, add tests, verify. | 253/410 | 1201 |
+
+## v0.5.0 (Released)
+- **TASK 1358:** Remove The Undocumented /Cluster/Health Api
+- **SPEC:** Remove /cluster/health and tests
+- **TASK 320:** Implement Sidecar Proxy Pattern
+- **SPEC:** Deploy sidecar for network interception.
+- **TASK 321:** Implement Mtls Between Services
+- **SPEC:** Mutual TLS for service-to-service auth.
+- **TASK 331:** Implement Resource-Aware Scheduling
+- **SPEC:** Bin packing algorithm. Maximize density.
+- **UPDATE:** Resource scheduler now derives bin-packing priority from `cpu_milli` and `memory_mb` constraints.
+- **TASK 1000:** Implement Log Streaming Pipeline For Ai Analysis
+- **SPEC:** Implement implement log streaming pipeline for ai analysis. 95% coverage. 0-err. O(n). Sanitize.
+- **TASK 1001:** Design Anomaly Detection Prompt For Llm
+- **SPEC:** Implement design anomaly detection prompt for llm. 95% coverage. 0-err. O(n). Sanitize.
+- **TASK 1002:** Integrate Anomaly Detection Into Log Observer
+- **SPEC:** Implement integrate anomaly detection into log observer. 95% coverage. 0-err. O(n). Sanitize.
+- [FEAT] Build the Evolution Engine Priority Queue
+- **TASK 1200:** Build the evolution engine priority queue so that the system is improved.
+- **SPEC:** src/, tests/ | [FEAT] Build the evolution engine priority queue. [TEST] 95% coverage. [LINT] 0-err. [OPT] O(n). [SEC] Sanitize.
 
 ## v0.5.0 (Released)
 - **TASK 1358: Remove The Undocumented /Cluster/Health Api** | DONE | Core
