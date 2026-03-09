@@ -52,9 +52,10 @@ func (c *InMemoryCollector) Gauge(name string, value float64, labels map[string]
 }
 
 type safeHistogram struct {
-	mu    sync.Mutex
-	sum   float64
-	count int64
+	mu     sync.Mutex
+	sum    float64
+	count  int64
+	values []float64
 }
 
 func (h *safeHistogram) record(v float64) {
@@ -62,6 +63,11 @@ func (h *safeHistogram) record(v float64) {
 	defer h.mu.Unlock()
 	h.sum += v
 	h.count++
+	h.values = append(h.values, v)
+	if len(h.values) > 1000 {
+		// Keep last 1000 items
+		h.values = h.values[1:]
+	}
 }
 
 // Histogram records a value in a histogram.
@@ -89,10 +95,25 @@ func (c *InMemoryCollector) Snapshot() map[string]interface{} {
 	c.histograms.Range(func(key, value interface{}) bool {
 		hist := value.(*safeHistogram)
 		hist.mu.Lock()
+
+		p99 := 0.0
+		if len(hist.values) > 0 {
+			sortedValues := make([]float64, len(hist.values))
+			copy(sortedValues, hist.values)
+			sort.Float64s(sortedValues)
+
+			p99Index := int(float64(len(sortedValues)) * 0.99)
+			if p99Index >= len(sortedValues) {
+				p99Index = len(sortedValues) - 1
+			}
+			p99 = sortedValues[p99Index]
+		}
+
 		res := map[string]interface{}{
 			"sum":   hist.sum,
 			"count": hist.count,
 			"avg":   0.0,
+			"p99":   p99,
 		}
 		if hist.count > 0 {
 			res["avg"] = hist.sum / float64(hist.count)

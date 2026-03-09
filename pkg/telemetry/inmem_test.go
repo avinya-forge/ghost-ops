@@ -72,6 +72,11 @@ func TestInMemoryCollector_Histogram(t *testing.T) {
 	if !ok || avg != 0.2 {
 		t.Errorf("expected avg 0.2, got %v", avg)
 	}
+
+	p99, ok := data["p99"].(float64)
+	if !ok || p99 != 0.3 {
+		t.Errorf("expected p99 0.3, got %v", p99)
+	}
 }
 
 func TestInMemoryCollector_Concurrency(t *testing.T) {

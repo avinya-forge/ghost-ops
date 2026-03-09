@@ -10,6 +10,7 @@ const (
 	EventServiceFailed    EventType = "service_failed"
 	EventServiceUnhealthy EventType = "service_unhealthy"
 	EventAnomalyDetected  EventType = "anomaly_detected"
+	EventRePromptRequired EventType = "reprompt_required"
 )
 
 // Event represents a system event.
