@@ -13,3 +13,9 @@
 - Introduced normalized CPU/memory scoring (`cpu_milli`, `memory_mb`) to favor tasks that maximize fit density.
 - Added overflow penalty for requests that exceed node capacity to reduce starvation risk for smaller workloads.
 - Preserved compatibility by reusing the existing `PriorityQueue` as the scheduler backend.
+
+## 2026-03-08 — Metric Observer and Anomaly Detection
+
+- Instantiated `MetricObserver` to monitor runtime telemetry.
+- Observer evaluates thresholds for P99 latency (>500ms) and Error Rate (>1%).
+- Auto-triggers `EventRePromptRequired` on threshold violations to initiate optimization loop.
