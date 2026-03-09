@@ -7,13 +7,13 @@
 - **SPEC:** Design support for Rust/Python.
 - **TASK 402: Automated Vulnerability Scanning** | [BLOCKED] | Evolution
 - **SPEC:** Design security scanner for generated code.
-- **TASK 500: Define Metric Thresholds For Optimization** | PENDING | Evolution
+- **TASK 500: Define Metric Thresholds For Optimization** | COMPLETE | Evolution
 - **SPEC:** Establish baseline metrics.
-- **TASK 501: Implement Observer Agent** | PENDING | Evolution
+- **TASK 501: Implement Observer Agent** | COMPLETE | Evolution
 - **SPEC:** Continuously monitor runtime state.
-- **TASK 502: Trigger Re-Prompt On Latency Spike** | PENDING | Evolution
+- **TASK 502: Trigger Re-Prompt On Latency Spike** | COMPLETE | Evolution
 - **SPEC:** Auto-trigger LLM re-prompt if P99 > 500ms.
-- **TASK 503: Trigger Re-Prompt On Error Rate Spike** | PENDING | Evolution
+- **TASK 503: Trigger Re-Prompt On Error Rate Spike** | COMPLETE | Evolution
 - **SPEC:** Auto-trigger LLM re-prompt if 5xx > 1%.
 - **TASK 504: Validate Synthesized Code In Shadow Mode** | PENDING | Evolution
 - **SPEC:** Run new code against mirrored traffic.

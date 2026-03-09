@@ -20,6 +20,7 @@ import (
 	"ghost-ops/pkg/intent"
 	"ghost-ops/pkg/llm"
 	"ghost-ops/pkg/logging"
+	"ghost-ops/pkg/observer"
 	"ghost-ops/pkg/protocol"
 	"ghost-ops/pkg/registry"
 	"ghost-ops/pkg/runtime"
@@ -280,6 +281,10 @@ func runServer(version string) {
 
 	// Start Health Check Loop
 	reg.StartHealthCheck(ctx)
+
+	// Initialize Observers
+	metricObserver := observer.NewMetricObserver(collector, eventBus)
+	metricObserver.Start(ctx, 5*time.Second)
 
 	// Initialize API Server
 	srv := api.NewServer(reg, collector, cfg.Server.MaxBodySize)
