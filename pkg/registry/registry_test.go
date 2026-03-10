@@ -337,6 +337,188 @@ func TestRegistry_Reconcile_ShadowMode(t *testing.T) {
 	}
 }
 
+func TestRegistry_PromoteService(t *testing.T) {
+	store := &MockStateStore{
+		records: map[string]protocol.ServiceRecord{
+			"svc-1": {
+				ServiceID:      "svc-1",
+				ActiveVersion:  1,
+				ShadowVersion:  2,
+				ActiveWASMHash: "hash1",
+				ShadowWASMHash: "hash2",
+				CurrentState:   protocol.StateShadow,
+			},
+		},
+	}
+	runtime := &MockRuntimeHost{
+		modules: map[string][]byte{
+			"svc-1-1": []byte("wasm1"),
+			"svc-1-2": []byte("wasm2"),
+		},
+		activeVersions: map[string]string{"svc-1": "1"},
+		shadowVersions: map[string]string{"svc-1": "2"},
+	}
+	reg := NewRegistry(store, nil, nil, runtime, telemetry.NewInMemoryCollector(), nil, config.RegistryConfig{})
+	ctx := context.Background()
+
+	err := reg.PromoteService(ctx, "svc-1")
+	if err != nil {
+		t.Fatalf("PromoteService failed: %v", err)
+	}
+
+	// Verify Store
+	rec, _ := store.GetService(ctx, "svc-1")
+	if rec.ActiveVersion != 2 {
+		t.Errorf("Expected ActiveVersion 2, got %d", rec.ActiveVersion)
+	}
+	if rec.ShadowVersion != 0 {
+		t.Errorf("Expected ShadowVersion 0, got %d", rec.ShadowVersion)
+	}
+	if rec.CurrentState != protocol.StateActive {
+		t.Errorf("Expected StateActive, got %s", rec.CurrentState)
+	}
+
+	// Verify Runtime
+	if ver, ok := runtime.activeVersions["svc-1"]; !ok || ver != "2" {
+		t.Errorf("Expected active version 2, got %v", ver)
+	}
+	if _, ok := runtime.shadowVersions["svc-1"]; ok {
+		t.Errorf("Expected shadow version to be unset")
+	}
+	if _, ok := runtime.modules["svc-1-1"]; ok {
+		t.Errorf("Expected old active module to be unloaded")
+	}
+}
+
+func TestRegistry_RollbackService(t *testing.T) {
+	store := &MockStateStore{
+		records: map[string]protocol.ServiceRecord{
+			"svc-1": {
+				ServiceID:      "svc-1",
+				ActiveVersion:  1,
+				ShadowVersion:  2,
+				ActiveWASMHash: "hash1",
+				ShadowWASMHash: "hash2",
+				CurrentState:   protocol.StateShadow,
+			},
+		},
+	}
+	runtime := &MockRuntimeHost{
+		modules: map[string][]byte{
+			"svc-1-1": []byte("wasm1"),
+			"svc-1-2": []byte("wasm2"),
+		},
+		activeVersions: map[string]string{"svc-1": "1"},
+		shadowVersions: map[string]string{"svc-1": "2"},
+	}
+	reg := NewRegistry(store, nil, nil, runtime, telemetry.NewInMemoryCollector(), nil, config.RegistryConfig{})
+	ctx := context.Background()
+
+	err := reg.RollbackService(ctx, "svc-1")
+	if err != nil {
+		t.Fatalf("RollbackService failed: %v", err)
+	}
+
+	// Verify Store
+	rec, _ := store.GetService(ctx, "svc-1")
+	if rec.ActiveVersion != 1 {
+		t.Errorf("Expected ActiveVersion 1 to be kept, got %d", rec.ActiveVersion)
+	}
+	if rec.ShadowVersion != 0 {
+		t.Errorf("Expected ShadowVersion 0, got %d", rec.ShadowVersion)
+	}
+	if rec.CurrentState != protocol.StateActive {
+		t.Errorf("Expected StateActive, got %s", rec.CurrentState)
+	}
+
+	// Verify Runtime
+	if ver, ok := runtime.activeVersions["svc-1"]; !ok || ver != "1" {
+		t.Errorf("Expected active version 1, got %v", ver)
+	}
+	if _, ok := runtime.shadowVersions["svc-1"]; ok {
+		t.Errorf("Expected shadow version to be unset")
+	}
+	if _, ok := runtime.modules["svc-1-2"]; ok {
+		t.Errorf("Expected shadow module to be unloaded")
+	}
+}
+
+func TestRegistry_EventLoop(t *testing.T) {
+	bus := event.NewInMemoryEventBus()
+	store := &MockStateStore{
+		records: map[string]protocol.ServiceRecord{
+			"svc-promote": {
+				ServiceID:      "svc-promote",
+				ActiveVersion:  1,
+				ShadowVersion:  2,
+				ActiveWASMHash: "hash1",
+				ShadowWASMHash: "hash2",
+				CurrentState:   protocol.StateShadow,
+			},
+			"svc-rollback": {
+				ServiceID:      "svc-rollback",
+				ActiveVersion:  1,
+				ShadowVersion:  2,
+				ActiveWASMHash: "hash1",
+				ShadowWASMHash: "hash2",
+				CurrentState:   protocol.StateShadow,
+			},
+		},
+	}
+	runtime := &MockRuntimeHost{
+		modules: map[string][]byte{
+			"svc-promote-1":  []byte("wasm"),
+			"svc-promote-2":  []byte("wasm"),
+			"svc-rollback-1": []byte("wasm"),
+			"svc-rollback-2": []byte("wasm"),
+		},
+		activeVersions: map[string]string{
+			"svc-promote":  "1",
+			"svc-rollback": "1",
+		},
+		shadowVersions: map[string]string{
+			"svc-promote":  "2",
+			"svc-rollback": "2",
+		},
+	}
+	reg := NewRegistry(store, nil, nil, runtime, telemetry.NewInMemoryCollector(), bus, config.RegistryConfig{})
+
+	ctx, cancel := context.WithCancel(context.Background())
+	defer cancel()
+
+	reg.StartEventLoop(ctx)
+
+	// Publish Promote event
+	bus.Publish(ctx, protocol.Event{
+		Type:      protocol.EventPromotionRequired,
+		ServiceID: "svc-promote",
+		Payload:   map[string]interface{}{"reason": "test"},
+	})
+
+	// Publish Rollback event
+	bus.Publish(ctx, protocol.Event{
+		Type:      protocol.EventRollbackRequired,
+		ServiceID: "svc-rollback",
+		Payload:   map[string]interface{}{"reason": "test"},
+	})
+
+	// Wait a bit for event loop to process
+	time.Sleep(100 * time.Millisecond)
+
+	recPromote, _ := store.GetService(ctx, "svc-promote")
+	if recPromote.ActiveVersion != 2 {
+		t.Errorf("Expected svc-promote to be promoted to version 2, got %d", recPromote.ActiveVersion)
+	}
+
+	recRollback, _ := store.GetService(ctx, "svc-rollback")
+	if recRollback.ActiveVersion != 1 {
+		t.Errorf("Expected svc-rollback to remain at version 1, got %d", recRollback.ActiveVersion)
+	}
+	if recRollback.ShadowVersion != 0 {
+		t.Errorf("Expected svc-rollback shadow version to be cleared, got %d", recRollback.ShadowVersion)
+	}
+}
+
 func TestRegistry_Reconcile_Errors(t *testing.T) {
 	ctx := context.Background()
 	collector := telemetry.NewInMemoryCollector()

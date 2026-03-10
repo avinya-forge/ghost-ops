@@ -159,6 +159,42 @@ func (r *Registry) Reconcile(ctx context.Context) (bool, error) {
 	return true, nil
 }
 
+// StartEventLoop starts listening for internal system events (like promotion/rollback).
+func (r *Registry) StartEventLoop(ctx context.Context) {
+	if r.eventBus == nil {
+		return
+	}
+
+	promoteCh, err := r.eventBus.Subscribe(ctx, protocol.EventPromotionRequired)
+	if err != nil {
+		slog.Error("Failed to subscribe to promotion events", "error", err)
+	}
+
+	rollbackCh, err := r.eventBus.Subscribe(ctx, protocol.EventRollbackRequired)
+	if err != nil {
+		slog.Error("Failed to subscribe to rollback events", "error", err)
+	}
+
+	go func() {
+		for {
+			select {
+			case <-ctx.Done():
+				return
+			case evt := <-promoteCh:
+				slog.Info("Promotion event received", "service_id", evt.ServiceID, "reason", evt.Payload["reason"])
+				if err := r.PromoteService(ctx, evt.ServiceID); err != nil {
+					slog.Error("Failed to promote service", "service_id", evt.ServiceID, "error", err)
+				}
+			case evt := <-rollbackCh:
+				slog.Info("Rollback event received", "service_id", evt.ServiceID, "reason", evt.Payload["reason"])
+				if err := r.RollbackService(ctx, evt.ServiceID); err != nil {
+					slog.Error("Failed to rollback service", "service_id", evt.ServiceID, "error", err)
+				}
+			}
+		}
+	}()
+}
+
 // StartHealthCheck starts a background routine to check service health.
 func (r *Registry) StartHealthCheck(ctx context.Context) {
 	go func() {
@@ -353,6 +389,111 @@ func (r *Registry) updateStore(ctx context.Context, serviceID string, version in
 		"version":    version,
 		"hash":       hashStr,
 		"state":      record.CurrentState,
+	})
+
+	return nil
+}
+
+// PromoteService promotes the current shadow version of a service to active.
+func (r *Registry) PromoteService(ctx context.Context, serviceID string) error {
+	existing, err := r.store.GetService(ctx, serviceID)
+	if err != nil {
+		return wrapError(protocol.ErrInternal.Code(), "failed to get service for promotion", err)
+	}
+	if existing == nil {
+		return protocol.NewAppError(protocol.ErrNotFound.Code(), "service not found", nil)
+	}
+
+	if existing.ShadowVersion == 0 {
+		return protocol.NewAppError(protocol.ErrInvalidInput.Code(), "no shadow version to promote", nil)
+	}
+
+	shadowVersionStr := fmt.Sprintf("%d", existing.ShadowVersion)
+	oldActiveVersionStr := fmt.Sprintf("%d", existing.ActiveVersion)
+
+	// 1. Set the shadow version as active in runtime
+	if err := r.runtime.SetActiveVersion(ctx, serviceID, shadowVersionStr); err != nil {
+		return wrapError(protocol.ErrInternal.Code(), "failed to promote in runtime", err)
+	}
+
+	// 2. Unload the old active version from runtime
+	if existing.ActiveVersion > 0 && oldActiveVersionStr != shadowVersionStr {
+		if err := r.runtime.UnloadVersion(ctx, serviceID, oldActiveVersionStr); err != nil {
+			slog.Warn("Failed to unload old version during promotion", "service_id", serviceID, "version", oldActiveVersionStr, "error", err)
+		}
+	}
+
+	// 3. Unset shadow in runtime (it's now active)
+	_ = r.runtime.UnsetShadowVersion(ctx, serviceID)
+
+	// 4. Update the StateStore
+	existing.ActiveVersion = existing.ShadowVersion
+	existing.ActiveWASMHash = existing.ShadowWASMHash
+	existing.ShadowVersion = 0
+	existing.ShadowWASMHash = ""
+	existing.CurrentState = protocol.StateActive
+
+	if err := r.store.UpdateService(ctx, *existing); err != nil {
+		return wrapError(protocol.ErrInternal.Code(), "failed to update store during promotion", err)
+	}
+
+	logging.Audit(ctx, "promote_service", map[string]interface{}{
+		"service_id": serviceID,
+		"version":    existing.ActiveVersion,
+	})
+
+	if r.eventBus != nil {
+		r.eventBus.Publish(ctx, protocol.Event{
+			Type:      protocol.EventServiceDeployed,
+			ServiceID: serviceID,
+			Payload: map[string]interface{}{
+				"version": existing.ActiveVersion,
+				"reason":  "promotion",
+			},
+		})
+	}
+
+	return nil
+}
+
+// RollbackService removes the shadow version, keeping the active version intact.
+func (r *Registry) RollbackService(ctx context.Context, serviceID string) error {
+	existing, err := r.store.GetService(ctx, serviceID)
+	if err != nil {
+		return wrapError(protocol.ErrInternal.Code(), "failed to get service for rollback", err)
+	}
+	if existing == nil {
+		return protocol.NewAppError(protocol.ErrNotFound.Code(), "service not found", nil)
+	}
+
+	if existing.ShadowVersion == 0 {
+		return protocol.NewAppError(protocol.ErrInvalidInput.Code(), "no shadow version to rollback", nil)
+	}
+
+	shadowVersionStr := fmt.Sprintf("%d", existing.ShadowVersion)
+
+	// 1. Unload shadow from runtime
+	if err := r.runtime.UnloadVersion(ctx, serviceID, shadowVersionStr); err != nil {
+		slog.Warn("Failed to unload shadow version during rollback", "service_id", serviceID, "version", shadowVersionStr, "error", err)
+	}
+
+	// 2. Unset shadow in runtime
+	_ = r.runtime.UnsetShadowVersion(ctx, serviceID)
+
+	// 3. Update the StateStore to clear shadow details
+	rolledBackVersion := existing.ShadowVersion
+	existing.ShadowVersion = 0
+	existing.ShadowWASMHash = ""
+	existing.CurrentState = protocol.StateActive
+
+	if err := r.store.UpdateService(ctx, *existing); err != nil {
+		return wrapError(protocol.ErrInternal.Code(), "failed to update store during rollback", err)
+	}
+
+	logging.Audit(ctx, "rollback_service", map[string]interface{}{
+		"service_id":           serviceID,
+		"rolled_back_version":  rolledBackVersion,
+		"kept_active_version":  existing.ActiveVersion,
 	})
 
 	return nil

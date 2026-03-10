@@ -15,17 +15,17 @@
 - **SPEC:** Auto-trigger LLM re-prompt if P99 > 500ms.
 - **TASK 503: Trigger Re-Prompt On Error Rate Spike** | COMPLETE | Evolution
 - **SPEC:** Auto-trigger LLM re-prompt if 5xx > 1%.
-- **TASK 504: Validate Synthesized Code In Shadow Mode** | PENDING | Evolution
+- **TASK 504: Validate Synthesized Code In Shadow Mode** | COMPLETE | Evolution
 - **SPEC:** Run new code against mirrored traffic.
-- **TASK 505: Compare Shadow And Primary Metrics** | PENDING | Evolution
+- **TASK 505: Compare Shadow And Primary Metrics** | COMPLETE | Evolution
 - **SPEC:** Ensure new code is actually better.
-- **TASK 506: Implement Hot-Swap Promotion** | PENDING | Evolution
+- **TASK 506: Implement Hot-Swap Promotion** | COMPLETE | Evolution
 - **SPEC:** Promote shadow to primary gracefully.
-- **TASK 507: Implement Auto-Rollback** | PENDING | Evolution
+- **TASK 507: Implement Auto-Rollback** | COMPLETE | Evolution
 - **SPEC:** Revert if new version degrades.
 - **TASK 508: Document Optimization Loop** | [BLOCKED] | Evolution
 - **SPEC:** Detail the ZHO feedback cycle.
-- **TASK 509: End-To-End Optimization Test** | PENDING | Evolution
+- **TASK 509: End-To-End Optimization Test** | COMPLETE | Evolution
 - **SPEC:** Full simulation of failure and self-healing.
 - **TASK 600: Rust Guest Sdk Design** | [BLOCKED] | Evolution
 - **SPEC:** Map host functions to Rust interfaces.
