@@ -48,6 +48,11 @@ func (o *MetricObserver) Start(ctx context.Context, interval time.Duration) {
 	}()
 }
 
+// Poll is exported for testing purposes.
+func (o *MetricObserver) Poll(ctx context.Context) {
+	o.poll(ctx)
+}
+
 func (o *MetricObserver) poll(ctx context.Context) {
 	snap, ok := o.collector.(snapshotter)
 	if !ok {
@@ -62,6 +67,9 @@ func (o *MetricObserver) analyzeMetrics(ctx context.Context, metrics map[string]
 	servicesErrorDelta := make(map[string]int64)
 	servicesSuccessDelta := make(map[string]int64)
 
+	shadowErrorDelta := make(map[string]int64)
+	shadowSuccessDelta := make(map[string]int64)
+
 	for key, value := range metrics {
 		if valInt, ok := value.(int64); ok {
 			// check for invoke_error and invoke_success
@@ -69,14 +77,22 @@ func (o *MetricObserver) analyzeMetrics(ctx context.Context, metrics map[string]
 				serviceID := extractServiceID(key)
 				if serviceID != "" {
 					delta := valInt - o.prevCounters[key]
-					servicesErrorDelta[serviceID] += delta
+					if strings.Contains(key, "type=shadow") {
+						shadowErrorDelta[serviceID] += delta
+					} else {
+						servicesErrorDelta[serviceID] += delta
+					}
 					o.prevCounters[key] = valInt
 				}
 			} else if strings.HasPrefix(key, "invoke_success{") {
 				serviceID := extractServiceID(key)
 				if serviceID != "" {
 					delta := valInt - o.prevCounters[key]
-					servicesSuccessDelta[serviceID] += delta
+					if strings.Contains(key, "type=shadow") {
+						shadowSuccessDelta[serviceID] += delta
+					} else {
+						servicesSuccessDelta[serviceID] += delta
+					}
 					o.prevCounters[key] = valInt
 				}
 			}
@@ -108,6 +124,82 @@ func (o *MetricObserver) analyzeMetrics(ctx context.Context, metrics map[string]
 			}
 		}
 	}
+
+	// Calculate shadow vs active metrics (Task 505, 506, 507)
+	// Iterate through all services that had shadow metrics (success or error)
+	shadowServices := make(map[string]bool)
+	for id := range shadowErrorDelta {
+		shadowServices[id] = true
+	}
+	for id := range shadowSuccessDelta {
+		shadowServices[id] = true
+	}
+
+	for serviceID := range shadowServices {
+		shadowErrs := shadowErrorDelta[serviceID]
+		shadowSuccs := shadowSuccessDelta[serviceID]
+		shadowTotal := shadowErrs + shadowSuccs
+
+		// We need enough data to make a confident decision
+		if shadowTotal > 5 {
+			shadowErrorRate := float64(shadowErrs) / float64(shadowTotal)
+
+			// Get active error rate for the same interval
+			activeErrs := servicesErrorDelta[serviceID]
+			activeSuccs := servicesSuccessDelta[serviceID]
+			activeTotal := activeErrs + activeSuccs
+
+			activeErrorRate := 0.0
+			if activeTotal > 0 {
+				activeErrorRate = float64(activeErrs) / float64(activeTotal)
+			} else {
+				// If no active traffic in this interval, use a slightly higher threshold to ensure it's at least better than default threshold
+				activeErrorRate = 0.01 // Default acceptable error rate
+			}
+
+			if shadowErrorRate <= activeErrorRate {
+				// Shadow is better or equal -> PROMOTE
+				o.publishPromotion(ctx, serviceID, "Shadow error rate meets or exceeds active", shadowErrorRate, activeErrorRate)
+			} else {
+				// Shadow is worse -> ROLLBACK
+				o.publishRollback(ctx, serviceID, "Shadow error rate is worse than active", shadowErrorRate, activeErrorRate)
+			}
+		}
+	}
+}
+
+func (o *MetricObserver) publishPromotion(ctx context.Context, serviceID, reason string, shadowValue, activeValue float64) {
+	if o.eventBus == nil {
+		return
+	}
+	event := protocol.Event{
+		Type:      protocol.EventPromotionRequired,
+		ServiceID: serviceID,
+		Payload: map[string]interface{}{
+			"reason":       reason,
+			"shadow_error": fmt.Sprintf("%.4f", shadowValue),
+			"active_error": fmt.Sprintf("%.4f", activeValue),
+		},
+		Timestamp: time.Now().UnixNano(),
+	}
+	_ = o.eventBus.Publish(ctx, event)
+}
+
+func (o *MetricObserver) publishRollback(ctx context.Context, serviceID, reason string, shadowValue, activeValue float64) {
+	if o.eventBus == nil {
+		return
+	}
+	event := protocol.Event{
+		Type:      protocol.EventRollbackRequired,
+		ServiceID: serviceID,
+		Payload: map[string]interface{}{
+			"reason":       reason,
+			"shadow_error": fmt.Sprintf("%.4f", shadowValue),
+			"active_error": fmt.Sprintf("%.4f", activeValue),
+		},
+		Timestamp: time.Now().UnixNano(),
+	}
+	_ = o.eventBus.Publish(ctx, event)
 }
 
 func (o *MetricObserver) publishReprompt(ctx context.Context, serviceID, reason, metric string, value, threshold float64) {

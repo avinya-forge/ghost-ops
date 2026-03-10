@@ -282,6 +282,9 @@ func runServer(version string) {
 	// Start Health Check Loop
 	reg.StartHealthCheck(ctx)
 
+	// Start internal event loop (Promotions/Rollbacks)
+	reg.StartEventLoop(ctx)
+
 	// Initialize Observers
 	metricObserver := observer.NewMetricObserver(collector, eventBus)
 	metricObserver.Start(ctx, 5*time.Second)

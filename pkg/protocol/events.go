@@ -9,8 +9,10 @@ const (
 	EventServiceDeployed  EventType = "service_deployed"
 	EventServiceFailed    EventType = "service_failed"
 	EventServiceUnhealthy EventType = "service_unhealthy"
-	EventAnomalyDetected  EventType = "anomaly_detected"
-	EventRePromptRequired EventType = "reprompt_required"
+	EventAnomalyDetected   EventType = "anomaly_detected"
+	EventRePromptRequired  EventType = "reprompt_required"
+	EventPromotionRequired EventType = "promotion_required"
+	EventRollbackRequired  EventType = "rollback_required"
 )
 
 // Event represents a system event.

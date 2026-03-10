@@ -109,6 +109,86 @@ func TestMetricObserver_AnalyzeMetrics_HighErrorRate(t *testing.T) {
 	}
 }
 
+func TestMetricObserver_AnalyzeMetrics_Promotion(t *testing.T) {
+	ctx := context.Background()
+	bus := &MockEventBus{}
+	collector := &MockSnapshotter{
+		MockSnapshot: map[string]interface{}{
+			// Active errors = 2, success = 18 -> Total 20 -> Error rate 10%
+			"invoke_error{service_id=svc-promote,type=execution_error}": int64(2),
+			"invoke_success{service_id=svc-promote}":                    int64(18),
+			// Shadow errors = 0, success = 6 -> Total 6 -> Error rate 0%
+			"invoke_error{service_id=svc-promote,type=shadow}": int64(0),
+			"invoke_success{service_id=svc-promote,type=shadow}": int64(6),
+		},
+	}
+
+	obs := NewMetricObserver(collector, bus)
+	obs.poll(ctx)
+
+	var promoteEvent *protocol.Event
+	for _, e := range bus.Published {
+		if e.Type == protocol.EventPromotionRequired {
+			promoteEvent = &e
+			break
+		}
+	}
+
+	if promoteEvent == nil {
+		t.Fatalf("Expected EventPromotionRequired, but none published")
+	}
+
+	if promoteEvent.ServiceID != "svc-promote" {
+		t.Errorf("Expected service ID svc-promote, got %s", promoteEvent.ServiceID)
+	}
+	if promoteEvent.Payload["shadow_error"] != "0.0000" {
+		t.Errorf("Expected shadow error 0.0000, got %v", promoteEvent.Payload["shadow_error"])
+	}
+	if promoteEvent.Payload["active_error"] != "0.1000" {
+		t.Errorf("Expected active error 0.1000, got %v", promoteEvent.Payload["active_error"])
+	}
+}
+
+func TestMetricObserver_AnalyzeMetrics_Rollback(t *testing.T) {
+	ctx := context.Background()
+	bus := &MockEventBus{}
+	collector := &MockSnapshotter{
+		MockSnapshot: map[string]interface{}{
+			// Active errors = 0, success = 20 -> Total 20 -> Error rate 0%
+			"invoke_error{service_id=svc-rollback,type=execution_error}": int64(0),
+			"invoke_success{service_id=svc-rollback}":                    int64(20),
+			// Shadow errors = 2, success = 4 -> Total 6 -> Error rate 33.33%
+			"invoke_error{service_id=svc-rollback,type=shadow_execution_error}": int64(2),
+			"invoke_success{service_id=svc-rollback,type=shadow}":               int64(4),
+		},
+	}
+
+	obs := NewMetricObserver(collector, bus)
+	obs.poll(ctx)
+
+	var rollbackEvent *protocol.Event
+	for _, e := range bus.Published {
+		if e.Type == protocol.EventRollbackRequired {
+			rollbackEvent = &e
+			break
+		}
+	}
+
+	if rollbackEvent == nil {
+		t.Fatalf("Expected EventRollbackRequired, but none published")
+	}
+
+	if rollbackEvent.ServiceID != "svc-rollback" {
+		t.Errorf("Expected service ID svc-rollback, got %s", rollbackEvent.ServiceID)
+	}
+	if rollbackEvent.Payload["shadow_error"] != "0.3333" {
+		t.Errorf("Expected shadow error 0.3333, got %v", rollbackEvent.Payload["shadow_error"])
+	}
+	if rollbackEvent.Payload["active_error"] != "0.0000" {
+		t.Errorf("Expected active error 0.0000, got %v", rollbackEvent.Payload["active_error"])
+	}
+}
+
 func TestMetricObserver_Start(t *testing.T) {
 	ctx, cancel := context.WithCancel(context.Background())
 	bus := &MockEventBus{}
