@@ -3,12 +3,18 @@
 > **North Star:** Zero-Human Operations (ZHO). The system patches, optimizes, and evolves itself.
 > ![Version](https://img.shields.io/badge/version-v0.5.0-blue)
 
-## The Pulse
+## The Hook
+- **Value Prop:** Zero-Human Operations. Code that writes itself, runs itself, and fixes itself.
+- **Quick Start:**
+  - Mock Mode: `./ghost-ops -engine mock`
+  - Local/Docker: `./run.sh --start`
+
+## The Engine
 | Milestone | Version | Phase | Status | Debt% | Density |
 | :--- | :--- | :--- | :--- | :--- | :--- |
 | AUTONOMY | v0.5.0 | 3 | ACTIVE | 0% | 63/60 |
 
-## Documentation Map
+## The Map
 - [Vision & Architecture](./docs/architecture/vision.md)
 - [Backlog](./docs/planning/backlog.md)
 - [Map](./docs/planning/map.md)
@@ -18,8 +24,9 @@
 - [Rules: Hygiene](./docs/rules/hygiene.md)
 - [Rules: Decisions](./docs/architecture/decisions.md)
 - [Standards: Ultra-Lean](./docs/rules/standards.md)
+- [Engineering](./docs/engineering/README.md)
 
-## Quick Start (Active Milestone: AUTONOMY - The Self-Healing Loop)
+## Quick Start Details
 Closing the loop between Intent, Code, and Runtime.
 - **Goal:** Intent -> Code -> WASM -> Runtime -> Feedback.
 - **Key Deliverables:** AI Evolution Engine, Shadow Mode, persistent state, basic CLI.
