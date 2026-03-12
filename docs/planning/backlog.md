@@ -113,3 +113,5 @@
 - **SPEC:** Support OAuth2 authentication for gateway.
 - **TASK 1006: Optimize Runtime Memory Allocation** | PENDING | Evolution
 - **SPEC:** Improve Wazero memory pooling and reuse.
+- **[HIGH-RISK] EPIC 500: Observer Agent & Metric Thresholds** | PENDING | Evolution
+- **SPEC:** Implement ObserverAgent to monitor runtime state against defined thresholds. Trigger Re-Prompt on latency spike (P99 > 500ms) or error rate spike (5xx > 1%) using EventBus.
