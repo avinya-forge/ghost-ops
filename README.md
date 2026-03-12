@@ -4,18 +4,20 @@
 > ![Version](https://img.shields.io/badge/version-v0.5.0-blue)
 
 ## The Pulse
-| Milestone | Version | Phase | Status | Debt | Density |
+| Milestone | Version | Phase | Status | Debt% | Density |
 | :--- | :--- | :--- | :--- | :--- | :--- |
 | AUTONOMY | v0.5.0 | 3 | ACTIVE | 0% | 63/60 |
 
 ## Documentation Map
-- [Vision & Architecture](./docs/vision.md)
-- [Backlog](./docs/backlog.md)
-- [Release Notes](./docs/release-notes.md)
+- [Vision & Architecture](./docs/architecture/vision.md)
+- [Backlog](./docs/planning/backlog.md)
+- [Map](./docs/planning/map.md)
+- [Release Notes](./docs/release/release-notes.md)
+- [Metrics](./docs/release/metrics.md)
 - [Rules: Habits](./docs/rules/habits.md)
 - [Rules: Hygiene](./docs/rules/hygiene.md)
-- [Rules: Decisions](./docs/rules/decisions.md)
-- [Standards: Ultra-Lean](./docs/standards/ultra-lean.md)
+- [Rules: Decisions](./docs/architecture/decisions.md)
+- [Standards: Ultra-Lean](./docs/rules/standards.md)
 
 ## Quick Start (Active Milestone: AUTONOMY - The Self-Healing Loop)
 Closing the loop between Intent, Code, and Runtime.

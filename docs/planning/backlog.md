@@ -3,6 +3,12 @@
 - **MILESTONE AUTONOMY** | **PHASE 3** | **GATEKEEPER** [0-Hygiene-Error | 95% Test | Build-Pass]
 - **TASK 400: Autonomous Feedback Loop Architecture** | [BLOCKED] | Evolution
 - **SPEC:** Design self-optimizing loop.
+- **TASK 400.1: Design loop API** | [BLOCKED] | Evolution [HIGH-RISK]
+- **SPEC:** Design loop API.
+- **TASK 400.2: Design DB Schema** | [BLOCKED] | Evolution [HIGH-RISK]
+- **SPEC:** Design DB Schema.
+- **TASK 400.3: Design Auth** | [BLOCKED] | Evolution [HIGH-RISK]
+- **SPEC:** Design Auth.
 - **TASK 401: Multi-Language Guest Sdk Support** | [BLOCKED] | Evolution
 - **SPEC:** Design support for Rust/Python.
 - **TASK 402: Automated Vulnerability Scanning** | [BLOCKED] | Evolution
@@ -87,7 +93,7 @@
 - **SPEC:** Update routes without dropping connections.
 - **TASK 903: Blue/Green Deployment Support** | PENDING | Evolution
 - **SPEC:** Route traffic weights (e.g., 90/10).
-- **TASK 904: Path-Based Routing** | PENDING | Evolution
+- **TASK 904: Path-Based Routing** | PENDING | Evolution [HIGH-RISK]
 - **SPEC:** e.g., /api/v1/auth -> auth-service.
 - **TASK 905: Header-Based Routing** | PENDING | Evolution
 - **SPEC:** e.g., X-Beta: true -> beta-service.
@@ -103,7 +109,7 @@
 - **SPEC:** Implement configurable TTL for streaming logs.
 - **TASK 1004: Enhance Log Filtering Ui** | [BLOCKED] | Evolution
 - **SPEC:** Design UI components for advanced log filtering.
-- **TASK 1005: Integrate External Auth Providers** | PENDING | Evolution
+- **TASK 1005: Integrate External Auth Providers** | PENDING | Evolution [HIGH-RISK]
 - **SPEC:** Support OAuth2 authentication for gateway.
 - **TASK 1006: Optimize Runtime Memory Allocation** | PENDING | Evolution
 - **SPEC:** Improve Wazero memory pooling and reuse.
