@@ -9,12 +9,12 @@
   - Mock Mode: `./ghost-ops -engine mock`
   - Local/Docker: `./run.sh --start`
 
-## The Engine
-| Milestone | Version | Phase | Status | Debt% | Density |
-| :--- | :--- | :--- | :--- | :--- | :--- |
-| AUTONOMY | v0.5.0 | 3 | ACTIVE | 0% | 63/60 |
+## Pulse-Table
+| Milestone | Ver | Phase | Status | Debt% |
+| :--- | :--- | :--- | :--- | :--- |
+| AUTONOMY | v0.5.0 | 3 | ACTIVE | 0% |
 
-## The Map
+## Visual-Index
 - [Vision & Architecture](./docs/architecture/vision.md)
 - [Backlog](./docs/planning/backlog.md)
 - [Map](./docs/planning/map.md)
