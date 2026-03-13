@@ -55,8 +55,16 @@
 - **SPEC:** Verify Go host can invoke Rust/Python guests uniformly.
 - **TASK 700: Wasm Sandboxing Review** | [BLOCKED] | Evolution
 - **SPEC:** Identify potential host escapes.
-- **TASK 701: Implement Capability-Based Security** | PENDING | Evolution
+- **[HIGH-RISK] EPIC 701: Implement Capability-Based Security** | PENDING | Evolution
 - **SPEC:** Fine-grained permissions per module.
+- **TASK 701.1: Define Capability Config** | PENDING | Evolution
+- **SPEC:** Define configuration structure for capabilities.
+- **TASK 701.2: Implement Network Egress Policy Checker** | PENDING | Evolution
+- **SPEC:** Implement checker for network egress capabilities.
+- **TASK 701.3: Implement FS Jail Checker** | PENDING | Evolution
+- **SPEC:** Implement checker for filesystem jail capabilities.
+- **TASK 701.4: Hook Capabilities into WASM Runtime initialization** | PENDING | Evolution
+- **SPEC:** Integrate capability checks during WASM runtime init.
 - **TASK 702: Enforce Network Egress Policies** | PENDING | Evolution
 - **SPEC:** Block unauthorized outgoing calls from WASM.
 - **TASK 703: Implement File System Jails** | PENDING | Evolution

@@ -44,7 +44,11 @@ case "$1" in
   --backlog)
     echo "Auditing backlog tags..."
     grep -E "EPIC|DEBT" docs/planning/backlog.md || log_blocker "No EPIC or DEBT found in backlog"
-    echo "Recursive expansion placeholder: expanding EPICS..."
+    echo "Recursive expansion: expanding EPICS..."
+    for epic in $(grep -oE 'EPIC [0-9]+' docs/planning/backlog.md | awk '{print $2}'); do
+      echo "Expanding EPIC $epic:"
+      grep -E "TASK $epic\.[0-9]+" docs/planning/backlog.md || echo "  No sub-tasks found for EPIC $epic."
+    done
     ;;
   --sync|--skills)
     echo "Syncing agentic patterns..."
