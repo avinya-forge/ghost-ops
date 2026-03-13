@@ -13,6 +13,7 @@
 | Milestone | Ver | Phase | Status | Debt% |
 | :--- | :--- | :--- | :--- | :--- |
 | AUTONOMY | v0.5.0 | 3 | ACTIVE | 0% |
+| CAPABILITY | v0.6.0 | 1 | PLANNING | 0% |
 
 ## Visual-Index
 - [Vision & Architecture](./docs/architecture/vision.md)
