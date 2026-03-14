@@ -1,0 +1,4 @@
+- **[ ] TASK 701.1: define-capability-config** | Target: `pkg/config/config.go` | I/O: Define struct -> JSON | Test: `config_test.go` | 20 LOC
+- **[P1] [HIGH-RISK] [ ] TASK 701.2: implement-network-egress-policy-checker** | Target: `pkg/runtime/network.go` | I/O: URL string -> bool | Test: `network_test.go` | 40 LOC
+- **[P1] [HIGH-RISK] [ ] TASK 701.3: implement-fs-jail-checker** | Target: `pkg/runtime/fs.go` | I/O: Path string -> bool | Test: `fs_test.go` | 40 LOC
+- **[ ] TASK 701.4: hook-capabilities-into-wasm-runtime-initialization** | Target: `pkg/runtime/wazero_host.go` | I/O: Config -> Runtime | Test: `wazero_host_test.go` | 30 LOC

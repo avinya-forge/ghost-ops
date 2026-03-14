@@ -53,7 +53,10 @@ case "$1" in
   --sync|--skills)
     echo "Syncing agentic patterns..."
     sync_file_tree
-    npx skills add vercel-labs/agent-skills || log_blocker "npx skills add vercel-labs/agent-skills failed"
+    npx skills add vercel-labs/agent-skills -y || log_blocker "npx skills add vercel-labs/agent-skills failed"
+    echo "Parsing pending atomic tasks..."
+    grep -E "\[ \] TASK" docs/planning/backlog.md > docs/planning/active_tasks.txt || true
+    echo "Exported pending tasks to docs/planning/active_tasks.txt"
     ;;
   --ci)
     echo "Running CI checks..."

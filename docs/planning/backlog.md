@@ -59,13 +59,13 @@
 - **SPEC:** Identify potential host escapes.
 - **EPIC 701: Implement Capability-Based Security** | PENDING | Evolution
 - **SPEC:** Fine-grained permissions per module.
-- **TASK 701.1: Define Capability Config** | PENDING | Evolution
+- **[ ] TASK 701.1: define-capability-config** | Target: `pkg/config/config.go` | I/O: Define struct -> JSON | Test: `config_test.go` | 20 LOC
 - **SPEC:** Define configuration structure for capabilities.
-- **TASK 701.2: Implement Network Egress Policy Checker** | PENDING | Evolution
+- **[P1] [HIGH-RISK] [ ] TASK 701.2: implement-network-egress-policy-checker** | Target: `pkg/runtime/network.go` | I/O: URL string -> bool | Test: `network_test.go` | 40 LOC
 - **SPEC:** Implement checker for network egress capabilities.
-- **TASK 701.3: Implement FS Jail Checker** | PENDING | Evolution
+- **[P1] [HIGH-RISK] [ ] TASK 701.3: implement-fs-jail-checker** | Target: `pkg/runtime/fs.go` | I/O: Path string -> bool | Test: `fs_test.go` | 40 LOC
 - **SPEC:** Implement checker for filesystem jail capabilities.
-- **TASK 701.4: Hook Capabilities into WASM Runtime initialization** | PENDING | Evolution
+- **[ ] TASK 701.4: hook-capabilities-into-wasm-runtime-initialization** | Target: `pkg/runtime/wazero_host.go` | I/O: Config -> Runtime | Test: `wazero_host_test.go` | 30 LOC
 - **SPEC:** Integrate capability checks during WASM runtime init.
 - **TASK 702: Enforce Network Egress Policies** | PENDING | Evolution
 - **SPEC:** Block unauthorized outgoing calls from WASM.
