@@ -3,16 +3,18 @@
 - **MILESTONE AUTONOMY** | **PHASE 3** | **GATEKEEPER** [0-Hygiene-Error | 95% Test | Build-Pass]
 - **TASK 400: Autonomous Feedback Loop Architecture** | [BLOCKED] | Evolution
 - **SPEC:** Design self-optimizing loop.
-- **TASK 400.1: Design loop API** | [BLOCKED] | Evolution [HIGH-RISK]
+- **[HIGH-RISK] TASK 400.1: Design loop API** | [BLOCKED] | Evolution
 - **SPEC:** Design loop API.
-- **TASK 400.2: Design DB Schema** | [BLOCKED] | Evolution [HIGH-RISK]
+- **[HIGH-RISK] TASK 400.2: Design DB Schema** | [BLOCKED] | Evolution
 - **SPEC:** Design DB Schema.
-- **TASK 400.3: Design Auth** | [BLOCKED] | Evolution [HIGH-RISK]
+- **[HIGH-RISK] TASK 400.3: Design Auth** | [BLOCKED] | Evolution
 - **SPEC:** Design Auth.
 - **TASK 401: Multi-Language Guest Sdk Support** | [BLOCKED] | Evolution
 - **SPEC:** Design support for Rust/Python.
 - **TASK 402: Automated Vulnerability Scanning** | [BLOCKED] | Evolution
 - **SPEC:** Design security scanner for generated code.
+- **EPIC 500: Observer Agent & Metric Thresholds** | PENDING | Evolution
+- **SPEC:** Implement ObserverAgent to monitor runtime state against defined thresholds. Trigger Re-Prompt on latency spike (P99 > 500ms) or error rate spike (5xx > 1%) using EventBus.
 - **TASK 500: Define Metric Thresholds For Optimization** | COMPLETE | Evolution
 - **SPEC:** Establish baseline metrics.
 - **TASK 501: Implement Observer Agent** | COMPLETE | Evolution
@@ -55,7 +57,7 @@
 - **SPEC:** Verify Go host can invoke Rust/Python guests uniformly.
 - **TASK 700: Wasm Sandboxing Review** | [BLOCKED] | Evolution
 - **SPEC:** Identify potential host escapes.
-- **[HIGH-RISK] EPIC 701: Implement Capability-Based Security** | PENDING | Evolution
+- **EPIC 701: Implement Capability-Based Security** | PENDING | Evolution
 - **SPEC:** Fine-grained permissions per module.
 - **TASK 701.1: Define Capability Config** | PENDING | Evolution
 - **SPEC:** Define configuration structure for capabilities.
@@ -121,5 +123,3 @@
 - **SPEC:** Support OAuth2 authentication for gateway.
 - **TASK 1006: Optimize Runtime Memory Allocation** | PENDING | Evolution
 - **SPEC:** Improve Wazero memory pooling and reuse.
-- **[HIGH-RISK] EPIC 500: Observer Agent & Metric Thresholds** | PENDING | Evolution
-- **SPEC:** Implement ObserverAgent to monitor runtime state against defined thresholds. Trigger Re-Prompt on latency spike (P99 > 500ms) or error rate spike (5xx > 1%) using EventBus.

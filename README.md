@@ -5,6 +5,7 @@
 
 ## The Hook
 - **Value Prop:** Zero-Human Operations. Code that writes itself, runs itself, and fixes itself.
+- **Context:** Autonomous Architecture & Documentation Engine.
 - **Quick Start:**
   - Mock Mode: `./ghost-ops -engine mock`
   - Local/Docker: `./run.sh --start`
