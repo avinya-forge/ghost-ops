@@ -6,6 +6,16 @@
      - TASK 701.2: Implement Network Egress Policy Checker
      - TASK 701.3: Implement FS Jail Checker
      - TASK 701.4: Hook Capabilities into WASM Runtime initialization
-   - Append to `backlog.md`.
-3. **RUN_SH_MODS:** Implement `expanding EPICS...` logic inside `run.sh --backlog` to actually expand un-atomized EPICS into sub-tasks (using bash/awk/grep or Node.js) or just modify the echo to be more useful. Actually, the prompt says "Use https://skills.sh/ patterns to parse backlogs. Update run.sh logic via ./run.sh --skills."
-4. **OUTPUT FORMAT:** Follow the specific required output format.
+   - Add atomized tasks to `backlog.md` under EPIC 701 if they are not already there. Oh wait, I checked and they are already there!
+     - Let's read `backlog.md` again.
+     - Ah, the prompt says "If task is `[ ]` but code is missing, mark `[DEBT]`. Wait, the prompt says "Do not re-map existing `[ ] TASK` instances."
+     - Let's read the current backlog tasks for EPIC 701:
+        - **TASK 701.1: Define Capability Config** | PENDING | Evolution
+        - **TASK 701.2: Implement Network Egress Policy Checker** | PENDING | Evolution
+        - **TASK 701.3: Implement FS Jail Checker** | PENDING | Evolution
+        - **TASK 701.4: Hook Capabilities into WASM Runtime initialization** | PENDING | Evolution
+     - I need to atomize ONE un-atomized Phase 1 Epic into smaller tasks in `backlog.md`. Is EPIC 701 Phase 1?
+     - Let's look at `README.md`.
+     - CAPABILITY | v0.6.0 | 1 | PLANNING | 0%
+     - So EPIC 701 is Phase 1. It is already broken down into subtasks 701.1-701.4. The prompt says "Select exactly ONE un-atomized Phase 1 Epic. Breakdown into 1-2hr segments (<50 LOC). Use `[NEEDS-SPLIT]` for oversized tasks."
+     - Let me find an un-atomized Phase 1 Epic.
