@@ -13,3 +13,6 @@ ghost-ops
 # OS
 .DS_Store
 .memory/
+skills/
+skills-lock.json
+parse_backlog.py
