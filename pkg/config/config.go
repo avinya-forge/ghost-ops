@@ -15,13 +15,20 @@ import (
 
 // Config represents the application configuration.
 type Config struct {
-	Server    ServerConfig    `mapstructure:"server" json:"server" yaml:"server"`
-	Logging   LoggingConfig   `mapstructure:"logging" json:"logging" yaml:"logging"`
-	Paths     PathsConfig     `mapstructure:"paths" json:"paths" yaml:"paths"`
-	Engine    EngineConfig    `mapstructure:"engine" json:"engine" yaml:"engine"`
-	LLM       LLMConfig       `mapstructure:"llm" json:"llm" yaml:"llm"`
-	Telemetry TelemetryConfig `mapstructure:"telemetry" json:"telemetry" yaml:"telemetry"`
-	Registry  RegistryConfig  `mapstructure:"registry" json:"registry" yaml:"registry"`
+	Server       ServerConfig       `mapstructure:"server" json:"server" yaml:"server"`
+	Logging      LoggingConfig      `mapstructure:"logging" json:"logging" yaml:"logging"`
+	Paths        PathsConfig        `mapstructure:"paths" json:"paths" yaml:"paths"`
+	Engine       EngineConfig       `mapstructure:"engine" json:"engine" yaml:"engine"`
+	LLM          LLMConfig          `mapstructure:"llm" json:"llm" yaml:"llm"`
+	Telemetry    TelemetryConfig    `mapstructure:"telemetry" json:"telemetry" yaml:"telemetry"`
+	Registry     RegistryConfig     `mapstructure:"registry" json:"registry" yaml:"registry"`
+	Capabilities CapabilitiesConfig `mapstructure:"capabilities" json:"capabilities" yaml:"capabilities"`
+}
+
+// CapabilitiesConfig configures network egress and file system jail policies.
+type CapabilitiesConfig struct {
+	NetworkEgress []string `mapstructure:"network_egress" json:"network_egress" yaml:"network_egress"`
+	FSJails       []string `mapstructure:"fs_jails" json:"fs_jails" yaml:"fs_jails"`
 }
 
 // ServerConfig configures the HTTP server.

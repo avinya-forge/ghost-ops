@@ -266,7 +266,7 @@ func runServer(version string) {
 	}
 
 	// Initialize Runtime Host
-	host, err := runtime.NewWazeroRuntimeHost(ctx, stateStore, collector)
+	host, err := runtime.NewWazeroRuntimeHost(ctx, stateStore, collector, cfg.Capabilities)
 	if err != nil {
 		slog.Error("Failed to initialize runtime", "error", err)
 		os.Exit(1)

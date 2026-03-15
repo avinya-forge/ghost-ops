@@ -1,5 +1,7 @@
 package runtime
 
+import "ghost-ops/pkg/config"
+
 import (
 	"context"
 	"os"
@@ -15,7 +17,7 @@ func BenchmarkInvoke(b *testing.B) {
 	ctx := context.Background()
 	stateStore := protocol.NewInMemoryStateStore()
 	collector := telemetry.NewInMemoryCollector()
-	host, err := NewWazeroRuntimeHost(ctx, stateStore, collector)
+	host, err := NewWazeroRuntimeHost(ctx, stateStore, collector, config.CapabilitiesConfig{})
 	if err != nil {
 		b.Fatalf("Failed to create host: %v", err)
 	}

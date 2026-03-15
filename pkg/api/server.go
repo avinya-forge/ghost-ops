@@ -207,4 +207,3 @@ func (s *Server) writeError(w http.ResponseWriter, err error) {
 
 	http.Error(w, message, statusCode)
 }
-

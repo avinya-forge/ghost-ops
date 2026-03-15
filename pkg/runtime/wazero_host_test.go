@@ -1,5 +1,6 @@
 package runtime
 
+import "ghost-ops/pkg/config"
 import (
 	"context"
 	"os"
@@ -18,7 +19,7 @@ func TestWazeroRuntimeHost_Integration(t *testing.T) {
 	ctx := context.Background()
 	store := protocol.NewInMemoryStateStore()
 	collector := telemetry.NewInMemoryCollector()
-	host, err := NewWazeroRuntimeHost(ctx, store, collector)
+	host, err := NewWazeroRuntimeHost(ctx, store, collector, config.CapabilitiesConfig{})
 	if err != nil {
 		t.Fatalf("Failed to create host: %v", err)
 	}
@@ -96,7 +97,7 @@ func TestWazeroRuntimeHost_Versioning(t *testing.T) {
 	ctx := context.Background()
 	store := protocol.NewInMemoryStateStore()
 	collector := telemetry.NewInMemoryCollector()
-	host, err := NewWazeroRuntimeHost(ctx, store, collector)
+	host, err := NewWazeroRuntimeHost(ctx, store, collector, config.CapabilitiesConfig{})
 	if err != nil {
 		t.Fatalf("Failed to create host: %v", err)
 	}
