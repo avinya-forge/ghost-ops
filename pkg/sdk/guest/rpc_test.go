@@ -1,5 +1,6 @@
 package guest_test
 
+import "ghost-ops/pkg/config"
 import (
 	"context"
 	"os"
@@ -91,7 +92,7 @@ func TestGuestSDK_RPC(t *testing.T) {
 	defer os.Remove(storePath)
 
 	collector := telemetry.NewInMemoryCollector()
-	host, err := runtime.NewWazeroRuntimeHost(ctx, st, collector)
+	host, err := runtime.NewWazeroRuntimeHost(ctx, st, collector, config.CapabilitiesConfig{})
 	if err != nil {
 		t.Fatalf("Failed to create host: %v", err)
 	}

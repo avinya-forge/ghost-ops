@@ -64,7 +64,7 @@ func TestAPI_EndToEndFlow(t *testing.T) {
 	collector := telemetry.NewInMemoryCollector()
 
 	// Use Real Wazero Runtime
-	rt, err := runtime.NewWazeroRuntimeHost(ctx, store, collector)
+	rt, err := runtime.NewWazeroRuntimeHost(ctx, store, collector, config.CapabilitiesConfig{})
 	if err != nil {
 		t.Fatalf("Failed to create runtime: %v", err)
 	}

@@ -16,6 +16,7 @@ import (
 	"github.com/tetratelabs/wazero/imports/wasi_snapshot_preview1"
 	"go.opentelemetry.io/otel/trace"
 
+	"ghost-ops/pkg/config"
 	"ghost-ops/pkg/protocol"
 )
 
@@ -75,15 +76,16 @@ type WazeroRuntimeHost struct {
 	compiledCache map[string]wazero.CompiledModule // Key: hash of WASM bytes
 	cacheOrder    []string                         // LRU order (oldest first)
 
-	mu        sync.RWMutex
-	store     protocol.StateStore
-	collector protocol.MetricsCollector
+	mu           sync.RWMutex
+	store        protocol.StateStore
+	collector    protocol.MetricsCollector
+	capabilities config.CapabilitiesConfig
 }
 
 const maxCacheSize = 50
 
 // NewWazeroRuntimeHost creates a new WazeroRuntimeHost.
-func NewWazeroRuntimeHost(ctx context.Context, store protocol.StateStore, collector protocol.MetricsCollector) (*WazeroRuntimeHost, error) {
+func NewWazeroRuntimeHost(ctx context.Context, store protocol.StateStore, collector protocol.MetricsCollector, capabilities config.CapabilitiesConfig) (*WazeroRuntimeHost, error) {
 	// 128MB limit per memory instance
 	// WithCloseOnContextDone ensures that long-running or infinite loops are terminated when context is cancelled.
 	config := wazero.NewRuntimeConfig().
@@ -109,6 +111,7 @@ func NewWazeroRuntimeHost(ctx context.Context, store protocol.StateStore, collec
 		cacheOrder:     make([]string, 0, maxCacheSize),
 		store:          store,
 		collector:      collector,
+		capabilities:   capabilities,
 	}
 
 	// Instantiate host module
@@ -417,10 +420,21 @@ func (h *WazeroRuntimeHost) LoadModule(ctx context.Context, serviceID, version s
 	// The runtime.Close() will handle cleanup.
 	asyncCtx := context.Background()
 	go func() {
+		fsConfig := wazero.NewFSConfig()
+		for _, jail := range h.capabilities.FSJails {
+			// Mount each allowed directory into the WASM root according to wazero standard or
+			// use WithDirMount if supported.
+			// Mount jail directly to the same path in wasm, or to a guest path.
+			// The simplest is to mount it to its own path or root.
+			// For simplicity and to allow absolute paths matching, let's mount jail to jail.
+			fsConfig = fsConfig.WithDirMount(jail, jail)
+		}
+
 		config := wazero.NewModuleConfig().
 			WithName(uniqueName).
 			WithStdout(logBuf).
-			WithStderr(logBuf)
+			WithStderr(logBuf).
+			WithFSConfig(fsConfig)
 
 		_, err := h.runtime.InstantiateModule(asyncCtx, compiled, config)
 		if err != nil {

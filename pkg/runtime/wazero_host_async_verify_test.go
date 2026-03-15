@@ -1,5 +1,6 @@
 package runtime
 
+import "ghost-ops/pkg/config"
 import (
 	"context"
 	"fmt"
@@ -69,7 +70,7 @@ func (m *MockStore) ListServices(ctx context.Context) ([]protocol.ServiceRecord,
 func TestWazeroRuntimeHost_LoadModule_Async(t *testing.T) {
 	ctx := context.Background()
 	collector := telemetry.NewInMemoryCollector()
-	host, err := NewWazeroRuntimeHost(ctx, &MockStore{}, collector)
+	host, err := NewWazeroRuntimeHost(ctx, &MockStore{}, collector, config.CapabilitiesConfig{})
 	if err != nil {
 		t.Fatalf("Failed to create host: %v", err)
 	}
@@ -98,7 +99,7 @@ func TestWazeroRuntimeHost_LoadModule_Async(t *testing.T) {
 func TestWazeroRuntimeHost_Invoke_WaitsForModule(t *testing.T) {
 	ctx := context.Background()
 	collector := telemetry.NewInMemoryCollector()
-	host, err := NewWazeroRuntimeHost(ctx, &MockStore{}, collector)
+	host, err := NewWazeroRuntimeHost(ctx, &MockStore{}, collector, config.CapabilitiesConfig{})
 	if err != nil {
 		t.Fatalf("Failed to create host: %v", err)
 	}

@@ -36,7 +36,7 @@ func TestE2E_OptimizationLoop(t *testing.T) {
 	bus := event.NewInMemoryEventBus()
 
 	// Use Real Wazero Runtime
-	rt, err := runtime.NewWazeroRuntimeHost(ctx, store, collector)
+	rt, err := runtime.NewWazeroRuntimeHost(ctx, store, collector, config.CapabilitiesConfig{})
 	if err != nil {
 		t.Fatalf("Failed to create runtime: %v", err)
 	}

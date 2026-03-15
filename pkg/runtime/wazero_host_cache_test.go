@@ -1,5 +1,6 @@
 package runtime
 
+import "ghost-ops/pkg/config"
 import (
 	"context"
 	"crypto/sha256"
@@ -27,7 +28,7 @@ func (m *mockCompiledModule) CustomSections() []api.CustomSection               
 func TestWazeroRuntimeHost_Cache_Hit(t *testing.T) {
 	ctx := context.Background()
 	collector := telemetry.NewInMemoryCollector()
-	host, err := NewWazeroRuntimeHost(ctx, &MockStore{}, collector)
+	host, err := NewWazeroRuntimeHost(ctx, &MockStore{}, collector, config.CapabilitiesConfig{})
 	if err != nil {
 		t.Fatalf("Failed to create host: %v", err)
 	}
@@ -68,7 +69,7 @@ func TestWazeroRuntimeHost_Cache_Hit(t *testing.T) {
 func TestWazeroRuntimeHost_Cache_Eviction(t *testing.T) {
 	ctx := context.Background()
 	collector := telemetry.NewInMemoryCollector()
-	host, err := NewWazeroRuntimeHost(ctx, &MockStore{}, collector)
+	host, err := NewWazeroRuntimeHost(ctx, &MockStore{}, collector, config.CapabilitiesConfig{})
 	if err != nil {
 		t.Fatalf("Failed to create host: %v", err)
 	}

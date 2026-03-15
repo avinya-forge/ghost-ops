@@ -243,3 +243,6 @@
 - Integrated all core components in the main CLI.
 - Added support for payload passing and memory management in WASM host runtime.
 - Implemented `GoCompilerEvolutionEngine` to support compiling Go source code from blueprints into WASM.
+
+## v0.6.0 (WIP)
+- **Security**: EPIC 701 Complete. Introduced Capability-Based Security configuring fine-grained Network Egress Policies and FS Jails per module via configuration, tightly integrated into Wazero Host Initialization.
