@@ -1,3 +1,4 @@
+- **Observer Agent & Metric Thresholds**: EPIC 500 Complete. Implemented ObserverAgent to monitor P99 latency and error rates, and emit events for re-prompting.
 # Release Notes
 
 ## Unreleased
