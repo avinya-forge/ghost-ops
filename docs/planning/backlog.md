@@ -75,15 +75,13 @@
 - **SPEC:** Steps to run a multi-node deployment.
 - **TASK 900: Layer 7 Gateway Design** | [BLOCKED] | Evolution
 - **SPEC:** Define routing rules format.
-- **TASK 901: Implement Http Gateway** | PENDING | Evolution
-- **SPEC:** Map external routes to internal services.
 - **TASK 902: Dynamic Route Reconfiguration** | PENDING | Evolution
 - **SPEC:** Update routes without dropping connections.
 - **TASK 903: Blue/Green Deployment Support** | PENDING | Evolution
 - **SPEC:** Route traffic weights (e.g., 90/10).
-- **TASK 904: Path-Based Routing** | PENDING | Evolution [HIGH-RISK]
+- **[x] TASK 901.2: Path-Based Routing** | Target: `pkg/gateway/gateway.go` | I/O: /api/v1/auth -> auth-service | Test: `gateway_test.go` | 30 LOC
 - **SPEC:** e.g., /api/v1/auth -> auth-service.
-- **TASK 905: Header-Based Routing** | PENDING | Evolution
+- **[x] TASK 901.3: Header-Based Routing** | Target: `pkg/gateway/gateway.go` | I/O: X-Beta: true -> beta-service | Test: `gateway_test.go` | 30 LOC
 - **SPEC:** e.g., X-Beta: true -> beta-service.
 - **TASK 906: Gateway Load Testing** | PENDING | Evolution
 - **SPEC:** Ensure minimal overhead (<2ms).

@@ -2,6 +2,7 @@
 # Release Notes
 
 ## Unreleased
+- **HTTP Gateway and Routing**: EPIC 901 Complete. Implemented Gateway Core with Path-Based and Header-Based Routing logic, allowing routing like `/api/v1/auth` to `auth-service` and `X-Beta: true` to `beta-service`.
 
 ## Vault - Completed Tasks
 
