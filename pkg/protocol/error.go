@@ -59,12 +59,20 @@ func NewAppError(code, msg string, err error) AppError {
 	}
 }
 
-// Sentinel Errors
+// newSentinel creates a code/message marker without capturing a stack trace.
+// Sentinels are used for code() comparison only; callers should always wrap
+// them via NewAppError at the return site so the stack trace reflects the
+// actual error location, not package init.
+func newSentinel(code, msg string) AppError {
+	return &BaseError{CodeStr: code, Msg: msg}
+}
+
+// Sentinel Errors — compare via .Code(), never return bare sentinels.
 var (
-	ErrNotFound     = NewAppError("NOT_FOUND", "resource not found", nil)
-	ErrInvalidInput = NewAppError("INVALID_INPUT", "invalid input", nil)
-	ErrTimeout      = NewAppError("TIMEOUT", "operation timed out", nil)
-	ErrInternal     = NewAppError("INTERNAL", "internal server error", nil)
-	ErrConflict     = NewAppError("CONFLICT", "resource conflict", nil)
-	ErrUnauthorized = NewAppError("UNAUTHORIZED", "unauthorized access", nil)
+	ErrNotFound     = newSentinel("NOT_FOUND", "resource not found")
+	ErrInvalidInput = newSentinel("INVALID_INPUT", "invalid input")
+	ErrTimeout      = newSentinel("TIMEOUT", "operation timed out")
+	ErrInternal     = newSentinel("INTERNAL", "internal server error")
+	ErrConflict     = newSentinel("CONFLICT", "resource conflict")
+	ErrUnauthorized = newSentinel("UNAUTHORIZED", "unauthorized access")
 )
