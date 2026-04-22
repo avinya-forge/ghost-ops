@@ -90,6 +90,10 @@ type WazeroRuntimeHost struct {
 
 const maxCacheSize = 50
 
+// maxKVValueSize caps state-store values at 64 MiB so that the uint32
+// length returned to WASM guests is always accurate.
+const maxKVValueSize = 64 * 1024 * 1024
+
 // NewWazeroRuntimeHost creates a new WazeroRuntimeHost.
 func NewWazeroRuntimeHost(ctx context.Context, store protocol.StateStore, collector protocol.MetricsCollector, capabilities config.CapabilitiesConfig) (*WazeroRuntimeHost, error) {
 	// 128MB limit per memory instance
@@ -153,6 +157,12 @@ func (h *WazeroRuntimeHost) kvGet(ctx context.Context, m api.Module, keyPtr, key
 		return 0
 	}
 
+	if len(val) > maxKVValueSize {
+		slog.Warn("kv_get: value exceeds max size, truncating",
+			"key", key, "size", len(val), "max", maxKVValueSize)
+		val = val[:maxKVValueSize]
+	}
+
 	if uint64(len(val)) > uint64(valLen) {
 		if !m.Memory().Write(valPtr, val[:valLen]) {
 			return 0
@@ -163,11 +173,7 @@ func (h *WazeroRuntimeHost) kvGet(ctx context.Context, m api.Module, keyPtr, key
 		}
 	}
 
-	l := len(val)
-	if l > math.MaxUint32 {
-		l = math.MaxUint32
-	}
-	return uint32(l)
+	return uint32(len(val))
 }
 
 func (h *WazeroRuntimeHost) rpc(ctx context.Context, m api.Module, svcPtr, svcLen, methPtr, methLen, payPtr, payLen, outPtr, outLen uint32) uint32 {
