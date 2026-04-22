@@ -74,8 +74,10 @@ type WazeroRuntimeHost struct {
 	logBuffers     map[string]*ThreadSafeBuffer // Key: uniqueName
 
 	// Compiled Module Cache
-	compiledCache map[string]wazero.CompiledModule // Key: hash of WASM bytes
-	cacheOrder    []string                         // LRU order (oldest first)
+	compiledCache  map[string]wazero.CompiledModule // Key: hash of WASM bytes
+	cacheOrder     []string                         // LRU order (oldest first)
+	compiledRefs   map[string]int                   // goroutines currently in InstantiateModule per hash
+	evictedCompiled map[string]wazero.CompiledModule // evicted but still in-flight; closed when refs hit 0
 
 	mu           sync.RWMutex
 	store        protocol.StateStore
@@ -123,6 +125,8 @@ func NewWazeroRuntimeHost(ctx context.Context, store protocol.StateStore, collec
 		logBuffers:      make(map[string]*ThreadSafeBuffer),
 		compiledCache:   make(map[string]wazero.CompiledModule),
 		cacheOrder:      make([]string, 0, maxCacheSize),
+		compiledRefs:    make(map[string]int),
+		evictedCompiled: make(map[string]wazero.CompiledModule),
 		store:           store,
 		collector:       collector,
 		capabilities:    capabilities,
@@ -415,26 +419,39 @@ func (h *WazeroRuntimeHost) LoadModule(ctx context.Context, serviceID, version s
 			return protocol.NewAppError(protocol.ErrInternal.Code(), "failed to compile module", err)
 		}
 
+		var toClose wazero.CompiledModule
+
 		h.mu.Lock()
 		// Add to cache
 		if _, exists := h.compiledCache[hashKey]; !exists {
 			if len(h.compiledCache) >= maxCacheSize {
-				// Evict the oldest compiled module. We cannot call Close() on
-				// the evicted CompiledModule here because an async goroutine
-				// may currently be inside InstantiateModule using it. The
-				// compiled module's memory will be reclaimed when the wazero
-				// Runtime is closed via Close(). This is a known, bounded
-				// leak: at most maxCacheSize compiled modules are held beyond
-				// their useful life.
 				oldestKey := h.cacheOrder[0]
 				h.cacheOrder = h.cacheOrder[1:]
+				evictedMod := h.compiledCache[oldestKey]
 				delete(h.compiledCache, oldestKey)
 				h.collector.Counter("module_cache_eviction", 1, nil)
+				if h.compiledRefs[oldestKey] == 0 {
+					toClose = evictedMod
+				} else {
+					h.evictedCompiled[oldestKey] = evictedMod
+				}
 			}
 			h.compiledCache[hashKey] = compiled
 			h.cacheOrder = append(h.cacheOrder, hashKey)
 		}
+		h.compiledRefs[hashKey]++
 		h.collector.Counter("module_cache_miss", 1, map[string]string{"service_id": serviceID})
+		h.mu.Unlock()
+
+		if toClose != nil {
+			toClose.Close(context.Background())
+		}
+	}
+
+	// Increment ref for cached path as well (both paths launch the goroutine below).
+	if cached {
+		h.mu.Lock()
+		h.compiledRefs[hashKey]++
 		h.mu.Unlock()
 	}
 
@@ -443,7 +460,23 @@ func (h *WazeroRuntimeHost) LoadModule(ctx context.Context, serviceID, version s
 	// pending instantiations are cancelled when Close() is called.
 	h.wg.Add(1)
 	go func() {
-		defer h.wg.Done()
+		defer func() {
+			h.mu.Lock()
+			h.compiledRefs[hashKey]--
+			var toClose wazero.CompiledModule
+			if h.compiledRefs[hashKey] == 0 {
+				delete(h.compiledRefs, hashKey)
+				if evicted, ok := h.evictedCompiled[hashKey]; ok {
+					delete(h.evictedCompiled, hashKey)
+					toClose = evicted
+				}
+			}
+			h.mu.Unlock()
+			if toClose != nil {
+				toClose.Close(context.Background())
+			}
+			h.wg.Done()
+		}()
 		fsConfig := wazero.NewFSConfig()
 		for _, jail := range h.capabilities.FSJails {
 			// Mount each allowed directory into the WASM root according to wazero standard or
