@@ -1,0 +1,92 @@
+# Ghost Ops — System State Engine
+# Format: KEY: VALUE
+# Machine-readable fields use ISO 8601 timestamps (UTC).
+# Updated by: Lead LLM Architect on every standards sync or version bump.
+# Reference: /docs/STANDARDS.md § 3 (ISO/IEC 42001:2023 Clause 8.4)
+
+# ─── VERSION ──────────────────────────────────────────────────────────────────
+
+repo_version:              0.5.1
+roadmap_version:           1.0.0
+backlog_version:           1.0.0
+standards_version:         1.0.0
+ai_skills_version:         1.0.0
+prompt_version:            1.0.0
+
+# ─── PHASE TRACKER ────────────────────────────────────────────────────────────
+
+current_phase:             PHASE-2 (Scale & Distribution)
+next_phase:                PHASE-3a (Multi-Language Autonomy)
+phase_gate_status:         IN_PROGRESS
+phase_gate_criteria:       95% test · 0 lint · O(n) · gosec clean
+
+# ─── STANDARDS SYNC ───────────────────────────────────────────────────────────
+
+standards_last_synced:     2026-04-22T00:00:00Z
+standards_next_sync_due:   2026-05-22T00:00:00Z
+sync_cadence_days:         30
+
+eu_ai_act_version:         2024/1689 (in-force 2026-08-02)
+eu_ai_act_last_checked:    2026-04-22T00:00:00Z
+eu_ai_act_source:          https://artificialintelligenceact.eu
+
+iso_42001_version:         ISO/IEC 42001:2023 (adapted 2026)
+iso_42001_last_checked:    2026-04-22T00:00:00Z
+
+owasp_top10_version:       2025
+owasp_last_checked:        2026-04-22T00:00:00Z
+
+# ─── COMPLETED EPICS ──────────────────────────────────────────────────────────
+
+vaulted_epics:
+  - id: EPIC-500
+    title: Observer Agent & Metric Thresholds
+    shipped: v0.5.0
+    date: 2026-01-15T00:00:00Z
+
+  - id: EPIC-701
+    title: Capability-Based Security
+    shipped: v0.6.0
+    date: 2026-03-10T00:00:00Z
+
+  - id: EPIC-901
+    title: HTTP Gateway — Path + Header Routing
+    shipped: v0.6.0
+    date: 2026-04-01T00:00:00Z
+
+# ─── ACTIVE MILESTONE BLOCKERS ────────────────────────────────────────────────
+
+blockers:
+  - task: TASK-800
+    reason: ADR required before Etcd implementation begins
+    owner: Claude Pro
+  - task: TASK-600
+    reason: Rust ABI RFC required before SDK implementation
+    owner: Claude Pro
+  - task: TASK-605
+    reason: CPython vs MicroPython evaluation required
+    owner: Claude Pro
+  - task: TASK-400
+    reason: Depends on TASK-804 (state sync) + EPIC-500 (observer)
+    owner: Claude Pro
+
+# ─── AGENT ASSIGNMENTS (summary — full detail in ai-skills.json) ──────────────
+
+active_engines:
+  - engine: Claude Pro
+    role: High-risk design · Large-context tasks · Security review
+  - engine: Jules
+    role: Iterative implementation · Mid-size features
+  - engine: Antigravity
+    role: Documentation generation · Snippet tasks
+  - engine: GitHub Copilot
+    role: Boilerplate · Refactor snippets
+
+# ─── AUDIT LOG (append only) ──────────────────────────────────────────────────
+
+audit_log:
+  - timestamp: 2026-04-22T00:00:00Z
+    actor: claude-pro (Lead LLM Architect)
+    action: INIT — created ROADMAP.md, BACKLOG.md, STANDARDS.md, .system_state, ai-skills.json
+    branch: claude/setup-roadmap-docs-1Y9gM
+    notes: Phase 1 (Foundation) complete. Flat-first hierarchy established.
