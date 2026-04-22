@@ -18,6 +18,329 @@
 
 ---
 
+## 🔴 BUG QUEUE — Fix Before All Other Work
+
+> Sourced from automated code audit on 2026-04-22. Severity order: CRITICAL → HIGH → MEDIUM → LOW.  
+> All bugs below are real defects (not style issues). Fix gate: 95% test · 0 lint · gosec clean.
+
+---
+
+### CRITICAL
+
+---
+
+**BUG-001 | Goroutine Leak in Sidecar Proxy `handleConnection()`**
+`[CRITICAL]` `Token-Impact: 3` `Target: Claude Pro`
+`src/sidecar/sidecar.go:104–118`
+
+> **As a** platform operator,
+> **I want** the sidecar proxy to cleanly shut down both copy goroutines before closing connections,
+> **so that** panics and resource leaks do not occur under normal connection teardown.
+
+- **Root Cause:** `handleConnection()` reads one error from `errCh`, then closes both connections and returns. The second `io.Copy` goroutine is still running and writes to the now-closed `clientConn`/`targetConn`, causing a panic or silent resource leak. Neither goroutine is joined before connections close.
+- **Fix:** Drain both goroutines (wait for both `errCh` sends) before closing connections, or use `sync.WaitGroup`.
+- Acceptance: No goroutine leak under connection-drop stress test. `go test -race` passes.
+- Depends on: none.
+
+---
+
+**BUG-002 | Goroutine Leak in Shadow Invocation (Wazero Host)**
+`[CRITICAL]` `Token-Impact: 3` `Target: Claude Pro`
+`pkg/runtime/wazero_host.go:539–574`
+
+> **As a** WASM runtime,
+> **I want** shadow-mode invocation goroutines to be bounded by the shadow context lifetime,
+> **so that** context cancellation does not leave orphaned goroutines permanently blocked.
+
+- **Root Cause:** The goroutine spawned for shadow invocation at line 539 can be left blocked forever if the shadow context cancels before its response is read. `submitResult()` (lines 305–309) uses a non-blocking `select` with a `default` branch — the response is silently dropped and the goroutine hangs.
+- **Fix:** After shadow context cancels, ensure the goroutine is either unblocked via a closed channel or collected with a `WaitGroup`.
+- Acceptance: Goroutine count does not grow under repeated shadow invocations with context cancellation. `go test -race` passes.
+- Depends on: none.
+
+---
+
+**BUG-003 | Context Leak — `context.Background()` Escapes `LoadModule()` Caller Lifetime**
+`[CRITICAL]` `Token-Impact: 3` `Target: Claude Pro`
+`pkg/runtime/wazero_host.go:421–446`
+
+> **As a** service registry,
+> **I want** `LoadModule()` to respect the calling context's cancellation,
+> **so that** background goroutines do not outlive their parent request.
+
+- **Root Cause:** Inside `LoadModule()`, a goroutine is spawned with `asyncCtx := context.Background()`. If the caller's context is cancelled (e.g., a timed-out reconcile), the module instantiation keeps running indefinitely. Combined with a window between the module-exists check (line 355–358) and the async goroutine completing, concurrent callers can enter a state where the module is partially registered.
+- **Fix:** Derive `asyncCtx` from the caller's context (or a dedicated lifecycle context), and protect the check-then-register sequence under the same lock.
+- Acceptance: `LoadModule()` cancels within 100 ms of caller context cancellation. Race detector clean.
+- Depends on: none.
+
+---
+
+### HIGH
+
+---
+
+**BUG-004 | TOCTOU Race — Module Existence Check vs. Unload in Wazero Host**
+`[HIGH]` `Token-Impact: 3` `Target: Claude Pro`
+`pkg/runtime/wazero_host.go:229–231, 517–521`
+
+> **As a** concurrent caller,
+> **I want** module lookup and invocation to be atomic,
+> **so that** a module cannot be unloaded between the existence check and the invoke call.
+
+- **Root Cause:** `nextCommand()` checks module existence (line 229–231) under a lock. `Invoke()` reads `activeVersions`/`shadowVersions` (lines 517–521) and then releases the lock before using the channel (line 524). `UnloadVersion()` can race between the unlock and the channel read.
+- **Fix:** Hold the lock through the channel acquisition, or use a reference-counted handle pattern.
+- Acceptance: Concurrent invoke + unload test does not panic or return wrong data. Race detector clean.
+- Depends on: none.
+
+---
+
+**BUG-005 | Silent Data Loss — Redis `ListServices()` Drops Records on Type Mismatch**
+`[HIGH]` `Token-Impact: 2` `Target: Jules`
+`pkg/store/redis_store.go:139–161`
+
+> **As a** service registry,
+> **I want** `ListServices()` to return an error when Redis returns unexpected value types,
+> **so that** services are never silently dropped from the registry.
+
+- **Root Cause:** `redis.MGet()` returns `[]interface{}`. A failed type assertion to `string` (line 147) silently `continue`s, dropping the record. If Redis storage is corrupted or a different encoding is used, services disappear from `ListServices()` with no error or log.
+- **Fix:** Log a warning (with service key) and increment a metric for each skipped entry. Return a wrapped error if the skip rate exceeds a threshold.
+- Acceptance: Unit test with a mock returning a non-string value verifies warning is logged and record is counted in a `skipped_records_total` metric.
+- Depends on: none.
+
+---
+
+**BUG-006 | Panic — Event Bus Closes Channels While `Publish()` Is Writing**
+`[HIGH]` `Token-Impact: 2` `Target: Jules`
+`pkg/event/bus.go:60–70`
+
+> **As an** event bus consumer,
+> **I want** `Close()` to guarantee no in-flight `Publish()` call writes to a closed channel,
+> **so that** graceful shutdown never panics.
+
+- **Root Cause:** `Publish()` acquires `RLock`, reads the subscriber slice, releases the lock, then writes to subscriber channels. `Close()` acquires `Lock` and closes all channels. The window between `Publish()` releasing `RLock` and writing to channels allows `Close()` to close a channel that `Publish()` is about to send on, causing a panic.
+- **Fix:** Use a `sync.WaitGroup` in `Publish()` tracked under the write lock, drained in `Close()` before closing channels. Alternatively, recover from channel-closed panics and convert to a sentinel error.
+- Acceptance: Concurrent `Publish()` + `Close()` fuzz test (1000 iterations) never panics. Race detector clean.
+- Depends on: none.
+
+---
+
+**BUG-007 | Silent HTTP Response Failures — `w.Write()` Return Values Unchecked**
+`[HIGH]` `Token-Impact: 1` `Target: GitHub Copilot`
+`pkg/api/server.go:99, 127, 144, 172`
+
+> **As an** API client,
+> **I want** the server to log when a response write fails,
+> **so that** dropped connections are observable and not silently lost.
+
+- **Root Cause:** Four `w.Write()` calls in `server.go` discard the `(n, err)` return. If the client disconnects mid-response, the write fails silently — the operation appears successful server-side but the client received nothing.
+- **Fix:** Wrap writes in a helper that logs the error at debug level (not fatal — disconnects are normal).
+- Acceptance: Unit test simulating a broken connection verifies the error is logged.
+- Depends on: none.
+
+---
+
+**BUG-008 | Memory Leak — Evicted Compiled Modules Never Closed in Wazero Cache**
+`[HIGH]` `Token-Impact: 3` `Target: Claude Pro`
+`pkg/runtime/wazero_host.go:372–416`
+
+> **As a** long-running runtime host,
+> **I want** evicted compiled modules to be explicitly closed,
+> **so that** memory does not grow unboundedly under cache churn.
+
+- **Root Cause:** When the compiled-module LRU cache reaches capacity (50 entries, line 399), the oldest entry is evicted from the map (lines 404–409) but its `wazero.CompiledModule` is never closed. The wazero runtime holds internal references to the compiled module; without an explicit `Close()`, those references are never released.
+- **Fix:** Call `evicted.Close(ctx)` on the evicted `CompiledModule` after removal from the map, guarded by a check that no live module instance references it.
+- Acceptance: Memory profile shows stable RSS under a 200-module churn test. No wazero internal leak warnings.
+- Depends on: none.
+
+---
+
+### MEDIUM
+
+---
+
+**BUG-009 | Validation Bypass — Empty Service ID Passes Middleware**
+`[MEDIUM]` `Token-Impact: 1` `Target: GitHub Copilot`
+`pkg/api/middleware_validation.go:12–22`
+
+> **As a** security gate,
+> **I want** an empty or whitespace-only service ID to be rejected at the middleware layer,
+> **so that** downstream handlers never receive an empty identifier.
+
+- **Root Cause:** Validation is skipped when `id == ""`. A request to `/services//logs` (double slash) routes with an empty `id`; the guard at line 14 skips regex validation and passes the empty string to handlers that do not re-validate.
+- **Fix:** Treat empty string as a validation failure — return `400 Bad Request`.
+- Acceptance: `GET /services//logs` returns `400`. Existing tests still pass.
+- Depends on: none.
+
+---
+
+**BUG-010 | Implicit Contract — `json_store.go` Crashes if `load()` Returns Nil Services Map**
+`[MEDIUM]` `Token-Impact: 1` `Target: GitHub Copilot`
+`pkg/store/json_store.go:98–111`
+
+> **As a** state store,
+> **I want** `GetService()` to guard against a nil Services map,
+> **so that** any future change to `load()` cannot silently cause a nil-map panic.
+
+- **Root Cause:** `GetService()` accesses `sd.Services[serviceID]` (line 107) relying on `load()` always initialising the map. There is no explicit nil check. A future refactor to `load()` that returns a nil map will cause a panic at this line.
+- **Fix:** Add `if sd.Services == nil { return nil, ErrNotFound }` after the `load()` call.
+- Acceptance: Unit test passes a nil services map through GetService; no panic.
+- Depends on: none.
+
+---
+
+**BUG-011 | Race Condition — Log Observer Buffer Cleared While `Observe()` Is Appending**
+`[MEDIUM]` `Token-Impact: 2` `Target: Jules`
+`pkg/observer/log_observer.go:68, 137–145`
+
+> **As an** observer pipeline,
+> **I want** log buffer reads and clears to be atomic with appends,
+> **so that** log entries are never silently dropped during a flush.
+
+- **Root Cause:** `flushService()` reads the buffer (line 139), releases the lock, then clears `o.buffers[serviceID] = nil` (line 144). `Observe()` can append a new entry between the read and the clear, which is then overwritten by `nil`. That entry is permanently lost.
+- **Fix:** Copy-and-clear the buffer under a single held lock: read the slice, set to nil, then release the lock before flushing the copied slice to the LLM.
+- Acceptance: Concurrent observe + flush test under `go test -race` with 10k events shows zero dropped entries.
+- Depends on: none.
+
+---
+
+**BUG-012 | Race Condition — `MetricObserver.prevCounters` Map Read/Write Without Lock**
+`[MEDIUM]` `Token-Impact: 2` `Target: Jules`
+`pkg/observer/metric_observer.go:79–86`
+
+> **As a** metric observer,
+> **I want** all access to `prevCounters` to be mutex-protected,
+> **so that** concurrent polling does not corrupt delta calculations.
+
+- **Root Cause:** `analyzeMetrics()` reads and writes `o.prevCounters[key]` (lines 79–86) without holding a lock. `Start()` calls `Poll()` on a ticker goroutine while `analyzeMetrics` is not separately locked. Concurrent map read/write causes a fatal data race.
+- **Fix:** Add a `sync.Mutex` (or reuse an existing one) guarding all `prevCounters` access.
+- Acceptance: `go test -race ./pkg/observer/...` passes with concurrent start + poll calls.
+- Depends on: none.
+
+---
+
+**BUG-013 | Integer Truncation — Large State Values Return Wrong Length in Wazero Host**
+`[MEDIUM]` `Token-Impact: 2` `Target: Jules`
+`pkg/runtime/wazero_host.go:156–160`
+
+> **As a** WASM guest module,
+> **I want** `kv_get_len()` to return an accurate length for all values,
+> **so that** a value larger than 4 GB does not cause the guest to allocate the wrong buffer size.
+
+- **Root Cause:** `len(val)` returns `int` (64-bit on modern platforms). The code caps at `math.MaxUint32` and silently truncates to `uint32`. A guest allocates a buffer of the returned length, then calls `kv_get()` which copies the full value — writing past the allocated buffer.
+- **Fix:** Enforce a hard maximum value size (e.g., 64 MB) in `kv_set()` and return an error if exceeded, eliminating the overflow path entirely.
+- Acceptance: Attempting to store a value >64 MB returns `ErrValueTooLarge`. Existing tests pass.
+- Depends on: none.
+
+---
+
+**BUG-014 | Blocking Publisher — Slow Registry Subscriber Stalls Event Bus**
+`[MEDIUM]` `Token-Impact: 2` `Target: Jules`
+`pkg/registry/registry.go:178–196`
+
+> **As a** registry,
+> **I want** event bus subscriptions to use buffered channels,
+> **so that** a slow registry event handler cannot block the publisher and stall all other consumers.
+
+- **Root Cause:** `StartEventLoop()` subscribes to the event bus. If the in-memory bus's `Subscribe()` returns an unbuffered channel (line 50 of `bus.go`) and the registry's goroutine is slow (e.g., blocked on a store write), every `Publish()` call in the system blocks until this subscriber reads.
+- **Fix:** Ensure `Subscribe()` always returns a buffered channel (buffer size ≥ 32). Drop events and log a warning if the buffer fills rather than blocking the publisher.
+- Acceptance: Publisher benchmark shows no latency spike when the registry subscriber is artificially delayed 100 ms.
+- Depends on: BUG-006.
+
+---
+
+### LOW
+
+---
+
+**BUG-015 | CPU DoS — O(n·m) Log Sanitization on Unbounded Input**
+`[LOW]` `Token-Impact: 2` `Target: Jules`
+`pkg/observer/log_observer.go:84–115`
+
+> **As a** platform operator,
+> **I want** log sanitization to be bounded in time,
+> **so that** a malicious guest module cannot exhaust CPU by emitting adversarially large log lines.
+
+- **Root Cause:** `sanitize()` calls `strings.Fields()` which allocates proportionally to input size, then iterates every field for multiple `strings.Contains()` checks. A log line with 1 M space-separated tokens triggers O(n·m) work per `Observe()` call.
+- **Fix:** Truncate input to a hard maximum (e.g., 4096 bytes) before sanitization. Add a metric for truncation events.
+- Acceptance: Benchmark with a 1 MB log line completes in <1 ms. Existing sanitization tests pass.
+- Depends on: none.
+
+---
+
+**BUG-016 | Silently Ignored Config Load Error in CLI Root**
+`[LOW]` `Token-Impact: 1` `Target: GitHub Copilot`
+`cmd/ghost-ops/cli/root.go:55`
+
+> **As a** CLI operator,
+> **I want** a failed config load to surface a warning,
+> **so that** corrupted or missing config is diagnosed immediately rather than producing confusing downstream errors.
+
+- **Root Cause:** `_, _ = config.Load()` at line 55 discards both the result and the error. A corrupted YAML file, wrong permissions, or invalid fields silently result in a zero-value config — the server starts with wrong defaults and the operator has no indication why.
+- **Fix:** Log the error at `WARN` level (not fatal — commands like `ghost-ops version` are valid without config).
+- Acceptance: Running the CLI with a deliberately corrupted config file prints a warning to stderr.
+- Depends on: none.
+
+---
+
+**BUG-017 | Misleading Stack Traces — Sentinel Errors Capture Init-Time Callsite**
+`[LOW]` `Token-Impact: 1` `Target: GitHub Copilot`
+`pkg/protocol/error.go:63–70`
+
+> **As a** developer debugging production errors,
+> **I want** stack traces in errors to point to where the error was returned, not where the sentinel was defined,
+> **so that** log-based debugging does not require source cross-referencing.
+
+- **Root Cause:** `ErrNotFound`, `ErrAlreadyExists`, etc. are constructed once at package init. Their embedded stack traces always point to `error.go:64`, regardless of where in the codebase the sentinel is returned.
+- **Fix:** Wrap sentinels at the return site using `fmt.Errorf("context: %w", ErrNotFound)` rather than returning bare sentinels, and remove stack capture from sentinel construction.
+- Acceptance: A returned `ErrNotFound` from `registry.go` wraps the sentinel and carries a stack frame from `registry.go`, not `error.go`.
+- Depends on: none.
+
+---
+
+**BUG-018 | Confusing Boundary Logic — P99 Calculation Masks Empty-Slice Edge Case**
+`[LOW]` `Token-Impact: 1` `Target: GitHub Copilot`
+`pkg/telemetry/inmem.go:100–110`
+
+> **As a** telemetry consumer,
+> **I want** the p99 calculation to be obviously correct,
+> **so that** a future refactor that removes the outer `len > 0` guard cannot introduce a panic.
+
+- **Root Cause:** `p99Index = int(float64(len) * 0.99)` followed by `if p99Index >= len { p99Index = len - 1 }` produces `p99Index = -1` when `len == 0`. The outer guard at line 100 prevents the panic today, but the inner logic is silently wrong and a future refactor removing the guard will produce an out-of-bounds panic.
+- **Fix:** Add an explicit early return inside the p99 block if `len(sortedValues) == 0`.
+- Acceptance: Test with empty histogram returns `p99 == 0` and does not panic.
+- Depends on: none.
+
+---
+
+**BUG-019 | Integer Overflow — Retry Backoff Overflows `int64` Beyond 31 Doublings**
+`[LOW]` `Token-Impact: 1` `Target: GitHub Copilot`
+`pkg/resilience/retry.go:80–83`
+
+> **As a** resilience consumer,
+> **I want** retry backoff to be capped at a maximum duration,
+> **so that** a high `WithMaxAttempts()` value cannot cause `backoff *= 2` to overflow and produce a negative sleep duration.
+
+- **Root Cause:** `backoff *= 2` starting from 100 ms overflows `int64` after 31 doublings (~62 days). `WithMaxAttempts(50)` reaches this after attempt 32 and subsequent `time.Sleep(negative_duration)` returns immediately, producing a tight retry loop instead of backing off.
+- **Fix:** Cap backoff at a configurable `maxBackoff` (default 30 s): `if backoff > maxBackoff { backoff = maxBackoff }`.
+- Acceptance: With `maxAttempts=50` and `initialBackoff=100ms`, backoff never exceeds `maxBackoff`. Test verifies sleep durations.
+- Depends on: none.
+
+---
+
+**BUG-020 | Global Regex Panic Risk — `regexp.MustCompile` Used Outside `init()`**
+`[LOW]` `Token-Impact: 1` `Target: GitHub Copilot`
+`pkg/api/middleware_validation.go:8`
+
+> **As a** server operator,
+> **I want** regex compilation failures to be caught at build time via a test, not at runtime startup,
+> **so that** a typo in the regex pattern causes a test failure rather than a production panic.
+
+- **Root Cause:** `regexp.MustCompile(...)` at package-level panics on an invalid pattern. There is no test that imports this package and exercises the `init()` path to verify the pattern compiles. A future edit that breaks the regex will only be caught when the binary first starts.
+- **Fix:** Add a `TestServiceIDRegexCompiles` unit test that imports the package and calls the regex, ensuring CI catches any future breakage.
+- Acceptance: New test exists and passes. Any invalid regex in `middleware_validation.go` causes `go test ./pkg/api/...` to fail.
+- Depends on: none.
+
+---
+
 ## PHASE-2 — Scale & Distribution
 
 ### MILESTONE 2.1: Distributed Consensus

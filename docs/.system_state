@@ -90,3 +90,16 @@ audit_log:
     action: INIT — created ROADMAP.md, BACKLOG.md, STANDARDS.md, .system_state, ai-skills.json
     branch: claude/setup-roadmap-docs-1Y9gM
     notes: Phase 1 (Foundation) complete. Flat-first hierarchy established.
+
+  - timestamp: 2026-04-22T01:00:00Z
+    actor: claude-pro (Lead LLM Architect)
+    action: BUG HUNT — full static + logic audit of all source packages
+    branch: claude/setup-roadmap-docs-1Y9gM
+    notes: >
+      20 bugs identified and inserted at top of BACKLOG.md as BUG-001–BUG-020.
+      CRITICAL (3): goroutine leak sidecar, shadow invocation goroutine leak, context.Background() escape in LoadModule.
+      HIGH (5): TOCTOU race wazero invoke/unload, Redis silent data loss, event bus close/publish panic,
+                unchecked w.Write() errors, compiled module memory leak.
+      MEDIUM (6): empty service ID bypass, json_store nil map, log observer flush race,
+                  metric observer map race, uint32 truncation, blocking event bus subscriber.
+      LOW (5): CPU DoS log sanitization, ignored config error, sentinel stack traces, p99 edge case, retry overflow, regex test gap.
