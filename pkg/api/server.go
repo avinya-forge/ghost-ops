@@ -96,7 +96,7 @@ func (s *Server) handleReconcile(w http.ResponseWriter, r *http.Request) {
 	}
 
 	w.WriteHeader(http.StatusOK)
-	w.Write([]byte("Reconciliation completed"))
+	s.writeBytes(w, []byte("Reconciliation completed"))
 }
 
 func (s *Server) handleMetrics(w http.ResponseWriter, r *http.Request) {
@@ -124,7 +124,7 @@ func (s *Server) handleMetrics(w http.ResponseWriter, r *http.Request) {
 
 func (s *Server) handleHealthz(w http.ResponseWriter, r *http.Request) {
 	w.WriteHeader(http.StatusOK)
-	w.Write([]byte("OK"))
+	s.writeBytes(w, []byte("OK"))
 }
 
 func (s *Server) handleServiceLogs(w http.ResponseWriter, r *http.Request) {
@@ -141,7 +141,7 @@ func (s *Server) handleServiceLogs(w http.ResponseWriter, r *http.Request) {
 	}
 
 	w.Header().Set("Content-Type", "text/plain; charset=utf-8")
-	w.Write(logs)
+	s.writeBytes(w, logs)
 }
 
 func (s *Server) handleServiceInvoke(w http.ResponseWriter, r *http.Request) {
@@ -169,7 +169,13 @@ func (s *Server) handleServiceInvoke(w http.ResponseWriter, r *http.Request) {
 	}
 
 	w.Header().Set("Content-Type", "application/octet-stream")
-	w.Write(res)
+	s.writeBytes(w, res)
+}
+
+func (s *Server) writeBytes(w http.ResponseWriter, data []byte) {
+	if _, err := w.Write(data); err != nil {
+		slog.Debug("Failed to write response body", "error", err)
+	}
 }
 
 func (s *Server) writeError(w http.ResponseWriter, err error) {
