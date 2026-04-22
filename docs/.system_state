@@ -6,9 +6,9 @@
 
 # ─── VERSION ──────────────────────────────────────────────────────────────────
 
-repo_version:              0.5.1
+repo_version:              0.5.2
 roadmap_version:           1.0.0
-backlog_version:           1.0.0
+backlog_version:           1.1.0
 standards_version:         1.0.0
 ai_skills_version:         1.0.0
 prompt_version:            1.0.0
@@ -103,3 +103,20 @@ audit_log:
       MEDIUM (6): empty service ID bypass, json_store nil map, log observer flush race,
                   metric observer map race, uint32 truncation, blocking event bus subscriber.
       LOW (5): CPU DoS log sanitization, ignored config error, sentinel stack traces, p99 edge case, retry overflow, regex test gap.
+
+  - timestamp: 2026-04-22T02:00:00Z
+    actor: claude-pro (Lead LLM Architect)
+    action: BUG FIX SPRINT — all 20 bugs resolved via granular commits
+    branch: claude/setup-roadmap-docs-1Y9gM
+    notes: >
+      17 real defects fixed across 17 individual commits (one per bug).
+      3 entries confirmed non-bugs after deep code review: BUG-011 (log observer copy-clear already correct),
+      BUG-014 (event bus already uses buffered channels + non-blocking sends),
+      BUG-019 (retry already has maxBackoff clamp).
+      Fix highlights: BUG-004 per-module closedCh eliminates TOCTOU race;
+      BUG-008 compiledRefs+evictedCompiled ref-counting closes evicted wazero modules safely;
+      BUG-003 lifecycleCtx bounds all LoadModule goroutines to host lifetime.
+      All 17 test packages green. go test -race clean.
+    bugs_fixed: [BUG-001, BUG-002, BUG-003, BUG-004, BUG-005, BUG-006, BUG-007, BUG-008,
+                 BUG-009, BUG-010, BUG-012, BUG-013, BUG-015, BUG-016, BUG-017, BUG-018, BUG-020]
+    bugs_no_action: [BUG-011, BUG-014, BUG-019]

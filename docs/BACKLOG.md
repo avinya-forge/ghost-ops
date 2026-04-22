@@ -18,10 +18,11 @@
 
 ---
 
-## 🔴 BUG QUEUE — Fix Before All Other Work
+## ✅ BUG QUEUE — All Resolved (2026-04-22)
 
 > Sourced from automated code audit on 2026-04-22. Severity order: CRITICAL → HIGH → MEDIUM → LOW.  
-> All bugs below are real defects (not style issues). Fix gate: 95% test · 0 lint · gosec clean.
+> Fix gate: 95% test · 0 lint · gosec clean.  
+> **Status as of 2026-04-22:** 17 bugs fixed across 17 granular commits. 3 entries confirmed non-bugs after deeper code review.
 
 ---
 
@@ -29,7 +30,7 @@
 
 ---
 
-**BUG-001 | Goroutine Leak in Sidecar Proxy `handleConnection()`**
+**BUG-001 | Goroutine Leak in Sidecar Proxy `handleConnection()`** ✅ FIXED
 `[CRITICAL]` `Token-Impact: 3` `Target: Claude Pro`
 `src/sidecar/sidecar.go:104–118`
 
@@ -44,7 +45,7 @@
 
 ---
 
-**BUG-002 | Goroutine Leak in Shadow Invocation (Wazero Host)**
+**BUG-002 | Goroutine Leak in Shadow Invocation (Wazero Host)** ✅ FIXED
 `[CRITICAL]` `Token-Impact: 3` `Target: Claude Pro`
 `pkg/runtime/wazero_host.go:539–574`
 
@@ -59,7 +60,7 @@
 
 ---
 
-**BUG-003 | Context Leak — `context.Background()` Escapes `LoadModule()` Caller Lifetime**
+**BUG-003 | Context Leak — `context.Background()` Escapes `LoadModule()` Caller Lifetime** ✅ FIXED
 `[CRITICAL]` `Token-Impact: 3` `Target: Claude Pro`
 `pkg/runtime/wazero_host.go:421–446`
 
@@ -78,7 +79,7 @@
 
 ---
 
-**BUG-004 | TOCTOU Race — Module Existence Check vs. Unload in Wazero Host**
+**BUG-004 | TOCTOU Race — Module Existence Check vs. Unload in Wazero Host** ✅ FIXED
 `[HIGH]` `Token-Impact: 3` `Target: Claude Pro`
 `pkg/runtime/wazero_host.go:229–231, 517–521`
 
@@ -93,7 +94,7 @@
 
 ---
 
-**BUG-005 | Silent Data Loss — Redis `ListServices()` Drops Records on Type Mismatch**
+**BUG-005 | Silent Data Loss — Redis `ListServices()` Drops Records on Type Mismatch** ✅ FIXED
 `[HIGH]` `Token-Impact: 2` `Target: Jules`
 `pkg/store/redis_store.go:139–161`
 
@@ -108,7 +109,7 @@
 
 ---
 
-**BUG-006 | Panic — Event Bus Closes Channels While `Publish()` Is Writing**
+**BUG-006 | Panic — Event Bus Closes Channels While `Publish()` Is Writing** ✅ FIXED
 `[HIGH]` `Token-Impact: 2` `Target: Jules`
 `pkg/event/bus.go:60–70`
 
@@ -123,7 +124,7 @@
 
 ---
 
-**BUG-007 | Silent HTTP Response Failures — `w.Write()` Return Values Unchecked**
+**BUG-007 | Silent HTTP Response Failures — `w.Write()` Return Values Unchecked** ✅ FIXED
 `[HIGH]` `Token-Impact: 1` `Target: GitHub Copilot`
 `pkg/api/server.go:99, 127, 144, 172`
 
@@ -138,7 +139,7 @@
 
 ---
 
-**BUG-008 | Memory Leak — Evicted Compiled Modules Never Closed in Wazero Cache**
+**BUG-008 | Memory Leak — Evicted Compiled Modules Never Closed in Wazero Cache** ✅ FIXED
 `[HIGH]` `Token-Impact: 3` `Target: Claude Pro`
 `pkg/runtime/wazero_host.go:372–416`
 
@@ -157,7 +158,7 @@
 
 ---
 
-**BUG-009 | Validation Bypass — Empty Service ID Passes Middleware**
+**BUG-009 | Validation Bypass — Empty Service ID Passes Middleware** ✅ FIXED
 `[MEDIUM]` `Token-Impact: 1` `Target: GitHub Copilot`
 `pkg/api/middleware_validation.go:12–22`
 
@@ -172,7 +173,7 @@
 
 ---
 
-**BUG-010 | Implicit Contract — `json_store.go` Crashes if `load()` Returns Nil Services Map**
+**BUG-010 | Implicit Contract — `json_store.go` Crashes if `load()` Returns Nil Services Map** ✅ FIXED
 `[MEDIUM]` `Token-Impact: 1` `Target: GitHub Copilot`
 `pkg/store/json_store.go:98–111`
 
@@ -187,7 +188,7 @@
 
 ---
 
-**BUG-011 | Race Condition — Log Observer Buffer Cleared While `Observe()` Is Appending**
+**BUG-011 | Race Condition — Log Observer Buffer Cleared While `Observe()` Is Appending** ⚪ NO BUG
 `[MEDIUM]` `Token-Impact: 2` `Target: Jules`
 `pkg/observer/log_observer.go:68, 137–145`
 
@@ -202,7 +203,7 @@
 
 ---
 
-**BUG-012 | Race Condition — `MetricObserver.prevCounters` Map Read/Write Without Lock**
+**BUG-012 | Race Condition — `MetricObserver.prevCounters` Map Read/Write Without Lock** ✅ FIXED
 `[MEDIUM]` `Token-Impact: 2` `Target: Jules`
 `pkg/observer/metric_observer.go:79–86`
 
@@ -217,7 +218,7 @@
 
 ---
 
-**BUG-013 | Integer Truncation — Large State Values Return Wrong Length in Wazero Host**
+**BUG-013 | Integer Truncation — Large State Values Return Wrong Length in Wazero Host** ✅ FIXED
 `[MEDIUM]` `Token-Impact: 2` `Target: Jules`
 `pkg/runtime/wazero_host.go:156–160`
 
@@ -232,7 +233,7 @@
 
 ---
 
-**BUG-014 | Blocking Publisher — Slow Registry Subscriber Stalls Event Bus**
+**BUG-014 | Blocking Publisher — Slow Registry Subscriber Stalls Event Bus** ⚪ NO BUG
 `[MEDIUM]` `Token-Impact: 2` `Target: Jules`
 `pkg/registry/registry.go:178–196`
 
@@ -251,7 +252,7 @@
 
 ---
 
-**BUG-015 | CPU DoS — O(n·m) Log Sanitization on Unbounded Input**
+**BUG-015 | CPU DoS — O(n·m) Log Sanitization on Unbounded Input** ✅ FIXED
 `[LOW]` `Token-Impact: 2` `Target: Jules`
 `pkg/observer/log_observer.go:84–115`
 
@@ -266,7 +267,7 @@
 
 ---
 
-**BUG-016 | Silently Ignored Config Load Error in CLI Root**
+**BUG-016 | Silently Ignored Config Load Error in CLI Root** ✅ FIXED
 `[LOW]` `Token-Impact: 1` `Target: GitHub Copilot`
 `cmd/ghost-ops/cli/root.go:55`
 
@@ -281,7 +282,7 @@
 
 ---
 
-**BUG-017 | Misleading Stack Traces — Sentinel Errors Capture Init-Time Callsite**
+**BUG-017 | Misleading Stack Traces — Sentinel Errors Capture Init-Time Callsite** ✅ FIXED
 `[LOW]` `Token-Impact: 1` `Target: GitHub Copilot`
 `pkg/protocol/error.go:63–70`
 
@@ -296,7 +297,7 @@
 
 ---
 
-**BUG-018 | Confusing Boundary Logic — P99 Calculation Masks Empty-Slice Edge Case**
+**BUG-018 | Confusing Boundary Logic — P99 Calculation Masks Empty-Slice Edge Case** ✅ FIXED
 `[LOW]` `Token-Impact: 1` `Target: GitHub Copilot`
 `pkg/telemetry/inmem.go:100–110`
 
@@ -311,7 +312,7 @@
 
 ---
 
-**BUG-019 | Integer Overflow — Retry Backoff Overflows `int64` Beyond 31 Doublings**
+**BUG-019 | Integer Overflow — Retry Backoff Overflows `int64` Beyond 31 Doublings** ⚪ NO BUG
 `[LOW]` `Token-Impact: 1` `Target: GitHub Copilot`
 `pkg/resilience/retry.go:80–83`
 
@@ -326,7 +327,7 @@
 
 ---
 
-**BUG-020 | Global Regex Panic Risk — `regexp.MustCompile` Used Outside `init()`**
+**BUG-020 | Global Regex Panic Risk — `regexp.MustCompile` Used Outside `init()`** ✅ FIXED
 `[LOW]` `Token-Impact: 1` `Target: GitHub Copilot`
 `pkg/api/middleware_validation.go:8`
 
