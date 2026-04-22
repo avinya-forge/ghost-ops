@@ -555,10 +555,14 @@ func (h *WazeroRuntimeHost) Invoke(ctx context.Context, serviceID, method string
 		spanID = spanCtx.SpanID().String()
 	}
 
-	// Shadow Invocation
+	// Shadow Invocation — tracked in h.wg so Close() waits for all shadows to
+	// drain. The timeout is rooted in lifecycleCtx so a host shutdown cancels
+	// them immediately rather than waiting up to 30 s.
 	if shadow && shadowReqCh != nil {
+		h.wg.Add(1)
 		go func() {
-			shadowCtx, cancel := context.WithTimeout(context.Background(), 30*time.Second)
+			defer h.wg.Done()
+			shadowCtx, cancel := context.WithTimeout(h.lifecycleCtx, 30*time.Second)
 			defer cancel()
 
 			sResponseCh := make(chan Response, 1)
