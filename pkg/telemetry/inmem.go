@@ -103,8 +103,14 @@ func (c *InMemoryCollector) Snapshot() map[string]interface{} {
 			sort.Float64s(sortedValues)
 
 			p99Index := int(float64(len(sortedValues)) * 0.99)
+			// Clamp to valid range: p99Index is always < len here, but
+			// the explicit check prevents an out-of-bounds panic if this
+			// block is ever reached with an empty slice in the future.
 			if p99Index >= len(sortedValues) {
 				p99Index = len(sortedValues) - 1
+			}
+			if p99Index < 0 {
+				p99Index = 0
 			}
 			p99 = sortedValues[p99Index]
 		}
