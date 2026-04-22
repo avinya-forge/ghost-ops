@@ -80,6 +80,12 @@ type WazeroRuntimeHost struct {
 	store        protocol.StateStore
 	collector    protocol.MetricsCollector
 	capabilities config.CapabilitiesConfig
+
+	// lifecycleCtx is cancelled when Close() is called, bounding all async
+	// goroutines to the host lifetime rather than context.Background().
+	lifecycleCtx    context.Context
+	lifecycleCancel context.CancelFunc
+	wg              sync.WaitGroup
 }
 
 const maxCacheSize = 50
@@ -99,19 +105,23 @@ func NewWazeroRuntimeHost(ctx context.Context, store protocol.StateStore, collec
 		return nil, fmt.Errorf("failed to instantiate WASI: %w", err)
 	}
 
+	lifecycleCtx, lifecycleCancel := context.WithCancel(context.Background())
+
 	h := &WazeroRuntimeHost{
-		runtime:        r,
-		modules:        make(map[string]api.Module),
-		requests:       make(map[string]chan Request),
-		currentReq:     make(map[string]Request),
-		activeVersions: make(map[string]string),
-		shadowVersions: make(map[string]string),
-		logBuffers:     make(map[string]*ThreadSafeBuffer),
-		compiledCache:  make(map[string]wazero.CompiledModule),
-		cacheOrder:     make([]string, 0, maxCacheSize),
-		store:          store,
-		collector:      collector,
-		capabilities:   capabilities,
+		runtime:         r,
+		modules:         make(map[string]api.Module),
+		requests:        make(map[string]chan Request),
+		currentReq:      make(map[string]Request),
+		activeVersions:  make(map[string]string),
+		shadowVersions:  make(map[string]string),
+		logBuffers:      make(map[string]*ThreadSafeBuffer),
+		compiledCache:   make(map[string]wazero.CompiledModule),
+		cacheOrder:      make([]string, 0, maxCacheSize),
+		store:           store,
+		collector:       collector,
+		capabilities:    capabilities,
+		lifecycleCtx:    lifecycleCtx,
+		lifecycleCancel: lifecycleCancel,
 	}
 
 	// Instantiate host module
@@ -415,11 +425,12 @@ func (h *WazeroRuntimeHost) LoadModule(ctx context.Context, serviceID, version s
 		h.mu.Unlock()
 	}
 
-	// Instantiate in goroutine
-	// Use a background context to ensure instantiation survives the request context.
-	// The runtime.Close() will handle cleanup.
-	asyncCtx := context.Background()
+	// Instantiate in a goroutine so LoadModule returns without blocking the
+	// caller. Use the host lifecycle context (not context.Background()) so
+	// pending instantiations are cancelled when Close() is called.
+	h.wg.Add(1)
 	go func() {
+		defer h.wg.Done()
 		fsConfig := wazero.NewFSConfig()
 		for _, jail := range h.capabilities.FSJails {
 			// Mount each allowed directory into the WASM root according to wazero standard or
@@ -436,7 +447,7 @@ func (h *WazeroRuntimeHost) LoadModule(ctx context.Context, serviceID, version s
 			WithStderr(logBuf).
 			WithFSConfig(fsConfig)
 
-		_, err := h.runtime.InstantiateModule(asyncCtx, compiled, config)
+		_, err := h.runtime.InstantiateModule(h.lifecycleCtx, compiled, config)
 		if err != nil {
 			slog.Error("Failed to instantiate module", "unique_name", uniqueName, "error", err)
 			h.collector.Counter("module_load_failure", 1, map[string]string{"service_id": serviceID, "version": version})
@@ -699,7 +710,10 @@ func (h *WazeroRuntimeHost) GetLogs(ctx context.Context, serviceID string) ([]by
 	return logBuf.Bytes(), nil
 }
 
-// Close closes the runtime.
+// Close cancels the host lifecycle context (stopping all pending async
+// goroutines), waits for them to exit, then closes the wazero runtime.
 func (h *WazeroRuntimeHost) Close(ctx context.Context) error {
+	h.lifecycleCancel()
+	h.wg.Wait()
 	return h.runtime.Close(ctx)
 }
