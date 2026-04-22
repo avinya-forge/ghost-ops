@@ -416,13 +416,17 @@ func (h *WazeroRuntimeHost) LoadModule(ctx context.Context, serviceID, version s
 		// Add to cache
 		if _, exists := h.compiledCache[hashKey]; !exists {
 			if len(h.compiledCache) >= maxCacheSize {
-				// Evict oldest
+				// Evict the oldest compiled module. We cannot call Close() on
+				// the evicted CompiledModule here because an async goroutine
+				// may currently be inside InstantiateModule using it. The
+				// compiled module's memory will be reclaimed when the wazero
+				// Runtime is closed via Close(). This is a known, bounded
+				// leak: at most maxCacheSize compiled modules are held beyond
+				// their useful life.
 				oldestKey := h.cacheOrder[0]
 				h.cacheOrder = h.cacheOrder[1:]
-				// Do NOT call Close() on the evicted module because active instances might still
-				// be using it (or rather, we don't track references to know if it's safe).
-				// Wazero Runtime.Close() will eventually clean up all compiled modules.
 				delete(h.compiledCache, oldestKey)
+				h.collector.Counter("module_cache_eviction", 1, nil)
 			}
 			h.compiledCache[hashKey] = compiled
 			h.cacheOrder = append(h.cacheOrder, hashKey)
