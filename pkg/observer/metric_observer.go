@@ -4,6 +4,7 @@ import (
 	"context"
 	"fmt"
 	"strings"
+	"sync"
 	"time"
 
 	"ghost-ops/pkg/protocol"
@@ -15,7 +16,7 @@ type MetricObserver struct {
 	collector protocol.MetricsCollector
 	eventBus  protocol.EventBus
 
-	// track previous values to compute delta over the interval
+	mu           sync.Mutex
 	prevCounters map[string]int64
 }
 
@@ -69,6 +70,9 @@ func (o *MetricObserver) analyzeMetrics(ctx context.Context, metrics map[string]
 
 	shadowErrorDelta := make(map[string]int64)
 	shadowSuccessDelta := make(map[string]int64)
+
+	o.mu.Lock()
+	defer o.mu.Unlock()
 
 	for key, value := range metrics {
 		if valInt, ok := value.(int64); ok {
