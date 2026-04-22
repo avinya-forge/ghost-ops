@@ -67,6 +67,7 @@ type WazeroRuntimeHost struct {
 	runtime        wazero.Runtime
 	modules        map[string]api.Module        // Key: uniqueName (serviceID-version)
 	requests       map[string]chan Request      // Key: uniqueName
+	closedChs      map[string]chan struct{}      // Key: uniqueName; closed by UnloadVersion
 	currentReq     map[string]Request           // Key: uniqueName
 	activeVersions map[string]string            // Key: serviceID, Value: uniqueName
 	shadowVersions map[string]string            // Key: serviceID, Value: uniqueName
@@ -115,6 +116,7 @@ func NewWazeroRuntimeHost(ctx context.Context, store protocol.StateStore, collec
 		runtime:         r,
 		modules:         make(map[string]api.Module),
 		requests:        make(map[string]chan Request),
+		closedChs:       make(map[string]chan struct{}),
 		currentReq:      make(map[string]Request),
 		activeVersions:  make(map[string]string),
 		shadowVersions:  make(map[string]string),
@@ -379,6 +381,7 @@ func (h *WazeroRuntimeHost) LoadModule(ctx context.Context, serviceID, version s
 	}
 
 	h.requests[uniqueName] = make(chan Request)
+	h.closedChs[uniqueName] = make(chan struct{})
 
 	// Create log buffer
 	logBuf := &ThreadSafeBuffer{}
@@ -536,6 +539,7 @@ func (h *WazeroRuntimeHost) Invoke(ctx context.Context, serviceID, method string
 	}
 
 	reqCh, exists := h.requests[uniqueName]
+	closedCh := h.closedChs[uniqueName] // nil if missing; nil channel never fires
 	var shadowReqCh chan Request
 	if shadow {
 		shadowReqCh = h.requests[shadowName]
@@ -611,6 +615,9 @@ func (h *WazeroRuntimeHost) Invoke(ctx context.Context, serviceID, method string
 	select {
 	case reqCh <- req:
 		// Request sent
+	case <-closedCh:
+		h.collector.Counter("invoke_error", 1, map[string]string{"service_id": serviceID, "type": "module_unloaded"})
+		return nil, protocol.NewAppError(protocol.ErrNotFound.Code(), fmt.Sprintf("module %s was unloaded", uniqueName), nil)
 	case <-ctx.Done():
 		h.collector.Counter("invoke_error", 1, map[string]string{"service_id": serviceID, "type": "context_cancelled"})
 		return nil, protocol.NewAppError(protocol.ErrTimeout.Code(), "request context cancelled", ctx.Err())
@@ -624,6 +631,9 @@ func (h *WazeroRuntimeHost) Invoke(ctx context.Context, serviceID, method string
 			h.collector.Counter("invoke_success", 1, map[string]string{"service_id": serviceID})
 		}
 		return res.payload, res.err
+	case <-closedCh:
+		h.collector.Counter("invoke_error", 1, map[string]string{"service_id": serviceID, "type": "module_unloaded"})
+		return nil, protocol.NewAppError(protocol.ErrNotFound.Code(), fmt.Sprintf("module %s was unloaded during invocation", uniqueName), nil)
 	case <-ctx.Done():
 		h.collector.Counter("invoke_error", 1, map[string]string{"service_id": serviceID, "type": "timeout"})
 		return nil, protocol.NewAppError(protocol.ErrTimeout.Code(), "operation timed out", ctx.Err())
@@ -689,6 +699,10 @@ func (h *WazeroRuntimeHost) UnloadVersion(ctx context.Context, serviceID, versio
 
 	delete(h.modules, uniqueName)
 	delete(h.requests, uniqueName)
+	if ch, ok := h.closedChs[uniqueName]; ok {
+		close(ch)
+		delete(h.closedChs, uniqueName)
+	}
 	delete(h.currentReq, uniqueName)
 	delete(h.logBuffers, uniqueName)
 
