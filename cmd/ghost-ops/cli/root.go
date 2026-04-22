@@ -49,10 +49,12 @@ func Execute(version string) {
 	viper.BindPFlag("engine.type", pflag.Lookup("engine"))
 	viper.BindPFlag("llm.provider", pflag.Lookup("llm"))
 
-	// Load configuration early to support CLI commands
-	// We ignore error here because some commands might not need valid config file (e.g. version)
-	// But defaults should be loaded.
-	_, _ = config.Load()
+	// Load configuration early to support CLI commands. Non-server commands
+	// (e.g. version) don't require a valid config file, so we do not exit on
+	// error — but we do warn so that a corrupted config is immediately visible.
+	if _, err := config.Load(); err != nil {
+		fmt.Fprintf(os.Stderr, "warning: failed to load config: %v\n", err)
+	}
 
 	args := pflag.Args()
 	if len(args) > 0 {
