@@ -7,6 +7,7 @@ import (
 	"encoding/json"
 	"fmt"
 	"io"
+	"log/slog"
 	"time"
 
 	"ghost-ops/pkg/protocol"
@@ -137,24 +138,28 @@ func (s *RedisStore) ListServices(ctx context.Context) ([]protocol.ServiceRecord
 	}
 
 	var records []protocol.ServiceRecord
-	for _, val := range vals {
+	for i, val := range vals {
 		if val == nil {
+			slog.Warn("ListServices: nil value from Redis MGet, key may have expired", "key", keys[i])
 			continue
 		}
 		strVal, ok := val.(string)
 		if !ok {
+			slog.Warn("ListServices: unexpected value type from Redis MGet, skipping record",
+				"key", keys[i], "type", fmt.Sprintf("%T", val))
 			continue
 		}
 
 		rawBytes := []byte(strVal)
 		decompressed, err := decompress(rawBytes)
 		if err != nil {
-			// Log error? For now, skip
+			slog.Warn("ListServices: failed to decompress record, skipping", "key", keys[i], "error", err)
 			continue
 		}
 
 		var record protocol.ServiceRecord
 		if err := json.Unmarshal(decompressed, &record); err != nil {
+			slog.Warn("ListServices: failed to unmarshal record, skipping", "key", keys[i], "error", err)
 			continue
 		}
 		records = append(records, record)

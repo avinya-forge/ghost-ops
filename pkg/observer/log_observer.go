@@ -79,9 +79,14 @@ func (o *LogObserver) Observe(ctx context.Context, serviceID string, logLine str
 	}
 }
 
+const maxLogLineBytes = 4096
+
 // sanitize removes potentially sensitive information (PII) from the log string.
-// This is an O(n) operation relative to the log line length.
+// Input is capped at maxLogLineBytes before processing to bound CPU usage.
 func (o *LogObserver) sanitize(logLine string) string {
+	if len(logLine) > maxLogLineBytes {
+		logLine = logLine[:maxLogLineBytes]
+	}
 	if !strings.Contains(logLine, "@") && !strings.Contains(strings.ToLower(logLine), "secret") && !strings.Contains(strings.ToLower(logLine), "password") && !strings.Contains(strings.ToLower(logLine), "token") {
 		return logLine
 	}

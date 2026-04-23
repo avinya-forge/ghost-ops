@@ -48,10 +48,11 @@ func TestWazeroRuntimeHost_AsyncLoad(t *testing.T) {
 	}
 	duration := time.Since(start)
 
-	// Assert it returned quickly (allow some time for compilation overhead)
-	// On slower machines, compilation might take a bit, but definitely not "forever".
-	if duration > 5*time.Second {
-		t.Errorf("LoadModule took too long: %v (expected < 5s)", duration)
+	// Assert it returned quickly. Allow generous margin for Wazero JIT compilation,
+	// which is significantly slower under -race. A hung LoadModule (sync regression)
+	// would block indefinitely because the module runs an infinite loop.
+	if duration > 30*time.Second {
+		t.Errorf("LoadModule took too long: %v (expected < 30s)", duration)
 	} else {
 		t.Logf("LoadModule returned in %v", duration)
 	}

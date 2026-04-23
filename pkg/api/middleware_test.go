@@ -25,7 +25,7 @@ func TestValidateServiceIDMiddleware(t *testing.T) {
 		{"Invalid ID Space", "invalid id", http.StatusBadRequest},
 		{"Invalid ID Special Char", "invalid@id", http.StatusBadRequest},
 		{"Invalid ID Path Traversal", "../etc/passwd", http.StatusBadRequest},
-		{"Empty ID", "", http.StatusOK}, // Empty ID means middleware sees nothing to validate (e.g. root path)
+		{"Empty ID", "", http.StatusBadRequest}, // empty id must be rejected (BUG-009)
 	}
 
 	for _, tt := range tests {
@@ -40,6 +40,25 @@ func TestValidateServiceIDMiddleware(t *testing.T) {
 				t.Errorf("validateServiceIDMiddleware() status = %v, want %v", w.Code, tt.wantStatus)
 			}
 		})
+	}
+}
+
+// TestServiceIDRegexCompiles ensures the package-level regex compiles
+// correctly. A broken pattern causes regexp.MustCompile to panic at startup;
+// this test surfaces that failure in CI rather than at runtime (BUG-020).
+func TestServiceIDRegexCompiles(t *testing.T) {
+	validCases := []string{"abc", "my-service", "Service1", "a1b2c3"}
+	invalidCases := []string{"bad id", "bad@id", "bad/id", "bad.id", ""}
+
+	for _, s := range validCases {
+		if !serviceIDRegex.MatchString(s) {
+			t.Errorf("serviceIDRegex should match %q but did not", s)
+		}
+	}
+	for _, s := range invalidCases {
+		if serviceIDRegex.MatchString(s) {
+			t.Errorf("serviceIDRegex should not match %q but did", s)
+		}
 	}
 }
 

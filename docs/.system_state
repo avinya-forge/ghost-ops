@@ -1,0 +1,122 @@
+# Ghost Ops — System State Engine
+# Format: KEY: VALUE
+# Machine-readable fields use ISO 8601 timestamps (UTC).
+# Updated by: Lead LLM Architect on every standards sync or version bump.
+# Reference: /docs/STANDARDS.md § 3 (ISO/IEC 42001:2023 Clause 8.4)
+
+# ─── VERSION ──────────────────────────────────────────────────────────────────
+
+repo_version:              0.5.2
+roadmap_version:           1.0.0
+backlog_version:           1.1.0
+standards_version:         1.0.0
+ai_skills_version:         1.0.0
+prompt_version:            1.0.0
+
+# ─── PHASE TRACKER ────────────────────────────────────────────────────────────
+
+current_phase:             PHASE-2 (Scale & Distribution)
+next_phase:                PHASE-3a (Multi-Language Autonomy)
+phase_gate_status:         IN_PROGRESS
+phase_gate_criteria:       95% test · 0 lint · O(n) · gosec clean
+
+# ─── STANDARDS SYNC ───────────────────────────────────────────────────────────
+
+standards_last_synced:     2026-04-22T00:00:00Z
+standards_next_sync_due:   2026-05-22T00:00:00Z
+sync_cadence_days:         30
+
+eu_ai_act_version:         2024/1689 (in-force 2026-08-02)
+eu_ai_act_last_checked:    2026-04-22T00:00:00Z
+eu_ai_act_source:          https://artificialintelligenceact.eu
+
+iso_42001_version:         ISO/IEC 42001:2023 (adapted 2026)
+iso_42001_last_checked:    2026-04-22T00:00:00Z
+
+owasp_top10_version:       2025
+owasp_last_checked:        2026-04-22T00:00:00Z
+
+# ─── COMPLETED EPICS ──────────────────────────────────────────────────────────
+
+vaulted_epics:
+  - id: EPIC-500
+    title: Observer Agent & Metric Thresholds
+    shipped: v0.5.0
+    date: 2026-01-15T00:00:00Z
+
+  - id: EPIC-701
+    title: Capability-Based Security
+    shipped: v0.6.0
+    date: 2026-03-10T00:00:00Z
+
+  - id: EPIC-901
+    title: HTTP Gateway — Path + Header Routing
+    shipped: v0.6.0
+    date: 2026-04-01T00:00:00Z
+
+# ─── ACTIVE MILESTONE BLOCKERS ────────────────────────────────────────────────
+
+blockers:
+  - task: TASK-800
+    reason: ADR required before Etcd implementation begins
+    owner: Claude Pro
+  - task: TASK-600
+    reason: Rust ABI RFC required before SDK implementation
+    owner: Claude Pro
+  - task: TASK-605
+    reason: CPython vs MicroPython evaluation required
+    owner: Claude Pro
+  - task: TASK-400
+    reason: Depends on TASK-804 (state sync) + EPIC-500 (observer)
+    owner: Claude Pro
+
+# ─── AGENT ASSIGNMENTS (summary — full detail in ai-skills.json) ──────────────
+
+active_engines:
+  - engine: Claude Pro
+    role: High-risk design · Large-context tasks · Security review
+  - engine: Jules
+    role: Iterative implementation · Mid-size features
+  - engine: Antigravity
+    role: Documentation generation · Snippet tasks
+  - engine: GitHub Copilot
+    role: Boilerplate · Refactor snippets
+
+# ─── AUDIT LOG (append only) ──────────────────────────────────────────────────
+
+audit_log:
+  - timestamp: 2026-04-22T00:00:00Z
+    actor: claude-pro (Lead LLM Architect)
+    action: INIT — created ROADMAP.md, BACKLOG.md, STANDARDS.md, .system_state, ai-skills.json
+    branch: claude/setup-roadmap-docs-1Y9gM
+    notes: Phase 1 (Foundation) complete. Flat-first hierarchy established.
+
+  - timestamp: 2026-04-22T01:00:00Z
+    actor: claude-pro (Lead LLM Architect)
+    action: BUG HUNT — full static + logic audit of all source packages
+    branch: claude/setup-roadmap-docs-1Y9gM
+    notes: >
+      20 bugs identified and inserted at top of BACKLOG.md as BUG-001–BUG-020.
+      CRITICAL (3): goroutine leak sidecar, shadow invocation goroutine leak, context.Background() escape in LoadModule.
+      HIGH (5): TOCTOU race wazero invoke/unload, Redis silent data loss, event bus close/publish panic,
+                unchecked w.Write() errors, compiled module memory leak.
+      MEDIUM (6): empty service ID bypass, json_store nil map, log observer flush race,
+                  metric observer map race, uint32 truncation, blocking event bus subscriber.
+      LOW (5): CPU DoS log sanitization, ignored config error, sentinel stack traces, p99 edge case, retry overflow, regex test gap.
+
+  - timestamp: 2026-04-22T02:00:00Z
+    actor: claude-pro (Lead LLM Architect)
+    action: BUG FIX SPRINT — all 20 bugs resolved via granular commits
+    branch: claude/setup-roadmap-docs-1Y9gM
+    notes: >
+      17 real defects fixed across 17 individual commits (one per bug).
+      3 entries confirmed non-bugs after deep code review: BUG-011 (log observer copy-clear already correct),
+      BUG-014 (event bus already uses buffered channels + non-blocking sends),
+      BUG-019 (retry already has maxBackoff clamp).
+      Fix highlights: BUG-004 per-module closedCh eliminates TOCTOU race;
+      BUG-008 compiledRefs+evictedCompiled ref-counting closes evicted wazero modules safely;
+      BUG-003 lifecycleCtx bounds all LoadModule goroutines to host lifetime.
+      All 17 test packages green. go test -race clean.
+    bugs_fixed: [BUG-001, BUG-002, BUG-003, BUG-004, BUG-005, BUG-006, BUG-007, BUG-008,
+                 BUG-009, BUG-010, BUG-012, BUG-013, BUG-015, BUG-016, BUG-017, BUG-018, BUG-020]
+    bugs_no_action: [BUG-011, BUG-014, BUG-019]

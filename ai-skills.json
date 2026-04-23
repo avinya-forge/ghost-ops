@@ -1,0 +1,197 @@
+{
+  "$schema": "https://json-schema.org/draft/2020-12/schema",
+  "$comment": "Ghost Ops AI Skill Configuration. Version-tracked in /docs/.system_state (ai_skills_version). Update this file when adding a new agent, retiring a skill, or changing routing logic.",
+  "version": "1.0.0",
+  "last_updated": "2026-04-22",
+  "ssot_ref": "/docs/STANDARDS.md#8-agent-assignment-logic",
+  "routing_rules": {
+    "high_risk": "claude-pro",
+    "context_threshold_tokens": 8000,
+    "context_overflow_engine": "claude-pro",
+    "iterative_default": "jules",
+    "documentation_default": "antigravity",
+    "standards_outdated_action": "SYNC — update /docs/STANDARDS.md and /docs/.system_state"
+  },
+  "agents": [
+    {
+      "id": "claude-pro",
+      "display_name": "Claude Pro",
+      "role": "Lead Architect & Code Auditor",
+      "capabilities": [
+        "high-risk-design",
+        "large-context-reasoning",
+        "security-review",
+        "architecture-decision-records",
+        "eu-ai-act-compliance-review",
+        "prompt-injection-defense",
+        "cross-cutting-refactor"
+      ],
+      "assigned_task_types": [
+        "HIGH-RISK architecture design",
+        "ADR authoring",
+        "Security threat modelling",
+        "Tasks with Token-Impact >= 4",
+        "Tasks blocked on design approval",
+        "EU AI Act Article 13/14/15 compliance gates"
+      ],
+      "constraints": {
+        "max_token_budget_per_task": 32000,
+        "requires_human_review_before_merge": true,
+        "shadow_mode_required_for_autonomous_changes": true
+      },
+      "skills": [
+        {
+          "name": "Code Auditor",
+          "trigger": "PR contains pkg/evolution/ OR pkg/runtime/ OR pkg/api/ changes",
+          "action": "Run full security + logic audit. Flag any EU AI Act Article 15 violations.",
+          "output": "Review comment on PR with PASS/FAIL verdict and remediation steps."
+        },
+        {
+          "name": "Architecture Reviewer",
+          "trigger": "New TASK-* with Token-Impact >= 4 added to /docs/BACKLOG.md",
+          "action": "Produce ADR skeleton in /docs/architecture/decisions.md. Identify risk level.",
+          "output": "ADR draft committed to feature branch."
+        },
+        {
+          "name": "Standards Syncer",
+          "trigger": "standards_next_sync_due date reached (check /docs/.system_state)",
+          "action": "Check EU AI Act implementing acts and ISO/IEC 42001 errata. Update /docs/STANDARDS.md and /docs/.system_state.",
+          "output": "PR with updated STANDARDS.md and bumped standards_last_synced timestamp."
+        }
+      ]
+    },
+    {
+      "id": "jules",
+      "display_name": "Jules",
+      "role": "Implementation Engine",
+      "capabilities": [
+        "iterative-feature-implementation",
+        "unit-test-generation",
+        "integration-test-generation",
+        "mid-size-refactor",
+        "go-code-generation",
+        "rust-code-generation"
+      ],
+      "assigned_task_types": [
+        "Tasks with Token-Impact 2-3",
+        "Feature implementation after ADR is approved",
+        "Test suite expansion",
+        "Performance benchmarks"
+      ],
+      "constraints": {
+        "max_token_budget_per_task": 8000,
+        "requires_human_review_before_merge": true,
+        "must_pass_adversarial_triad": true
+      },
+      "skills": [
+        {
+          "name": "Feature Builder",
+          "trigger": "TASK status changes from BLOCKED to PENDING in /docs/BACKLOG.md",
+          "action": "Implement the feature per acceptance criteria. Write tests first (TDD). Target: 95% coverage, 0 lint.",
+          "output": "PR with implementation + tests. Reference Task ID in commit message."
+        },
+        {
+          "name": "Test Expander",
+          "trigger": "Coverage report shows a package below 95%",
+          "action": "Identify uncovered paths. Generate table-driven tests for Go packages.",
+          "output": "PR adding missing test cases. Coverage delta reported in PR description."
+        },
+        {
+          "name": "Benchmark Runner",
+          "trigger": "Task Acceptance Criteria mentions latency or throughput SLA",
+          "action": "Implement benchmark in *_benchmark_test.go. Compare vs baseline. Report p99.",
+          "output": "Benchmark results appended to PR description."
+        }
+      ]
+    },
+    {
+      "id": "antigravity",
+      "display_name": "Antigravity",
+      "role": "Intent Source & Documentation Generator",
+      "capabilities": [
+        "natural-language-intent-synthesis",
+        "documentation-generation",
+        "snippet-generation",
+        "blueprint-authoring",
+        "example-creation"
+      ],
+      "assigned_task_types": [
+        "Tasks with Token-Impact == 1",
+        "Documentation tasks",
+        "Example authoring",
+        "Blueprint JSON authoring"
+      ],
+      "constraints": {
+        "max_token_budget_per_task": 4000,
+        "requires_human_review_before_merge": false,
+        "output_format": "Markdown or JSON only"
+      },
+      "skills": [
+        {
+          "name": "Doc Generator",
+          "trigger": "TASK type == documentation AND status == PENDING",
+          "action": "Generate Markdown document per acceptance criteria. Follow flat-file hierarchy in /docs/STANDARDS.md § 5.",
+          "output": "New .md file committed to /docs/. PR raised with doc preview."
+        },
+        {
+          "name": "Blueprint Author",
+          "trigger": "New service intent provided by operator",
+          "action": "Synthesize a Blueprint JSON matching the Ghost Ops schema (service_id, intent, constraints). Validate against JSON schema before submitting.",
+          "output": "Blueprint JSON file in examples/blueprints/."
+        },
+        {
+          "name": "Example Scaffolder",
+          "trigger": "TASK-608 or any task requiring new example code",
+          "action": "Generate minimal working example in examples/basic/<language>/. Include README and Makefile.",
+          "output": "PR with example directory. Build verified locally before PR raised."
+        }
+      ]
+    },
+    {
+      "id": "github-copilot",
+      "display_name": "GitHub Copilot",
+      "role": "Snippet & Refactor Engine",
+      "capabilities": [
+        "boilerplate-generation",
+        "inline-refactor",
+        "type-stub-generation",
+        "comment-generation",
+        "small-fix-implementation"
+      ],
+      "assigned_task_types": [
+        "Tasks with Token-Impact == 1",
+        "Boilerplate scaffolding",
+        "Inline refactors (<50 LOC)",
+        "Type stubs and interface stubs"
+      ],
+      "constraints": {
+        "max_token_budget_per_task": 2000,
+        "requires_human_review_before_merge": true,
+        "never_used_for": [
+          "HIGH-risk tasks",
+          "Security-critical code paths",
+          "Tasks requiring EU AI Act compliance review"
+        ]
+      },
+      "skills": [
+        {
+          "name": "Boilerplate Generator",
+          "trigger": "New pkg/ directory created without initial files",
+          "action": "Generate interface stubs, error types, and test file skeleton.",
+          "output": "Inline suggestion or small PR with scaffolding files."
+        },
+        {
+          "name": "Inline Refactorer",
+          "trigger": "lint error or code smell flagged in PR review",
+          "action": "Apply minimal fix. Do not change surrounding logic.",
+          "output": "Commit on the same branch fixing the specific violation."
+        }
+      ]
+    }
+  ],
+  "redundancy_prevention": {
+    "rule": "Each task in /docs/BACKLOG.md carries exactly one Target Engine. No two agents should be assigned the same active task simultaneously.",
+    "conflict_resolution": "If two agents produce conflicting outputs, Claude Pro arbitrates. The higher Token-Impact engine's output takes precedence.",
+    "prompt_deduplication": "Before starting a task, check /docs/.system_state audit_log for prior attempts on the same Task ID. Do not re-synthesize if a completed entry exists."
+  }
+}

@@ -67,22 +67,35 @@ type WazeroRuntimeHost struct {
 	runtime        wazero.Runtime
 	modules        map[string]api.Module        // Key: uniqueName (serviceID-version)
 	requests       map[string]chan Request      // Key: uniqueName
+	closedChs      map[string]chan struct{}      // Key: uniqueName; closed by UnloadVersion
 	currentReq     map[string]Request           // Key: uniqueName
 	activeVersions map[string]string            // Key: serviceID, Value: uniqueName
 	shadowVersions map[string]string            // Key: serviceID, Value: uniqueName
 	logBuffers     map[string]*ThreadSafeBuffer // Key: uniqueName
 
 	// Compiled Module Cache
-	compiledCache map[string]wazero.CompiledModule // Key: hash of WASM bytes
-	cacheOrder    []string                         // LRU order (oldest first)
+	compiledCache  map[string]wazero.CompiledModule // Key: hash of WASM bytes
+	cacheOrder     []string                         // LRU order (oldest first)
+	compiledRefs   map[string]int                   // goroutines currently in InstantiateModule per hash
+	evictedCompiled map[string]wazero.CompiledModule // evicted but still in-flight; closed when refs hit 0
 
 	mu           sync.RWMutex
 	store        protocol.StateStore
 	collector    protocol.MetricsCollector
 	capabilities config.CapabilitiesConfig
+
+	// lifecycleCtx is cancelled when Close() is called, bounding all async
+	// goroutines to the host lifetime rather than context.Background().
+	lifecycleCtx    context.Context
+	lifecycleCancel context.CancelFunc
+	wg              sync.WaitGroup
 }
 
 const maxCacheSize = 50
+
+// maxKVValueSize caps state-store values at 64 MiB so that the uint32
+// length returned to WASM guests is always accurate.
+const maxKVValueSize = 64 * 1024 * 1024
 
 // NewWazeroRuntimeHost creates a new WazeroRuntimeHost.
 func NewWazeroRuntimeHost(ctx context.Context, store protocol.StateStore, collector protocol.MetricsCollector, capabilities config.CapabilitiesConfig) (*WazeroRuntimeHost, error) {
@@ -99,19 +112,26 @@ func NewWazeroRuntimeHost(ctx context.Context, store protocol.StateStore, collec
 		return nil, fmt.Errorf("failed to instantiate WASI: %w", err)
 	}
 
+	lifecycleCtx, lifecycleCancel := context.WithCancel(context.Background())
+
 	h := &WazeroRuntimeHost{
-		runtime:        r,
-		modules:        make(map[string]api.Module),
-		requests:       make(map[string]chan Request),
-		currentReq:     make(map[string]Request),
-		activeVersions: make(map[string]string),
-		shadowVersions: make(map[string]string),
-		logBuffers:     make(map[string]*ThreadSafeBuffer),
-		compiledCache:  make(map[string]wazero.CompiledModule),
-		cacheOrder:     make([]string, 0, maxCacheSize),
-		store:          store,
-		collector:      collector,
-		capabilities:   capabilities,
+		runtime:         r,
+		modules:         make(map[string]api.Module),
+		requests:        make(map[string]chan Request),
+		closedChs:       make(map[string]chan struct{}),
+		currentReq:      make(map[string]Request),
+		activeVersions:  make(map[string]string),
+		shadowVersions:  make(map[string]string),
+		logBuffers:      make(map[string]*ThreadSafeBuffer),
+		compiledCache:   make(map[string]wazero.CompiledModule),
+		cacheOrder:      make([]string, 0, maxCacheSize),
+		compiledRefs:    make(map[string]int),
+		evictedCompiled: make(map[string]wazero.CompiledModule),
+		store:           store,
+		collector:       collector,
+		capabilities:    capabilities,
+		lifecycleCtx:    lifecycleCtx,
+		lifecycleCancel: lifecycleCancel,
 	}
 
 	// Instantiate host module
@@ -143,6 +163,12 @@ func (h *WazeroRuntimeHost) kvGet(ctx context.Context, m api.Module, keyPtr, key
 		return 0
 	}
 
+	if len(val) > maxKVValueSize {
+		slog.Warn("kv_get: value exceeds max size, truncating",
+			"key", key, "size", len(val), "max", maxKVValueSize)
+		val = val[:maxKVValueSize]
+	}
+
 	if uint64(len(val)) > uint64(valLen) {
 		if !m.Memory().Write(valPtr, val[:valLen]) {
 			return 0
@@ -153,11 +179,7 @@ func (h *WazeroRuntimeHost) kvGet(ctx context.Context, m api.Module, keyPtr, key
 		}
 	}
 
-	l := len(val)
-	if l > math.MaxUint32 {
-		l = math.MaxUint32
-	}
-	return uint32(l)
+	return uint32(len(val))
 }
 
 func (h *WazeroRuntimeHost) rpc(ctx context.Context, m api.Module, svcPtr, svcLen, methPtr, methLen, payPtr, payLen, outPtr, outLen uint32) uint32 {
@@ -363,6 +385,7 @@ func (h *WazeroRuntimeHost) LoadModule(ctx context.Context, serviceID, version s
 	}
 
 	h.requests[uniqueName] = make(chan Request)
+	h.closedChs[uniqueName] = make(chan struct{})
 
 	// Create log buffer
 	logBuf := &ThreadSafeBuffer{}
@@ -396,30 +419,64 @@ func (h *WazeroRuntimeHost) LoadModule(ctx context.Context, serviceID, version s
 			return protocol.NewAppError(protocol.ErrInternal.Code(), "failed to compile module", err)
 		}
 
+		var toClose wazero.CompiledModule
+
 		h.mu.Lock()
 		// Add to cache
 		if _, exists := h.compiledCache[hashKey]; !exists {
 			if len(h.compiledCache) >= maxCacheSize {
-				// Evict oldest
 				oldestKey := h.cacheOrder[0]
 				h.cacheOrder = h.cacheOrder[1:]
-				// Do NOT call Close() on the evicted module because active instances might still
-				// be using it (or rather, we don't track references to know if it's safe).
-				// Wazero Runtime.Close() will eventually clean up all compiled modules.
+				evictedMod := h.compiledCache[oldestKey]
 				delete(h.compiledCache, oldestKey)
+				h.collector.Counter("module_cache_eviction", 1, nil)
+				if h.compiledRefs[oldestKey] == 0 {
+					toClose = evictedMod
+				} else {
+					h.evictedCompiled[oldestKey] = evictedMod
+				}
 			}
 			h.compiledCache[hashKey] = compiled
 			h.cacheOrder = append(h.cacheOrder, hashKey)
 		}
+		h.compiledRefs[hashKey]++
 		h.collector.Counter("module_cache_miss", 1, map[string]string{"service_id": serviceID})
+		h.mu.Unlock()
+
+		if toClose != nil {
+			toClose.Close(context.Background())
+		}
+	}
+
+	// Increment ref for cached path as well (both paths launch the goroutine below).
+	if cached {
+		h.mu.Lock()
+		h.compiledRefs[hashKey]++
 		h.mu.Unlock()
 	}
 
-	// Instantiate in goroutine
-	// Use a background context to ensure instantiation survives the request context.
-	// The runtime.Close() will handle cleanup.
-	asyncCtx := context.Background()
+	// Instantiate in a goroutine so LoadModule returns without blocking the
+	// caller. Use the host lifecycle context (not context.Background()) so
+	// pending instantiations are cancelled when Close() is called.
+	h.wg.Add(1)
 	go func() {
+		defer func() {
+			h.mu.Lock()
+			h.compiledRefs[hashKey]--
+			var toClose wazero.CompiledModule
+			if h.compiledRefs[hashKey] == 0 {
+				delete(h.compiledRefs, hashKey)
+				if evicted, ok := h.evictedCompiled[hashKey]; ok {
+					delete(h.evictedCompiled, hashKey)
+					toClose = evicted
+				}
+			}
+			h.mu.Unlock()
+			if toClose != nil {
+				toClose.Close(context.Background())
+			}
+			h.wg.Done()
+		}()
 		fsConfig := wazero.NewFSConfig()
 		for _, jail := range h.capabilities.FSJails {
 			// Mount each allowed directory into the WASM root according to wazero standard or
@@ -436,7 +493,7 @@ func (h *WazeroRuntimeHost) LoadModule(ctx context.Context, serviceID, version s
 			WithStderr(logBuf).
 			WithFSConfig(fsConfig)
 
-		_, err := h.runtime.InstantiateModule(asyncCtx, compiled, config)
+		_, err := h.runtime.InstantiateModule(h.lifecycleCtx, compiled, config)
 		if err != nil {
 			slog.Error("Failed to instantiate module", "unique_name", uniqueName, "error", err)
 			h.collector.Counter("module_load_failure", 1, map[string]string{"service_id": serviceID, "version": version})
@@ -515,6 +572,7 @@ func (h *WazeroRuntimeHost) Invoke(ctx context.Context, serviceID, method string
 	}
 
 	reqCh, exists := h.requests[uniqueName]
+	closedCh := h.closedChs[uniqueName] // nil if missing; nil channel never fires
 	var shadowReqCh chan Request
 	if shadow {
 		shadowReqCh = h.requests[shadowName]
@@ -534,10 +592,14 @@ func (h *WazeroRuntimeHost) Invoke(ctx context.Context, serviceID, method string
 		spanID = spanCtx.SpanID().String()
 	}
 
-	// Shadow Invocation
+	// Shadow Invocation — tracked in h.wg so Close() waits for all shadows to
+	// drain. The timeout is rooted in lifecycleCtx so a host shutdown cancels
+	// them immediately rather than waiting up to 30 s.
 	if shadow && shadowReqCh != nil {
+		h.wg.Add(1)
 		go func() {
-			shadowCtx, cancel := context.WithTimeout(context.Background(), 30*time.Second)
+			defer h.wg.Done()
+			shadowCtx, cancel := context.WithTimeout(h.lifecycleCtx, 30*time.Second)
 			defer cancel()
 
 			sResponseCh := make(chan Response, 1)
@@ -586,6 +648,9 @@ func (h *WazeroRuntimeHost) Invoke(ctx context.Context, serviceID, method string
 	select {
 	case reqCh <- req:
 		// Request sent
+	case <-closedCh:
+		h.collector.Counter("invoke_error", 1, map[string]string{"service_id": serviceID, "type": "module_unloaded"})
+		return nil, protocol.NewAppError(protocol.ErrNotFound.Code(), fmt.Sprintf("module %s was unloaded", uniqueName), nil)
 	case <-ctx.Done():
 		h.collector.Counter("invoke_error", 1, map[string]string{"service_id": serviceID, "type": "context_cancelled"})
 		return nil, protocol.NewAppError(protocol.ErrTimeout.Code(), "request context cancelled", ctx.Err())
@@ -599,6 +664,9 @@ func (h *WazeroRuntimeHost) Invoke(ctx context.Context, serviceID, method string
 			h.collector.Counter("invoke_success", 1, map[string]string{"service_id": serviceID})
 		}
 		return res.payload, res.err
+	case <-closedCh:
+		h.collector.Counter("invoke_error", 1, map[string]string{"service_id": serviceID, "type": "module_unloaded"})
+		return nil, protocol.NewAppError(protocol.ErrNotFound.Code(), fmt.Sprintf("module %s was unloaded during invocation", uniqueName), nil)
 	case <-ctx.Done():
 		h.collector.Counter("invoke_error", 1, map[string]string{"service_id": serviceID, "type": "timeout"})
 		return nil, protocol.NewAppError(protocol.ErrTimeout.Code(), "operation timed out", ctx.Err())
@@ -664,6 +732,10 @@ func (h *WazeroRuntimeHost) UnloadVersion(ctx context.Context, serviceID, versio
 
 	delete(h.modules, uniqueName)
 	delete(h.requests, uniqueName)
+	if ch, ok := h.closedChs[uniqueName]; ok {
+		close(ch)
+		delete(h.closedChs, uniqueName)
+	}
 	delete(h.currentReq, uniqueName)
 	delete(h.logBuffers, uniqueName)
 
@@ -699,7 +771,10 @@ func (h *WazeroRuntimeHost) GetLogs(ctx context.Context, serviceID string) ([]by
 	return logBuf.Bytes(), nil
 }
 
-// Close closes the runtime.
+// Close cancels the host lifecycle context (stopping all pending async
+// goroutines), waits for them to exit, then closes the wazero runtime.
 func (h *WazeroRuntimeHost) Close(ctx context.Context) error {
+	h.lifecycleCancel()
+	h.wg.Wait()
 	return h.runtime.Close(ctx)
 }

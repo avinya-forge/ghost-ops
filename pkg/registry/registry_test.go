@@ -3,6 +3,7 @@ package registry
 import (
 	"context"
 	"fmt"
+	"sync"
 	"testing"
 	"time"
 
@@ -14,12 +15,15 @@ import (
 
 // MockStateStore
 type MockStateStore struct {
+	mu               sync.Mutex
 	records          map[string]protocol.ServiceRecord
 	getServiceErr    error
 	updateServiceErr error
 }
 
 func (m *MockStateStore) GetService(ctx context.Context, id string) (*protocol.ServiceRecord, error) {
+	m.mu.Lock()
+	defer m.mu.Unlock()
 	if m.getServiceErr != nil {
 		return nil, m.getServiceErr
 	}
@@ -29,6 +33,8 @@ func (m *MockStateStore) GetService(ctx context.Context, id string) (*protocol.S
 	return nil, nil
 }
 func (m *MockStateStore) UpdateService(ctx context.Context, r protocol.ServiceRecord) error {
+	m.mu.Lock()
+	defer m.mu.Unlock()
 	if m.updateServiceErr != nil {
 		return m.updateServiceErr
 	}
@@ -39,6 +45,8 @@ func (m *MockStateStore) UpdateService(ctx context.Context, r protocol.ServiceRe
 	return nil
 }
 func (m *MockStateStore) ListServices(ctx context.Context) ([]protocol.ServiceRecord, error) {
+	m.mu.Lock()
+	defer m.mu.Unlock()
 	var list []protocol.ServiceRecord
 	for _, r := range m.records {
 		list = append(list, r)

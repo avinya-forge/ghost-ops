@@ -12,6 +12,7 @@ import (
 type InMemoryEventBus struct {
 	mu          sync.RWMutex
 	subscribers map[protocol.EventType][]chan protocol.Event
+	closed      bool
 }
 
 // NewInMemoryEventBus creates a new InMemoryEventBus.
@@ -26,6 +27,10 @@ func (b *InMemoryEventBus) Publish(ctx context.Context, event protocol.Event) er
 	b.mu.RLock()
 	defer b.mu.RUnlock()
 
+	if b.closed {
+		return nil
+	}
+
 	event.Timestamp = time.Now().Unix()
 
 	if chans, ok := b.subscribers[event.Type]; ok {
@@ -35,7 +40,6 @@ func (b *InMemoryEventBus) Publish(ctx context.Context, event protocol.Event) er
 			case ch <- event:
 			default:
 				// Drop event if channel is full
-				// Ideally log this
 			}
 		}
 	}
@@ -56,10 +60,16 @@ func (b *InMemoryEventBus) Subscribe(ctx context.Context, eventType protocol.Eve
 	return ch, nil
 }
 
-// Close closes all channels (optional cleanup)
+// Close closes all subscriber channels. Subsequent Publish calls are no-ops.
+// Calling Close more than once is safe.
 func (b *InMemoryEventBus) Close() {
 	b.mu.Lock()
 	defer b.mu.Unlock()
+
+	if b.closed {
+		return
+	}
+	b.closed = true
 
 	for _, chans := range b.subscribers {
 		for _, ch := range chans {

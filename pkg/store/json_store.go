@@ -104,6 +104,10 @@ func (s *JSONFileStore) GetService(ctx context.Context, serviceID string) (*prot
 		return nil, err
 	}
 
+	if sd.Services == nil {
+		return nil, nil
+	}
+
 	if record, ok := sd.Services[serviceID]; ok {
 		return &record, nil
 	}

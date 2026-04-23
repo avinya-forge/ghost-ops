@@ -113,7 +113,10 @@ func (p *Proxy) handleConnection(clientConn net.Conn) {
 		errCh <- err
 	}()
 
+	// Wait for the first direction to finish, close both connections to unblock
+	// the second goroutine, then drain its result so it is never leaked.
 	<-errCh
 	clientConn.Close()
 	targetConn.Close()
+	<-errCh
 }
