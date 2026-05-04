@@ -60,7 +60,7 @@
 | BUG-040 | Reconcile loop returns `(true, nil)` on evolve failure — silent success | `pkg/registry/registry.go:107` | D18 | OPEN |
 | BUG-041 | `nextCommand()` truncates method names silently when caller buffer < name length | `pkg/runtime/wazero_host.go:~268` | D19 | OPEN |
 | BUG-043 | LLM cache "eviction" is map-iteration order (random), not LRU as comment claims | `pkg/llm/cache.go:54-59` | D14 | OPEN |
-| BUG-051 | Dockerfile runs as root, `WORKDIR /root/`, no `EXPOSE`, no `HEALTHCHECK` | `Dockerfile` | D6 | OPEN |
+| BUG-051 | Dockerfile runs as root, `WORKDIR /root/`, no `EXPOSE`, no `HEALTHCHECK` | `Dockerfile` | D6 | DONE-this-PR |
 | BUG-058 | `run.sh --sync` calls `npx skills add vercel-labs/agent-skills` — irrelevant to a Go project | `run.sh` | D1 | DONE-this-PR |
 | BUG-059 | `examples/test-service/main.go` flagged as unreferenced — **WRONG**, used by `pkg/api/integration_test.go` and `pkg/runtime/wazero_host_async_verify_test.go`. Restored. | `examples/test-service/` | D1 | NOT-A-BUG |
 
