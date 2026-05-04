@@ -61,14 +61,14 @@
 | BUG-041 | `nextCommand()` truncates method names silently when caller buffer < name length | `pkg/runtime/wazero_host.go:~268` | D19 | OPEN |
 | BUG-043 | LLM cache "eviction" is map-iteration order (random), not LRU as comment claims | `pkg/llm/cache.go:54-59` | D14 | OPEN |
 | BUG-051 | Dockerfile runs as root, `WORKDIR /root/`, no `EXPOSE`, no `HEALTHCHECK` | `Dockerfile` | D6 | OPEN |
-| BUG-058 | `run.sh --sync` calls `npx skills add vercel-labs/agent-skills` — irrelevant to a Go project | `run.sh` | D1 | OPEN |
+| BUG-058 | `run.sh --sync` calls `npx skills add vercel-labs/agent-skills` — irrelevant to a Go project | `run.sh` | D1 | DONE-this-PR |
 | BUG-059 | `examples/test-service/main.go` flagged as unreferenced — **WRONG**, used by `pkg/api/integration_test.go` and `pkg/runtime/wazero_host_async_verify_test.go`. Restored. | `examples/test-service/` | D1 | NOT-A-BUG |
 
 ### LOW
 
 | ID | Title | File | Day | Status |
 |---|---|---|---|---|
-| BUG-047 | `run.sh --sync/--skills` clauses are dead | run.sh | D1 | OPEN |
+| BUG-047 | `run.sh --sync/--skills` clauses are dead | run.sh | D1 | DONE-this-PR |
 | BUG-048 | `docs/architecture/system_design.md` was a 4-line stub — folded into §1 | n/a | D1 | DONE-this-PR |
 | BUG-049 | `docs/engineering/{README,conventions}.md` were 6-line stubs — deleted | n/a | D1 | DONE-this-PR |
 | BUG-050 | `ai-skills.json` declares mandatory human review but no PR template / CODEOWNERS enforces it | `.github/` | D21 | OPEN |
