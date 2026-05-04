@@ -1,102 +1,11 @@
-# Ghost Ops — Backlog (THE Single Source of Truth)
+# Ghost Ops — Backlog (Execution SSOT)
 
-> **One file. Everything is here.** Vision · DoD · Bugs · Tasks · Demo · 30-day
-> plan · Vaulted history. Read top-to-bottom: highest priority first, nice-to-haves
-> last. Anything not in this file is not work. The only sibling is
-> [`STANDARDS.md`](./STANDARDS.md) (engineering rules — HOW, not WHAT).
+> **The execution ladder.** Bugs first (priority-ordered), then features, then
+> demo, then 30-day plan, then vaulted history.
+> **North star (the why):** [`VISION.md`](./VISION.md).
+> **Engineering rules (the how):** [`STANDARDS.md`](./STANDARDS.md).
+> Anything not in this file is not work.
 > **Last reordered:** 2026-05-04.
-
----
-
-## §1 Vision — Zero-Human Operations
-
-**One-liner:** Code that writes itself, runs itself, and fixes itself.
-
-A running Ghost Ops needs no human in the inner loop:
-
-1. A human declares **intent** in plain English.
-2. The system **synthesizes** Go source via an LLM.
-3. The system **compiles** to WASM and runs it in a wazero sandbox.
-4. The system **observes** runtime metrics (latency, errors).
-5. When metrics breach SLOs, the system **re-prompts**, evolves, **shadow-tests**,
-   and **hot-swaps** without dropping traffic.
-6. The previous version is **discarded**. Source is ephemeral.
-
-A human is needed only for: original intent, EU AI Act Article 14 high-risk
-approvals, and prompt/standards reviews.
-
-### The Loop (one diagram)
-
-```
-   Intent ──► Evolve ──► Compile ──► Sandbox ──► Observer ──► Re-Prompt ──┐
-   (English)  (LLM)      (Go→WASM)   (Wazero)    (p99,err)    (Event Bus) │
-      ▲          │            │           │                                │
-      │          ▼            ▼           ▼                                │
-      │     gosec/govuln  Capability  Capability                           │
-      │     (Art 15)      enforcement enforcement                          │
-      │                   (network)   (FS jail)                            │
-      └────────────────────────────────────────────────────────────────────┘
-                Audit Log (Art 13/17, masked secrets, JSONL)
-```
-
-### Pipeline Laws (non-negotiable)
-
-1. **Latest stable only.** No backwards-compat shims.
-2. **Ephemeral source.** Generated Go is compiled, hashed, then deleted.
-3. **Simple-first.** Features serving <1% of cases are deferred.
-4. **Adversarial Triad.** Every PR: 95% test, 0 lint, O(n) or better,
-   `gosec`+`govulncheck` clean. Enforced in CI.
-5. **EU AI Act controls.** Articles 13/14/15/17 wired into runtime, not docs.
-
-### Component Map
-
-| Package | Responsibility |
-|---|---|
-| `pkg/intent` | blueprint source (file → queue later) |
-| `pkg/evolution` | LLM call + Go→WASM compile + scanner gate |
-| `pkg/runtime` | wazero host + capability enforcement |
-| `pkg/registry` | reconcile, deploy, shadow-mode promote |
-| `pkg/observer` | metric & log thresholds, anomaly detection |
-| `pkg/event` | pub/sub bus |
-| `pkg/store` | JSON file → Etcd later (single SSOT for cluster state) |
-| `pkg/api` | REST surface (blueprints + invocations) |
-| `pkg/gateway` | L7 router (path/header) |
-| `pkg/llm` | provider abstraction + cache |
-| `pkg/logging` | structured logs + audit trail |
-| `pkg/resilience` | retry, circuit breaker, rate limiter |
-| `pkg/sdk/guest` | guest-side ABI stubs |
-| `pkg/telemetry` | OpenTelemetry traces + in-memory metrics |
-
-### Roadmap (concise)
-
-| Phase | Timing | Theme | Exit gate |
-|---|---|---|---|
-| 0 | Done | Hygiene, lint, tests | CI green, structured logs |
-| **1** | **Now → 2026-06-02** | **Self-healing loop** | **§5 Demo runs end-to-end** |
-| 2 | Q3 2026 | Distribution + security | Etcd leader election, gosec clean |
-| 3 | Q4 2026 | Multi-language guests | Go + Rust + Python via same ABI |
-| 4 | 2027 | Full ZHO autonomy | EU AI Act audit pass |
-
----
-
-## §2 Definition of Done — Phase-1
-
-The system can run §5 (Demo) end-to-end with no human touch between steps 2 and 9, and:
-
-- [ ] **DoD-1** Capability enforcement (network egress + FS jail) actually rejects
-      unauthorized calls at the wazero host boundary. *(Closes BUG-021, BUG-022.)*
-- [ ] **DoD-2** AI-synthesized responses carry `X-Ghost-Ops-Synthesized: true`
-      header (Art 13). *(Closes BUG-023.)*
-- [ ] **DoD-3** Synthesized code passes `gosec` + `govulncheck` before WASM
-      compile (Art 15). *(Closes BUG-024.)*
-- [ ] **DoD-4** Shadow mode holds new version ≥5 minutes before promotion (Art 14).
-      *(Closes BUG-027.)*
-- [ ] **DoD-5** `EventRePromptRequired` triggers re-evolve of the offending service.
-      *(Closes BUG-028, BUG-045.)*
-- [ ] **DoD-6** Audit log persists every synthesis with masked secrets (Art 13/17).
-      *(Closes BUG-026, BUG-044.)*
-- [ ] **DoD-7** CI runs the full Adversarial Triad and blocks merge on any
-      failure. *(Closes BUG-030.)*
 
 ---
 
@@ -195,21 +104,12 @@ These clear the §2 DoD bullets. Must exist by Day 21.
 
 ---
 
-## §5 P2 — Demo & Pitch (so we can ship to stakeholders)
+## §5 P2 — Demo (so we can ship to stakeholders)
 
-### 5.1 The 30-Second Pitch
+> The 30-second pitch lives in [`VISION.md`](./VISION.md) §7. This section is
+> the runnable proof.
 
-> Today, when a service is too slow, an engineer is paged, reads logs, writes
-> code, opens a PR, and waits for CI. That round trip is hours.
->
-> Ghost Ops cuts the human out. You declare *intent* in English. The system
-> writes the Go code, compiles it to WASM, runs it in a sandbox, watches its
-> own latency, and — when SLOs slip — re-prompts itself for a faster version,
-> tests the replacement in shadow mode, then hot-swaps. No PR. No deploy. No page.
->
-> EU AI Act compliant. Security-jailed. Auditable. v0.6.0 today.
-
-### 5.2 Live Demo — 9 Steps, ~5 Minutes
+### 5.1 Live Demo — 9 Steps, ~5 Minutes
 
 **Setup:**
 ```bash
@@ -327,7 +227,7 @@ unload        v=1
 ```
 *"Every step in append-only audit log. Secrets masked. ISO/IEC 42001 8.4 compliant."*
 
-### 5.3 Demo Tasks (build the demo so it actually runs)
+### 5.2 Demo Tasks (build the demo so it actually runs)
 
 | ID | Title | Day | Status |
 |---|---|---|---|
@@ -342,7 +242,7 @@ unload        v=1
 | TASK-1109 | `ghost-ops service inspect --show-source` flag (with provenance line) | D10 | OPEN |
 | TASK-1110 | `ghost-ops service list --watch` streaming CLI | D29 | OPEN |
 
-### 5.4 Demo File Inventory
+### 5.3 Demo File Inventory
 
 ```
 examples/
@@ -356,7 +256,7 @@ examples/
     └── walkthrough.sh               ← all 9 steps, scripted, idempotent
 ```
 
-### 5.5 Demo Risk Register
+### 5.4 Demo Risk Register
 
 | Risk | Mitigation |
 |---|---|

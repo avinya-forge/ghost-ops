@@ -3,11 +3,13 @@
 > **North Star:** Zero-Human Operations — the system patches, optimizes, and evolves itself.
 > ![Version](https://img.shields.io/badge/version-v0.5.2-blue)
 
-## Docs (flat — only two files)
+## Docs (flat — three files)
 
-- **[`docs/BACKLOG.md`](./docs/BACKLOG.md)** — THE single source of truth.
-  Vision, DoD, bugs, tasks, demo scenario, 30-day plan, vaulted history.
-  Read top-to-bottom: highest priority first, nice-to-haves last.
+- **[`docs/VISION.md`](./docs/VISION.md)** — north star. Why we're building
+  Ghost Ops, the ZHO loop, the Phase-1 DoD, the 30-second pitch.
+- **[`docs/BACKLOG.md`](./docs/BACKLOG.md)** — execution SSOT. Bugs first
+  (priority-ordered), then features, then demo, then 30-day plan, then vaulted
+  history. Read top-to-bottom.
 - **[`docs/STANDARDS.md`](./docs/STANDARDS.md)** — engineering rules
   (Adversarial Triad, EU AI Act mappings, naming, CI gates).
 
