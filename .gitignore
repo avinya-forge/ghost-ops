@@ -6,6 +6,7 @@ dist/
 *.out
 vendor/
 ghost-ops
+ghost-dev
 
 # WASM
 *.wasm

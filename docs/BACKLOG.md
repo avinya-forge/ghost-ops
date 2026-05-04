@@ -1,839 +1,530 @@
-# Ghost Ops — Backlog
+# Ghost Ops — Backlog (THE Single Source of Truth)
 
-> **SSOT Owner:** Lead LLM Architect | **Last Updated:** 2026-04-22 | **Version:** 0.5.1  
-> **Format:** User Story | Token-Impact: 1 (minimal) – 5 (max) | Target Engine per task  
-> **State File:** `/docs/.system_state` | **Roadmap Ref:** `/docs/ROADMAP.md`
+> **One file. Everything is here.** Vision · DoD · Bugs · Tasks · Demo · 30-day
+> plan · Vaulted history. Read top-to-bottom: highest priority first, nice-to-haves
+> last. Anything not in this file is not work. The only sibling is
+> [`STANDARDS.md`](./STANDARDS.md) (engineering rules — HOW, not WHAT).
+> **Last reordered:** 2026-05-04.
 
 ---
 
-## Token-Impact Scale
+## §1 Vision — Zero-Human Operations
 
-| Score | Meaning |
+**One-liner:** Code that writes itself, runs itself, and fixes itself.
+
+A running Ghost Ops needs no human in the inner loop:
+
+1. A human declares **intent** in plain English.
+2. The system **synthesizes** Go source via an LLM.
+3. The system **compiles** to WASM and runs it in a wazero sandbox.
+4. The system **observes** runtime metrics (latency, errors).
+5. When metrics breach SLOs, the system **re-prompts**, evolves, **shadow-tests**,
+   and **hot-swaps** without dropping traffic.
+6. The previous version is **discarded**. Source is ephemeral.
+
+A human is needed only for: original intent, EU AI Act Article 14 high-risk
+approvals, and prompt/standards reviews.
+
+### The Loop (one diagram)
+
+```
+   Intent ──► Evolve ──► Compile ──► Sandbox ──► Observer ──► Re-Prompt ──┐
+   (English)  (LLM)      (Go→WASM)   (Wazero)    (p99,err)    (Event Bus) │
+      ▲          │            │           │                                │
+      │          ▼            ▼           ▼                                │
+      │     gosec/govuln  Capability  Capability                           │
+      │     (Art 15)      enforcement enforcement                          │
+      │                   (network)   (FS jail)                            │
+      └────────────────────────────────────────────────────────────────────┘
+                Audit Log (Art 13/17, masked secrets, JSONL)
+```
+
+### Pipeline Laws (non-negotiable)
+
+1. **Latest stable only.** No backwards-compat shims.
+2. **Ephemeral source.** Generated Go is compiled, hashed, then deleted.
+3. **Simple-first.** Features serving <1% of cases are deferred.
+4. **Adversarial Triad.** Every PR: 95% test, 0 lint, O(n) or better,
+   `gosec`+`govulncheck` clean. Enforced in CI.
+5. **EU AI Act controls.** Articles 13/14/15/17 wired into runtime, not docs.
+
+### Component Map
+
+| Package | Responsibility |
 |---|---|
-| 1 | Snippet / single function — safe for GitHub Copilot or Jules |
-| 2 | Small feature (<100 LOC) — Jules or Antigravity |
-| 3 | Mid-size feature (100–500 LOC + tests) — Jules or Claude Pro |
-| 4 | Large feature / system design — Claude Pro |
-| 5 | High-risk / large-context (>8k tokens, cross-cutting) — Claude Pro only |
+| `pkg/intent` | blueprint source (file → queue later) |
+| `pkg/evolution` | LLM call + Go→WASM compile + scanner gate |
+| `pkg/runtime` | wazero host + capability enforcement |
+| `pkg/registry` | reconcile, deploy, shadow-mode promote |
+| `pkg/observer` | metric & log thresholds, anomaly detection |
+| `pkg/event` | pub/sub bus |
+| `pkg/store` | JSON file → Etcd later (single SSOT for cluster state) |
+| `pkg/api` | REST surface (blueprints + invocations) |
+| `pkg/gateway` | L7 router (path/header) |
+| `pkg/llm` | provider abstraction + cache |
+| `pkg/logging` | structured logs + audit trail |
+| `pkg/resilience` | retry, circuit breaker, rate limiter |
+| `pkg/sdk/guest` | guest-side ABI stubs |
+| `pkg/telemetry` | OpenTelemetry traces + in-memory metrics |
+
+### Roadmap (concise)
+
+| Phase | Timing | Theme | Exit gate |
+|---|---|---|---|
+| 0 | Done | Hygiene, lint, tests | CI green, structured logs |
+| **1** | **Now → 2026-06-02** | **Self-healing loop** | **§5 Demo runs end-to-end** |
+| 2 | Q3 2026 | Distribution + security | Etcd leader election, gosec clean |
+| 3 | Q4 2026 | Multi-language guests | Go + Rust + Python via same ABI |
+| 4 | 2027 | Full ZHO autonomy | EU AI Act audit pass |
 
 ---
 
-## ✅ BUG QUEUE — All Resolved (2026-04-22)
+## §2 Definition of Done — Phase-1
 
-> Sourced from automated code audit on 2026-04-22. Severity order: CRITICAL → HIGH → MEDIUM → LOW.  
-> Fix gate: 95% test · 0 lint · gosec clean.  
-> **Status as of 2026-04-22:** 17 bugs fixed across 17 granular commits. 3 entries confirmed non-bugs after deeper code review.
+The system can run §5 (Demo) end-to-end with no human touch between steps 2 and 9, and:
+
+- [ ] **DoD-1** Capability enforcement (network egress + FS jail) actually rejects
+      unauthorized calls at the wazero host boundary. *(Closes BUG-021, BUG-022.)*
+- [ ] **DoD-2** AI-synthesized responses carry `X-Ghost-Ops-Synthesized: true`
+      header (Art 13). *(Closes BUG-023.)*
+- [ ] **DoD-3** Synthesized code passes `gosec` + `govulncheck` before WASM
+      compile (Art 15). *(Closes BUG-024.)*
+- [ ] **DoD-4** Shadow mode holds new version ≥5 minutes before promotion (Art 14).
+      *(Closes BUG-027.)*
+- [ ] **DoD-5** `EventRePromptRequired` triggers re-evolve of the offending service.
+      *(Closes BUG-028, BUG-045.)*
+- [ ] **DoD-6** Audit log persists every synthesis with masked secrets (Art 13/17).
+      *(Closes BUG-026, BUG-044.)*
+- [ ] **DoD-7** CI runs the full Adversarial Triad and blocks merge on any
+      failure. *(Closes BUG-030.)*
 
 ---
+
+## §3 P0 — Bugs (must fix before claiming Phase-1)
+
+### Legend
+- **ID:** `BUG-NNN` (defect) · `TASK-NNN` (feature) · `EPIC-NNN` (parent).
+- **Status:** `OPEN` · `IN-PROGRESS` · `DONE` · `BLOCKED`.
+- **Day:** target sprint day (D1..D30) — see §6.
 
 ### CRITICAL
 
----
-
-**BUG-001 | Goroutine Leak in Sidecar Proxy `handleConnection()`** ✅ FIXED
-`[CRITICAL]` `Token-Impact: 3` `Target: Claude Pro`
-`src/sidecar/sidecar.go:104–118`
-
-> **As a** platform operator,
-> **I want** the sidecar proxy to cleanly shut down both copy goroutines before closing connections,
-> **so that** panics and resource leaks do not occur under normal connection teardown.
-
-- **Root Cause:** `handleConnection()` reads one error from `errCh`, then closes both connections and returns. The second `io.Copy` goroutine is still running and writes to the now-closed `clientConn`/`targetConn`, causing a panic or silent resource leak. Neither goroutine is joined before connections close.
-- **Fix:** Drain both goroutines (wait for both `errCh` sends) before closing connections, or use `sync.WaitGroup`.
-- Acceptance: No goroutine leak under connection-drop stress test. `go test -race` passes.
-- Depends on: none.
-
----
-
-**BUG-002 | Goroutine Leak in Shadow Invocation (Wazero Host)** ✅ FIXED
-`[CRITICAL]` `Token-Impact: 3` `Target: Claude Pro`
-`pkg/runtime/wazero_host.go:539–574`
-
-> **As a** WASM runtime,
-> **I want** shadow-mode invocation goroutines to be bounded by the shadow context lifetime,
-> **so that** context cancellation does not leave orphaned goroutines permanently blocked.
-
-- **Root Cause:** The goroutine spawned for shadow invocation at line 539 can be left blocked forever if the shadow context cancels before its response is read. `submitResult()` (lines 305–309) uses a non-blocking `select` with a `default` branch — the response is silently dropped and the goroutine hangs.
-- **Fix:** After shadow context cancels, ensure the goroutine is either unblocked via a closed channel or collected with a `WaitGroup`.
-- Acceptance: Goroutine count does not grow under repeated shadow invocations with context cancellation. `go test -race` passes.
-- Depends on: none.
-
----
-
-**BUG-003 | Context Leak — `context.Background()` Escapes `LoadModule()` Caller Lifetime** ✅ FIXED
-`[CRITICAL]` `Token-Impact: 3` `Target: Claude Pro`
-`pkg/runtime/wazero_host.go:421–446`
-
-> **As a** service registry,
-> **I want** `LoadModule()` to respect the calling context's cancellation,
-> **so that** background goroutines do not outlive their parent request.
-
-- **Root Cause:** Inside `LoadModule()`, a goroutine is spawned with `asyncCtx := context.Background()`. If the caller's context is cancelled (e.g., a timed-out reconcile), the module instantiation keeps running indefinitely. Combined with a window between the module-exists check (line 355–358) and the async goroutine completing, concurrent callers can enter a state where the module is partially registered.
-- **Fix:** Derive `asyncCtx` from the caller's context (or a dedicated lifecycle context), and protect the check-then-register sequence under the same lock.
-- Acceptance: `LoadModule()` cancels within 100 ms of caller context cancellation. Race detector clean.
-- Depends on: none.
-
----
+| ID | Title | File | Day | Status |
+|---|---|---|---|---|
+| BUG-021 | Network egress capability never enforced in `rpc()` host fn — `CheckNetworkEgress` is dead code | `pkg/runtime/wazero_host.go:185` | D8 | OPEN |
+| BUG-022 | FS jail check decorative; only `wazero.WithDirMount` is wired — `CheckFSJail` is dead code | `pkg/runtime/wazero_host.go:480` | D9 | OPEN |
+| BUG-023 | `X-Ghost-Ops-Synthesized` disclosure header never emitted (EU AI Act Art 13) | `pkg/api/server.go:147` | D10 | OPEN |
+| BUG-024 | Synthesized code never scanned with `gosec`/`govulncheck` (EU AI Act Art 15) | `pkg/evolution/{ai_engine,compiler}.go` | D11 | OPEN |
+| BUG-027 | Shadow-mode timer absent — no Article 14 ≥5-min gate; promotion is instant or never | `pkg/registry/registry.go:272` | D16 | OPEN |
+| BUG-028 | ZHO loop is broken — `EventRePromptRequired` has no subscriber; no re-evolve happens | `pkg/observer/metric_observer.go` + `pkg/registry/` | D15 | OPEN |
+| BUG-053 | `JSONFileStore.save()` is non-atomic — crash mid-write corrupts the entire state file | `pkg/store/json_store.go:89` | D6 | OPEN |
+| BUG-054 | `EventBus.Publish()` silently drops events when subscriber buffer full — re-prompts vanish under load | `pkg/event/bus.go:39-43` | D15 | OPEN |
 
 ### HIGH
 
----
-
-**BUG-004 | TOCTOU Race — Module Existence Check vs. Unload in Wazero Host** ✅ FIXED
-`[HIGH]` `Token-Impact: 3` `Target: Claude Pro`
-`pkg/runtime/wazero_host.go:229–231, 517–521`
-
-> **As a** concurrent caller,
-> **I want** module lookup and invocation to be atomic,
-> **so that** a module cannot be unloaded between the existence check and the invoke call.
-
-- **Root Cause:** `nextCommand()` checks module existence (line 229–231) under a lock. `Invoke()` reads `activeVersions`/`shadowVersions` (lines 517–521) and then releases the lock before using the channel (line 524). `UnloadVersion()` can race between the unlock and the channel read.
-- **Fix:** Hold the lock through the channel acquisition, or use a reference-counted handle pattern.
-- Acceptance: Concurrent invoke + unload test does not panic or return wrong data. Race detector clean.
-- Depends on: none.
-
----
-
-**BUG-005 | Silent Data Loss — Redis `ListServices()` Drops Records on Type Mismatch** ✅ FIXED
-`[HIGH]` `Token-Impact: 2` `Target: Jules`
-`pkg/store/redis_store.go:139–161`
-
-> **As a** service registry,
-> **I want** `ListServices()` to return an error when Redis returns unexpected value types,
-> **so that** services are never silently dropped from the registry.
-
-- **Root Cause:** `redis.MGet()` returns `[]interface{}`. A failed type assertion to `string` (line 147) silently `continue`s, dropping the record. If Redis storage is corrupted or a different encoding is used, services disappear from `ListServices()` with no error or log.
-- **Fix:** Log a warning (with service key) and increment a metric for each skipped entry. Return a wrapped error if the skip rate exceeds a threshold.
-- Acceptance: Unit test with a mock returning a non-string value verifies warning is logged and record is counted in a `skipped_records_total` metric.
-- Depends on: none.
-
----
-
-**BUG-006 | Panic — Event Bus Closes Channels While `Publish()` Is Writing** ✅ FIXED
-`[HIGH]` `Token-Impact: 2` `Target: Jules`
-`pkg/event/bus.go:60–70`
-
-> **As an** event bus consumer,
-> **I want** `Close()` to guarantee no in-flight `Publish()` call writes to a closed channel,
-> **so that** graceful shutdown never panics.
-
-- **Root Cause:** `Publish()` acquires `RLock`, reads the subscriber slice, releases the lock, then writes to subscriber channels. `Close()` acquires `Lock` and closes all channels. The window between `Publish()` releasing `RLock` and writing to channels allows `Close()` to close a channel that `Publish()` is about to send on, causing a panic.
-- **Fix:** Use a `sync.WaitGroup` in `Publish()` tracked under the write lock, drained in `Close()` before closing channels. Alternatively, recover from channel-closed panics and convert to a sentinel error.
-- Acceptance: Concurrent `Publish()` + `Close()` fuzz test (1000 iterations) never panics. Race detector clean.
-- Depends on: none.
-
----
-
-**BUG-007 | Silent HTTP Response Failures — `w.Write()` Return Values Unchecked** ✅ FIXED
-`[HIGH]` `Token-Impact: 1` `Target: GitHub Copilot`
-`pkg/api/server.go:99, 127, 144, 172`
-
-> **As an** API client,
-> **I want** the server to log when a response write fails,
-> **so that** dropped connections are observable and not silently lost.
-
-- **Root Cause:** Four `w.Write()` calls in `server.go` discard the `(n, err)` return. If the client disconnects mid-response, the write fails silently — the operation appears successful server-side but the client received nothing.
-- **Fix:** Wrap writes in a helper that logs the error at debug level (not fatal — disconnects are normal).
-- Acceptance: Unit test simulating a broken connection verifies the error is logged.
-- Depends on: none.
-
----
-
-**BUG-008 | Memory Leak — Evicted Compiled Modules Never Closed in Wazero Cache** ✅ FIXED
-`[HIGH]` `Token-Impact: 3` `Target: Claude Pro`
-`pkg/runtime/wazero_host.go:372–416`
-
-> **As a** long-running runtime host,
-> **I want** evicted compiled modules to be explicitly closed,
-> **so that** memory does not grow unboundedly under cache churn.
-
-- **Root Cause:** When the compiled-module LRU cache reaches capacity (50 entries, line 399), the oldest entry is evicted from the map (lines 404–409) but its `wazero.CompiledModule` is never closed. The wazero runtime holds internal references to the compiled module; without an explicit `Close()`, those references are never released.
-- **Fix:** Call `evicted.Close(ctx)` on the evicted `CompiledModule` after removal from the map, guarded by a check that no live module instance references it.
-- Acceptance: Memory profile shows stable RSS under a 200-module churn test. No wazero internal leak warnings.
-- Depends on: none.
-
----
+| ID | Title | File | Day | Status |
+|---|---|---|---|---|
+| BUG-025 | OpenAI error path leaks request body (and embedded prompts) into stderr logs | `pkg/llm/openai.go` | D13 | OPEN |
+| BUG-026 | Audit logger emits raw `details` map without secret masking — STANDARDS §2.3 violation | `pkg/logging/audit.go:8` | D12 | OPEN |
+| BUG-029 | LLM provider has no per-request timeout — stalled provider starves the scheduler | `pkg/llm/{openai,ollama}.go` | D13 | OPEN |
+| BUG-030 | CI does not enforce STANDARDS §6 — missing `-race`, coverage gate, `gosec`, `govulncheck`, `gofmt -l` | `.github/workflows/ci.yml` | D2 | OPEN |
+| BUG-042 | `compiler.go` inherits the host's full env into `go build` — `OPENAI_API_KEY` etc. leak into subprocess | `pkg/evolution/compiler.go:31` | D14 | OPEN |
+| BUG-044 | `Audit()` events not persisted — `slog` only; no append-only file, ISO 8.4 evidence missing | `pkg/logging/audit.go` | D12 | OPEN |
+| BUG-045 | Health check unloads unhealthy services without emitting `EventRePromptRequired` — feedback edge dead on this side too | `pkg/registry/registry.go:247` | D17 | OPEN |
+| BUG-055 | `EventBus.Subscribe()` ignores `ctx` — no way to cancel; channel leaks if subscriber goroutine exits | `pkg/event/bus.go:50` | D15 | OPEN |
+| BUG-056 | `JSONFileStore` re-reads + re-parses the entire file on every read API — O(file) per Get/List under lock | `pkg/store/json_store.go:97-115` | D18 | OPEN |
+| BUG-057 | `JSONFileStore.save()` does not `fsync` — power-cut after `WriteFile` returns can lose the write | `pkg/store/json_store.go:89` | D6 | OPEN |
 
 ### MEDIUM
 
----
-
-**BUG-009 | Validation Bypass — Empty Service ID Passes Middleware** ✅ FIXED
-`[MEDIUM]` `Token-Impact: 1` `Target: GitHub Copilot`
-`pkg/api/middleware_validation.go:12–22`
-
-> **As a** security gate,
-> **I want** an empty or whitespace-only service ID to be rejected at the middleware layer,
-> **so that** downstream handlers never receive an empty identifier.
-
-- **Root Cause:** Validation is skipped when `id == ""`. A request to `/services//logs` (double slash) routes with an empty `id`; the guard at line 14 skips regex validation and passes the empty string to handlers that do not re-validate.
-- **Fix:** Treat empty string as a validation failure — return `400 Bad Request`.
-- Acceptance: `GET /services//logs` returns `400`. Existing tests still pass.
-- Depends on: none.
-
----
-
-**BUG-010 | Implicit Contract — `json_store.go` Crashes if `load()` Returns Nil Services Map** ✅ FIXED
-`[MEDIUM]` `Token-Impact: 1` `Target: GitHub Copilot`
-`pkg/store/json_store.go:98–111`
-
-> **As a** state store,
-> **I want** `GetService()` to guard against a nil Services map,
-> **so that** any future change to `load()` cannot silently cause a nil-map panic.
-
-- **Root Cause:** `GetService()` accesses `sd.Services[serviceID]` (line 107) relying on `load()` always initialising the map. There is no explicit nil check. A future refactor to `load()` that returns a nil map will cause a panic at this line.
-- **Fix:** Add `if sd.Services == nil { return nil, ErrNotFound }` after the `load()` call.
-- Acceptance: Unit test passes a nil services map through GetService; no panic.
-- Depends on: none.
-
----
-
-**BUG-011 | Race Condition — Log Observer Buffer Cleared While `Observe()` Is Appending** ⚪ NO BUG
-`[MEDIUM]` `Token-Impact: 2` `Target: Jules`
-`pkg/observer/log_observer.go:68, 137–145`
-
-> **As an** observer pipeline,
-> **I want** log buffer reads and clears to be atomic with appends,
-> **so that** log entries are never silently dropped during a flush.
-
-- **Root Cause:** `flushService()` reads the buffer (line 139), releases the lock, then clears `o.buffers[serviceID] = nil` (line 144). `Observe()` can append a new entry between the read and the clear, which is then overwritten by `nil`. That entry is permanently lost.
-- **Fix:** Copy-and-clear the buffer under a single held lock: read the slice, set to nil, then release the lock before flushing the copied slice to the LLM.
-- Acceptance: Concurrent observe + flush test under `go test -race` with 10k events shows zero dropped entries.
-- Depends on: none.
-
----
-
-**BUG-012 | Race Condition — `MetricObserver.prevCounters` Map Read/Write Without Lock** ✅ FIXED
-`[MEDIUM]` `Token-Impact: 2` `Target: Jules`
-`pkg/observer/metric_observer.go:79–86`
-
-> **As a** metric observer,
-> **I want** all access to `prevCounters` to be mutex-protected,
-> **so that** concurrent polling does not corrupt delta calculations.
-
-- **Root Cause:** `analyzeMetrics()` reads and writes `o.prevCounters[key]` (lines 79–86) without holding a lock. `Start()` calls `Poll()` on a ticker goroutine while `analyzeMetrics` is not separately locked. Concurrent map read/write causes a fatal data race.
-- **Fix:** Add a `sync.Mutex` (or reuse an existing one) guarding all `prevCounters` access.
-- Acceptance: `go test -race ./pkg/observer/...` passes with concurrent start + poll calls.
-- Depends on: none.
-
----
-
-**BUG-013 | Integer Truncation — Large State Values Return Wrong Length in Wazero Host** ✅ FIXED
-`[MEDIUM]` `Token-Impact: 2` `Target: Jules`
-`pkg/runtime/wazero_host.go:156–160`
-
-> **As a** WASM guest module,
-> **I want** `kv_get_len()` to return an accurate length for all values,
-> **so that** a value larger than 4 GB does not cause the guest to allocate the wrong buffer size.
-
-- **Root Cause:** `len(val)` returns `int` (64-bit on modern platforms). The code caps at `math.MaxUint32` and silently truncates to `uint32`. A guest allocates a buffer of the returned length, then calls `kv_get()` which copies the full value — writing past the allocated buffer.
-- **Fix:** Enforce a hard maximum value size (e.g., 64 MB) in `kv_set()` and return an error if exceeded, eliminating the overflow path entirely.
-- Acceptance: Attempting to store a value >64 MB returns `ErrValueTooLarge`. Existing tests pass.
-- Depends on: none.
-
----
-
-**BUG-014 | Blocking Publisher — Slow Registry Subscriber Stalls Event Bus** ⚪ NO BUG
-`[MEDIUM]` `Token-Impact: 2` `Target: Jules`
-`pkg/registry/registry.go:178–196`
-
-> **As a** registry,
-> **I want** event bus subscriptions to use buffered channels,
-> **so that** a slow registry event handler cannot block the publisher and stall all other consumers.
-
-- **Root Cause:** `StartEventLoop()` subscribes to the event bus. If the in-memory bus's `Subscribe()` returns an unbuffered channel (line 50 of `bus.go`) and the registry's goroutine is slow (e.g., blocked on a store write), every `Publish()` call in the system blocks until this subscriber reads.
-- **Fix:** Ensure `Subscribe()` always returns a buffered channel (buffer size ≥ 32). Drop events and log a warning if the buffer fills rather than blocking the publisher.
-- Acceptance: Publisher benchmark shows no latency spike when the registry subscriber is artificially delayed 100 ms.
-- Depends on: BUG-006.
-
----
+| ID | Title | File | Day | Status |
+|---|---|---|---|---|
+| BUG-031 | 2.9 MB `ghost-dev` binary committed at repo root | `/ghost-dev` | D1 | OPEN |
+| BUG-032 | Duplicate Backlog SSOT — legacy `docs/planning/backlog.md` removed | n/a | D1 | DONE-this-PR |
+| BUG-033 | Duplicate Roadmap stub `docs/planning/roadmap.md` (1 line) removed | n/a | D1 | DONE-this-PR |
+| BUG-034 | Duplicate STANDARDS — `docs/rules/standards.md` shadow of SSOT removed | n/a | D1 | DONE-this-PR |
+| BUG-035 | Stray planning scratch — `docs/planning/{active_tasks.txt, session_summary.md, map.md}` removed | n/a | D1 | DONE-this-PR |
+| BUG-036 | Stray repo-root scratch — `plan.md`, `move_epic.py`, `test_task500.txt` removed | n/a | D1 | DONE-this-PR |
+| BUG-037 | Version drift — README says v0.5.0, VERSION says 0.5.1, `.system_state` says 0.5.2 | README.md, VERSION | D1 | OPEN |
+| BUG-038 | TASK-401 ("Multi-Language SDK Support") duplicates TASK-600..609 — collapsed into §8 | this file | D1 | DONE-this-PR |
+| BUG-039 | TASK-901.1 missing — backlog jumped 901 → 901.2 → 901.3 — backfilled in §10 | this file | D1 | DONE-this-PR |
+| BUG-040 | Reconcile loop returns `(true, nil)` on evolve failure — silent success | `pkg/registry/registry.go:107` | D18 | OPEN |
+| BUG-041 | `nextCommand()` truncates method names silently when caller buffer < name length | `pkg/runtime/wazero_host.go:~268` | D19 | OPEN |
+| BUG-043 | LLM cache "eviction" is map-iteration order (random), not LRU as comment claims | `pkg/llm/cache.go:54-59` | D14 | OPEN |
+| BUG-051 | Dockerfile runs as root, `WORKDIR /root/`, no `EXPOSE`, no `HEALTHCHECK` | `Dockerfile` | D6 | OPEN |
+| BUG-058 | `run.sh --sync` calls `npx skills add vercel-labs/agent-skills` — irrelevant to a Go project | `run.sh` | D1 | OPEN |
+| BUG-059 | `examples/test-service/main.go` (173 bytes) is unreferenced and unbuilt | `examples/test-service/` | D1 | DONE-this-PR |
 
 ### LOW
 
----
+| ID | Title | File | Day | Status |
+|---|---|---|---|---|
+| BUG-047 | `run.sh --sync/--skills` clauses are dead | run.sh | D1 | OPEN |
+| BUG-048 | `docs/architecture/system_design.md` was a 4-line stub — folded into §1 | n/a | D1 | DONE-this-PR |
+| BUG-049 | `docs/engineering/{README,conventions}.md` were 6-line stubs — deleted | n/a | D1 | DONE-this-PR |
+| BUG-050 | `ai-skills.json` declares mandatory human review but no PR template / CODEOWNERS enforces it | `.github/` | D21 | OPEN |
+| BUG-052 | `docs/release/metrics.md` was a single line — folded into §11 | n/a | D1 | DONE-this-PR |
+| BUG-060 | `examples/blueprints/hello-compiler.json` is the only example blueprint — too thin for stakeholder demo | `examples/blueprints/` | D20 | OPEN |
+| BUG-061 | No `examples/blueprints/` schema validation in `intent.NewFileIntentSource` — bad JSON crashes startup | `pkg/intent/file_source.go` | D19 | OPEN |
+| BUG-062 | `Makefile` has no `audit`, `demo`, `gosec`, `govulncheck`, or `coverage` targets | `Makefile` | D2 | OPEN |
+| BUG-064 | Multiple Markdown SSOT files (VISION, DEMO, SPRINT-30D, AUDIT-2026-05-04, ROADMAP, CHANGELOG) — folded into this file | docs/ | D1 | DONE-this-PR |
 
-**BUG-015 | CPU DoS — O(n·m) Log Sanitization on Unbounded Input** ✅ FIXED
-`[LOW]` `Token-Impact: 2` `Target: Jules`
-`pkg/observer/log_observer.go:84–115`
-
-> **As a** platform operator,
-> **I want** log sanitization to be bounded in time,
-> **so that** a malicious guest module cannot exhaust CPU by emitting adversarially large log lines.
-
-- **Root Cause:** `sanitize()` calls `strings.Fields()` which allocates proportionally to input size, then iterates every field for multiple `strings.Contains()` checks. A log line with 1 M space-separated tokens triggers O(n·m) work per `Observe()` call.
-- **Fix:** Truncate input to a hard maximum (e.g., 4096 bytes) before sanitization. Add a metric for truncation events.
-- Acceptance: Benchmark with a 1 MB log line completes in <1 ms. Existing sanitization tests pass.
-- Depends on: none.
-
----
-
-**BUG-016 | Silently Ignored Config Load Error in CLI Root** ✅ FIXED
-`[LOW]` `Token-Impact: 1` `Target: GitHub Copilot`
-`cmd/ghost-ops/cli/root.go:55`
-
-> **As a** CLI operator,
-> **I want** a failed config load to surface a warning,
-> **so that** corrupted or missing config is diagnosed immediately rather than producing confusing downstream errors.
-
-- **Root Cause:** `_, _ = config.Load()` at line 55 discards both the result and the error. A corrupted YAML file, wrong permissions, or invalid fields silently result in a zero-value config — the server starts with wrong defaults and the operator has no indication why.
-- **Fix:** Log the error at `WARN` level (not fatal — commands like `ghost-ops version` are valid without config).
-- Acceptance: Running the CLI with a deliberately corrupted config file prints a warning to stderr.
-- Depends on: none.
+> **Bug-fix exit gate (Phase-1):** Every CRITICAL + HIGH closed. MEDIUMs may slip
+> to Phase-2 with explicit reason recorded in §11.
 
 ---
 
-**BUG-017 | Misleading Stack Traces — Sentinel Errors Capture Init-Time Callsite** ✅ FIXED
-`[LOW]` `Token-Impact: 1` `Target: GitHub Copilot`
-`pkg/protocol/error.go:63–70`
+## §4 P1 — Vision-critical features (Phase-1 must-have)
 
-> **As a** developer debugging production errors,
-> **I want** stack traces in errors to point to where the error was returned, not where the sentinel was defined,
-> **so that** log-based debugging does not require source cross-referencing.
+These clear the §2 DoD bullets. Must exist by Day 21.
 
-- **Root Cause:** `ErrNotFound`, `ErrAlreadyExists`, etc. are constructed once at package init. Their embedded stack traces always point to `error.go:64`, regardless of where in the codebase the sentinel is returned.
-- **Fix:** Wrap sentinels at the return site using `fmt.Errorf("context: %w", ErrNotFound)` rather than returning bare sentinels, and remove stack capture from sentinel construction.
-- Acceptance: A returned `ErrNotFound` from `registry.go` wraps the sentinel and carries a stack frame from `registry.go`, not `error.go`.
-- Depends on: none.
-
----
-
-**BUG-018 | Confusing Boundary Logic — P99 Calculation Masks Empty-Slice Edge Case** ✅ FIXED
-`[LOW]` `Token-Impact: 1` `Target: GitHub Copilot`
-`pkg/telemetry/inmem.go:100–110`
-
-> **As a** telemetry consumer,
-> **I want** the p99 calculation to be obviously correct,
-> **so that** a future refactor that removes the outer `len > 0` guard cannot introduce a panic.
-
-- **Root Cause:** `p99Index = int(float64(len) * 0.99)` followed by `if p99Index >= len { p99Index = len - 1 }` produces `p99Index = -1` when `len == 0`. The outer guard at line 100 prevents the panic today, but the inner logic is silently wrong and a future refactor removing the guard will produce an out-of-bounds panic.
-- **Fix:** Add an explicit early return inside the p99 block if `len(sortedValues) == 0`.
-- Acceptance: Test with empty histogram returns `p99 == 0` and does not panic.
-- Depends on: none.
+| ID | Title | Closes | Day | Status |
+|---|---|---|---|---|
+| TASK-1010 | EU AI Act Art 13 — `X-Ghost-Ops-Synthesized` header + `// ghost-ops:generated` source tag | DoD-2 | D10 | OPEN |
+| TASK-1011 | EU AI Act Art 15 — wire `gosec`+`govulncheck` into compile pipeline + CI | DoD-3, DoD-7 | D2, D11 | OPEN |
+| TASK-1012 | EU AI Act Art 14 — shadow-mode timer + comparator + auto-promote | DoD-4 | D16 | OPEN |
+| TASK-1013 | Re-prompt subscriber — close ZHO feedback edge in registry | DoD-5 | D15 | OPEN |
+| TASK-1014 | Audit-log secret masking + JSONL persistence with rotation | DoD-6 | D12 | OPEN |
+| TASK-702 | Enforce network egress policies via `CheckNetworkEgress` in `rpc()` | DoD-1 | D8 | OPEN |
+| TASK-703 | Implement FS jails: validate at LoadModule + new `read_file` host fn gated by `CheckFSJail` | DoD-1 | D9 | OPEN |
+| EPIC-701 | **De-vault** Capability-Based Security until 702+703 actually enforce | DoD-1 | D7 | DEMOTED |
+| TASK-400 | Autonomous Feedback Loop Architecture (ADR) | DoD-5 | D3 | BLOCKED→D3 |
+| TASK-400.4 | Re-prompt event payload schema + emit on health-check purge | DoD-5 | D17 | OPEN |
+| TASK-1015 | LLM provider per-request timeout + sanitized error path | DoD-7 | D13 | OPEN |
+| TASK-1019 | Reconcile error visibility (`reconcile_errors_total{stage}`) | DoD-7 | D18 | OPEN |
 
 ---
 
-**BUG-019 | Integer Overflow — Retry Backoff Overflows `int64` Beyond 31 Doublings** ⚪ NO BUG
-`[LOW]` `Token-Impact: 1` `Target: GitHub Copilot`
-`pkg/resilience/retry.go:80–83`
+## §5 P2 — Demo & Pitch (so we can ship to stakeholders)
 
-> **As a** resilience consumer,
-> **I want** retry backoff to be capped at a maximum duration,
-> **so that** a high `WithMaxAttempts()` value cannot cause `backoff *= 2` to overflow and produce a negative sleep duration.
+### 5.1 The 30-Second Pitch
 
-- **Root Cause:** `backoff *= 2` starting from 100 ms overflows `int64` after 31 doublings (~62 days). `WithMaxAttempts(50)` reaches this after attempt 32 and subsequent `time.Sleep(negative_duration)` returns immediately, producing a tight retry loop instead of backing off.
-- **Fix:** Cap backoff at a configurable `maxBackoff` (default 30 s): `if backoff > maxBackoff { backoff = maxBackoff }`.
-- Acceptance: With `maxAttempts=50` and `initialBackoff=100ms`, backoff never exceeds `maxBackoff`. Test verifies sleep durations.
-- Depends on: none.
+> Today, when a service is too slow, an engineer is paged, reads logs, writes
+> code, opens a PR, and waits for CI. That round trip is hours.
+>
+> Ghost Ops cuts the human out. You declare *intent* in English. The system
+> writes the Go code, compiles it to WASM, runs it in a sandbox, watches its
+> own latency, and — when SLOs slip — re-prompts itself for a faster version,
+> tests the replacement in shadow mode, then hot-swaps. No PR. No deploy. No page.
+>
+> EU AI Act compliant. Security-jailed. Auditable. v0.6.0 today.
 
----
+### 5.2 Live Demo — 9 Steps, ~5 Minutes
 
-**BUG-020 | Global Regex Panic Risk — `regexp.MustCompile` Used Outside `init()`** ✅ FIXED
-`[LOW]` `Token-Impact: 1` `Target: GitHub Copilot`
-`pkg/api/middleware_validation.go:8`
+**Setup:**
+```bash
+git clone https://github.com/avinya-forge/ghost-ops && cd ghost-ops
+make demo            # boots ghost-ops + injectors + 3 example blueprints
+```
 
-> **As a** server operator,
-> **I want** regex compilation failures to be caught at build time via a test, not at runtime startup,
-> **so that** a typo in the regex pattern causes a test failure rather than a production panic.
+`make demo` (TASK-1100) starts:
+- Ghost Ops on `:8080` with mock LLM (offline-safe).
+- Latency injector at `:8081` (`/_demo/inject-*`).
+- Three blueprints in `examples/blueprints/demo/` queued for evolution.
 
-- **Root Cause:** `regexp.MustCompile(...)` at package-level panics on an invalid pattern. There is no test that imports this package and exercises the `init()` path to verify the pattern compiles. A future edit that breaks the regex will only be caught when the binary first starts.
-- **Fix:** Add a `TestServiceIDRegexCompiles` unit test that imports the package and calls the regex, ensuring CI catches any future breakage.
-- Acceptance: New test exists and passes. Any invalid regex in `middleware_validation.go` causes `go test ./pkg/api/...` to fail.
-- Depends on: none.
+**Step 1 — Show the intent (10s)**
+```bash
+cat examples/blueprints/demo/greeter.json
+```
+```json
+{
+  "service_id": "greeter",
+  "intent": "Return JSON {\"hello\":<name>} when invoked with method=greet, payload=<name>. p99<50ms.",
+  "constraints": { "p99_ms": 50, "shadow_mode": false }
+}
+```
+*"This is the only thing a human writes. No code, no Dockerfile."*
 
----
+**Step 2 — Watch synthesis + deploy (30s)**
+```bash
+ghost-ops service list --watch
+```
+```
+greeter  PENDING
+greeter  SYNTHESIZED  v1  hash=ab12cd…  (gosec PASS, govulncheck PASS)
+greeter  COMPILED     v1  wasm=8.4 KB
+greeter  ACTIVE       v1
+```
+*"Article 15 — gosec and govulncheck ran before compile. Any HIGH finding would have blocked deployment."*
 
-## PHASE-2 — Scale & Distribution
+**Step 3 — Invoke + show Article 13 disclosure (15s)**
+```bash
+curl -i -X POST 'http://localhost:8080/services/greeter/invoke?method=greet' -d 'Stakeholder'
+```
+```
+HTTP/1.1 200 OK
+X-Ghost-Ops-Synthesized: true        ← EU AI Act Article 13
+X-Ghost-Ops-Service-Version: 1
+X-Ghost-Ops-Wasm-Hash: ab12cd…
+{"hello":"Stakeholder"}
+```
+*"Every response from an AI-synthesized service ships with this header."*
 
-### MILESTONE 2.1: Distributed Consensus
+**Step 4 — Show source tag (10s)**
+```bash
+ghost-ops service inspect greeter --show-source | head -1
+```
+```
+// ghost-ops:generated  blueprint=greeter  v=1  hash=ab12cd…
+```
 
----
+**Step 5 — Prove the sandbox is real (30s)**
+```bash
+curl -X POST 'http://localhost:8080/_demo/probe-egress?service=greeter&target=evil-api'
+# {"result":"denied","reason":"evil-api not in NetworkEgress allowlist"}
 
-**TASK-800 | Etcd Integration Strategy**  
-`[BLOCKED]` `Token-Impact: 5` `Target: Claude Pro`
+curl -X POST 'http://localhost:8080/_demo/probe-fs?service=greeter&path=/etc/passwd'
+# {"result":"denied","reason":"/etc/passwd outside FSJails"}
+```
+*"The blueprint doesn't grant network or filesystem access. The host enforces it at the wazero boundary."*
 
-> **As a** cluster operator,  
-> **I want** a formal evaluation of Etcd vs Redis for distributed consensus,  
-> **so that** the system can run a single active reconciler across multiple nodes without split-brain.
+**Step 6 — Inject a latency regression (15s)**
+```bash
+curl -X POST 'http://localhost:8081/_demo/inject-latency?service=greeter&p99_ms=600'
+```
+Within ~5s:
+```
+greeter  ACTIVE        v1  p99=620ms  ⚠ THRESHOLD BREACHED
+greeter  RE-PROMPTING  v1  reason=p99_breach
+```
+*"The Observer just fired EventRePromptRequired. No human touched anything."*
 
-- Acceptance: ADR written to `/docs/architecture/decisions.md`. Trade-offs documented. Decision locked.
-- Risk: HIGH — architecture decision with long-tail consequences.
-- Depends on: none.
+**Step 7 — Watch the system evolve v2 (30s)**
+```
+greeter  SYNTHESIZED  v2  prompt_hint="current p99=620ms, halve it"
+greeter  COMPILED     v2  wasm=7.9 KB  (scans PASS)
+greeter  SHADOW       v2  ← runs alongside v1 with traffic copy
+```
 
----
+**Step 8 — Auto-promote after shadow window (15s)**
+Demo uses `GHOST_OPS_SHADOW_DURATION=15s` so the gate clears quickly.
+```
+greeter  SHADOW     v2  shadow_age=15s  shadow_p99=42ms  active_p99=620ms
+greeter  PROMOTING  v2  ← shadow beat active, swap
+greeter  ACTIVE     v2  ← v1 unloaded
+```
+```bash
+curl -s 'http://localhost:8080/services/greeter/invoke?method=greet' -d 'Stakeholder'
+# {"hello":"Stakeholder"}    ← still works, atomic swap
+```
+*"Zero requests dropped. v1 unloaded. The system fixed itself."*
 
-**TASK-801 | Implement Etcd Client Setup**  
-`[PENDING]` `Token-Impact: 2` `Target: Jules`
+**Step 9 — Show the audit trail (15s)**
+```bash
+ghost-ops audit tail --service greeter
+```
+```
+synthesize    v=1  prompt_hash=8a1f…  secrets=***
+scan_pass     v=1  gosec=0  govulncheck=0
+deploy        v=1  state=ACTIVE
+metric_breach service=greeter p99_ms=620
+reprompt      v_old=1  hint="p99=620ms, halve it"
+synthesize    v=2  prompt_hash=9b2e…  secrets=***
+scan_pass     v=2  gosec=0  govulncheck=0
+deploy        v=2  state=SHADOW
+promote       v_old=1  v_new=2  shadow_p99=42ms  active_p99=620ms
+unload        v=1
+```
+*"Every step in append-only audit log. Secrets masked. ISO/IEC 42001 8.4 compliant."*
 
-> **As a** Go host process,  
-> **I want** a stable Etcd client connection with retry and TLS,  
-> **so that** downstream state operations never silently fail.
+### 5.3 Demo Tasks (build the demo so it actually runs)
 
-- Acceptance: `pkg/store/etcd_client.go` · unit tests ≥95% · 0 lint.
-- Risk: LOW.
-- Depends on: TASK-800.
+| ID | Title | Day | Status |
+|---|---|---|---|
+| TASK-1100 | `make demo` target — single command boots Ghost Ops + injectors + 3 example services | D20 | OPEN |
+| TASK-1101 | `examples/blueprints/demo/{greeter,summarizer,slow-service}.json` | D20 | OPEN |
+| TASK-1102 | `/_demo/inject-latency` admin endpoint (debug-build only) | D20 | OPEN |
+| TASK-1103 | `/_demo/inject-error-rate` admin endpoint (debug-build only) | D20 | OPEN |
+| TASK-1107 | `/_demo/probe-egress` and `/_demo/probe-fs` admin endpoints (validate sandbox) | D20 | OPEN |
+| TASK-1104 | `examples/demo/walkthrough.sh` — scripted demo running all 9 steps | D29 | OPEN |
+| TASK-1105 | Pre-recorded 5-min demo video attached to v0.6.0 release | D30 | OPEN |
+| TASK-1108 | `ghost-ops audit tail` CLI subcommand | D29 | OPEN |
+| TASK-1109 | `ghost-ops service inspect --show-source` flag (with provenance line) | D10 | OPEN |
+| TASK-1110 | `ghost-ops service list --watch` streaming CLI | D29 | OPEN |
 
----
+### 5.4 Demo File Inventory
 
-**TASK-802 | Etcd Statestore Adapter**  
-`[PENDING]` `Token-Impact: 2` `Target: Jules`
+```
+examples/
+├── blueprints/
+│   ├── hello-compiler.json          (existing — kept for compiler engine demo)
+│   └── demo/
+│       ├── greeter.json             ← star of the show
+│       ├── summarizer.json          ← multi-service hop
+│       └── slow-service.json        ← intentionally breaches SLO for chaos demo
+└── demo/
+    └── walkthrough.sh               ← all 9 steps, scripted, idempotent
+```
 
-> **As a** service registry,  
-> **I want** CRUD operations backed by Etcd,  
-> **so that** state survives node restarts.
+### 5.5 Demo Risk Register
 
-- Acceptance: Implements `protocol.StateStore` interface · `etcd_store_test.go` ≥95% coverage.
-- Risk: LOW.
-- Depends on: TASK-801.
-
----
-
-**TASK-803 | Distributed Leader Election**  
-`[PENDING]` `Token-Impact: 4` `Target: Claude Pro`
-
-> **As a** multi-node deployment,  
-> **I want** exactly one active reconciler elected at any time,  
-> **so that** duplicate reconciliations and race conditions are eliminated.
-
-- Acceptance: Leader election via Etcd lease. Failover <5 s verified under partition simulation.
-- Risk: HIGH — correctness-critical.
-- Depends on: TASK-802.
-
----
-
-**TASK-804 | State Synchronization Protocol**  
-`[PENDING]` `Token-Impact: 4` `Target: Claude Pro`
-
-> **As a** worker node,  
-> **I want** to receive state-change events from the leader via watch streams,  
-> **so that** all nodes reflect the current service state within 1 s.
-
-- Acceptance: End-to-end test: leader change → follower reflects within 1 s.
-- Risk: HIGH.
-- Depends on: TASK-803.
-
----
-
-**TASK-805 | Partition Tolerance Testing**  
-`[PENDING]` `Token-Impact: 3` `Target: Jules`
-
-> **As a** QA engineer,  
-> **I want** automated network-partition simulation tests,  
-> **so that** the cluster's CAP trade-offs are proven and documented.
-
-- Acceptance: Chaos test in `pkg/store/partition_test.go` using tc/iptables simulation.
-- Risk: MEDIUM.
-- Depends on: TASK-804.
-
----
-
-**TASK-807 | Node Auto-Discovery**  
-`[PENDING]` `Token-Impact: 3` `Target: Jules`
-
-> **As a** cluster admin,  
-> **I want** new worker nodes to register themselves automatically,  
-> **so that** scaling requires zero manual configuration.
-
-- Acceptance: Node joins cluster within 30 s of startup with zero config change on leader.
-- Risk: MEDIUM.
-- Depends on: TASK-804.
-
----
-
-**TASK-808 | Graceful Node Draining**  
-`[PENDING]` `Token-Impact: 2` `Target: Jules`
-
-> **As a** node operator,  
-> **I want** SIGTERM to drain active WASM invocations before shutdown,  
-> **so that** in-flight requests complete without error.
-
-- Acceptance: No in-flight invocations dropped during graceful shutdown test. Drain timeout: 30 s.
-- Risk: LOW.
-- Depends on: TASK-807.
-
----
-
-**TASK-809 | Cluster Setup Guide**  
-`[PENDING]` `Token-Impact: 1` `Target: Antigravity / Doc Generator`
-
-> **As a** platform engineer,  
-> **I want** a step-by-step guide for deploying a multi-node Ghost Ops cluster,  
-> **so that** the system can be reproduced from scratch without tribal knowledge.
-
-- Acceptance: `/docs/cluster-setup.md` created. Runbook verified on clean VM.
-- Risk: LOW.
-- Depends on: TASK-808.
-
----
-
-### MILESTONE 2.2: Security Hardening
-
----
-
-**TASK-702 | Enforce Network Egress Policies**  
-`[PENDING]` `Token-Impact: 3` `Target: Claude Pro`
-
-> **As a** security auditor,  
-> **I want** WASM modules to be blocked from unauthorized outbound network calls,  
-> **so that** compromised guest code cannot exfiltrate data.
-
-- Acceptance: Modules blocked unless URL matches `config.capabilities.network.allowed_hosts`. Test: unauthorized call → returns error, no packet leaves host.
-- Risk: HIGH — bypass = data exfiltration.
-- Depends on: EPIC 701 (DONE).
-
----
-
-**TASK-703 | Implement File System Jails**  
-`[PENDING]` `Token-Impact: 3` `Target: Claude Pro`
-
-> **As a** security auditor,  
-> **I want** WASM disk access strictly limited to declared allowed directories,  
-> **so that** guest modules cannot read host secrets or system files.
-
-- Acceptance: Any path outside allowed dirs returns `EACCES`. Fuzz test with path-traversal inputs.
-- Risk: HIGH.
-- Depends on: EPIC 701 (DONE).
+| Risk | Mitigation |
+|---|---|
+| LLM provider latency / outage | Demo uses `-llm mock` by default; deterministic ms-scale synthesis |
+| Long shadow window kills pacing | `GHOST_OPS_SHADOW_DURATION=15s` env override (debug-build only) |
+| Audit dump unreadable on screen | `audit tail --service greeter` filters to one service |
+| Live coding fear | Always run via `walkthrough.sh`, never type live |
+| Network/firewall blocks | Whole demo runs on `localhost`, no internet needed |
 
 ---
 
-**TASK-704 | Automated Vulnerability Scanning**  
-`[PENDING]` `Token-Impact: 2` `Target: Jules`
+## §6 30-Day Day-by-Day (one PR per day)
 
-> **As a** CI pipeline,  
-> **I want** generated Go source code scanned for CVEs before compilation,  
-> **so that** the evolution engine cannot unknowingly ship vulnerable code.
-
-- Acceptance: `gosec` + `govulncheck` run on every synthesized file. High-severity findings block deployment.
-- Risk: MEDIUM.
-- Depends on: none.
-
----
-
-**TASK-708 | Secret Management Integration**  
-`[PENDING]` `Token-Impact: 4` `Target: Claude Pro`
-
-> **As a** service operator,  
-> **I want** runtime secrets fetched from Vault or AWS Secrets Manager,  
-> **so that** credentials never appear in source code, blueprints, or logs.
-
-- Acceptance: `pkg/secrets/` package with `Get(key) (string, error)`. Secrets masked in all log output.
-- Risk: HIGH — EU AI Act Article 15 (data protection) applies.
-- Depends on: TASK-702.
-
----
-
-**TASK-709 | Security Architecture Guide**  
-`[BLOCKED]` `Token-Impact: 1` `Target: Antigravity / Doc Generator`
-
-> **As a** new contributor,  
-> **I want** a documented trust-boundary diagram and threat model,  
-> **so that** security decisions are reproducible without consulting the original author.
-
-- Acceptance: `/docs/security-architecture.md` with Mermaid trust-boundary diagram.
-- Risk: LOW.
-- Depends on: TASK-702, TASK-703, TASK-708.
-
----
-
-## PHASE-3a — Multi-Language Autonomy
-
-### MILESTONE 3.1: Rust Guest SDK
-
----
-
-**TASK-600 | Rust Guest SDK Design**  
-`[BLOCKED]` `Token-Impact: 5` `Target: Claude Pro`
-
-> **As an** evolution engine,  
-> **I want** a formal ABI mapping from Go host functions to Rust `extern` declarations,  
-> **so that** Rust WASM modules can call `kv_get`, `kv_set`, `log`, and `rpc` identically to Go guests.
-
-- Acceptance: RFC written to `/docs/architecture/decisions.md`. Approved before TASK-601 begins.
-- Risk: HIGH — ABI mistakes require full SDK rewrite.
-- Depends on: none.
-
----
-
-**TASK-601 | Implement Rust Guest SDK Base**  
-`[PENDING]` `Token-Impact: 3` `Target: Jules`
-
-> **As a** Rust WASM author,  
-> **I want** a `ghost_ops_sdk` crate providing host function bindings,  
-> **so that** I can write WASM services in Rust without manual `extern` declarations.
-
-- Acceptance: `pkg/sdk/rust/` crate compiles to `wasm32-wasi`. Basic memory sharing works.
-- Risk: MEDIUM.
-- Depends on: TASK-600.
-
----
-
-**TASK-602 | Implement Rust Guest SDK Logger**  
-`[PENDING]` `Token-Impact: 1` `Target: Jules`
-
-> **As a** Rust WASM module,  
-> **I want** structured log calls that surface in the host's log stream,  
-> **so that** debugging Rust guests is identical to debugging Go guests.
-
-- Acceptance: `ghost_ops_sdk::log!(level, msg)` appears in `pkg/logging` output. JSON format.
-- Risk: LOW.
-- Depends on: TASK-601.
-
----
-
-**TASK-603 | Rust Compiler Evolution Engine**  
-`[PENDING]` `Token-Impact: 3` `Target: Jules`
-
-> **As an** evolution engine,  
-> **I want** to compile Rust source code to WASM using `cargo build --target wasm32-wasi`,  
-> **so that** the AI can synthesize and deploy Rust services the same way it handles Go.
-
-- Acceptance: `pkg/evolution/rust_compiler.go` implements `Compiler` interface. `rust_compiler_test.go` ≥95%.
-- Risk: MEDIUM.
-- Depends on: TASK-601.
-
----
-
-**TASK-604 | Test Rust Compiler Engine**  
-`[PENDING]` `Token-Impact: 2` `Target: Jules`
-
-> **As a** QA engineer,  
-> **I want** end-to-end tests that synthesize, compile, and invoke a Rust WASM module,  
-> **so that** Rust evolution is proven before Q3 gate.
-
-- Acceptance: `pkg/evolution/rust_compiler_test.go` covers valid + invalid Rust source. WASM output invocable.
-- Risk: LOW.
-- Depends on: TASK-603.
-
----
-
-**TASK-605 | Python (WASM) Guest SDK Design**  
-`[BLOCKED]` `Token-Impact: 5` `Target: Claude Pro`
-
-> **As an** evolution engine architect,  
-> **I want** a formal evaluation of CPython vs MicroPython for WASM,  
-> **so that** the Python SDK choice is justified and irreversible footguns are avoided.
-
-- Acceptance: Decision record in `/docs/architecture/decisions.md`. Bundle size, startup latency, and ABI coverage compared.
-- Risk: HIGH.
-- Depends on: TASK-604.
-
----
-
-**TASK-606 | Implement Python Guest SDK Base**  
-`[PENDING]` `Token-Impact: 3` `Target: Jules`
-
-> **As a** Python WASM author,  
-> **I want** a bootstrapped Python WASM environment with host bindings,  
-> **so that** I can write WASM services in Python without embedded C.
-
-- Acceptance: Python WASM module boots and calls `kv_get`. Cold-start <50 ms.
-- Risk: MEDIUM.
-- Depends on: TASK-605.
-
----
-
-**TASK-607 | Python Evolution Engine**  
-`[PENDING]` `Token-Impact: 3` `Target: Jules`
-
-> **As an** evolution engine,  
-> **I want** to bundle a Python script into a WASM module,  
-> **so that** AI-synthesized Python code deploys identically to Go and Rust.
-
-- Acceptance: `pkg/evolution/python_compiler.go` implements `Compiler`. `python_compiler_test.go` ≥95%.
-- Risk: MEDIUM.
-- Depends on: TASK-606.
-
----
-
-**TASK-608 | Update Examples with Rust/Python**  
-`[PENDING]` `Token-Impact: 1` `Target: Antigravity`
-
-> **As a** new developer,  
-> **I want** working Rust and Python "hello-world" examples,  
-> **so that** onboarding to multi-language development takes <30 minutes.
-
-- Acceptance: `examples/basic/hello-world-rust/` and `examples/basic/hello-world-python/` build and run.
-- Risk: LOW.
-- Depends on: TASK-604, TASK-607.
-
----
-
-**TASK-609 | Cross-Language Interop Testing**  
-`[PENDING]` `Token-Impact: 3` `Target: Jules`
-
-> **As a** platform engineer,  
-> **I want** a single integration test suite that invokes Go, Rust, and Python WASM modules via the same API,  
-> **so that** language parity is continuously verified in CI.
-
-- Acceptance: `pkg/api/integration_multilang_test.go`. All three languages pass identical invocation tests. CI green.
-- Risk: MEDIUM.
-- Depends on: TASK-608.
-
----
-
-### MILESTONE 3.3: Gateway Enhancements
-
----
-
-**TASK-902 | Dynamic Route Reconfiguration**  
-`[PENDING]` `Token-Impact: 3` `Target: Jules`
-
-> **As a** platform operator,  
-> **I want** gateway routes to update without dropping active connections,  
-> **so that** routing changes are zero-downtime.
-
-- Acceptance: Atomic route swap under load. No 5xx during reconfiguration. Test: 1000 concurrent RPS during swap.
-- Risk: MEDIUM.
-- Depends on: EPIC 901 (DONE).
-
----
-
-**TASK-903 | Blue/Green Deployment Support**  
-`[PENDING]` `Token-Impact: 3` `Target: Jules`
-
-> **As a** deployment engineer,  
-> **I want** to split traffic between two service versions by weight (e.g., 90/10),  
-> **so that** new versions can be validated on live traffic before full cutover.
-
-- Acceptance: `POST /routes/{id}/weights` accepted. Traffic distribution within ±2% of target over 10k requests.
-- Risk: MEDIUM.
-- Depends on: TASK-902.
-
----
-
-**TASK-906 | Gateway Load Testing**  
-`[PENDING]` `Token-Impact: 2` `Target: Jules`
-
-> **As a** performance engineer,  
-> **I want** an automated load test that validates gateway overhead <2 ms p99,  
-> **so that** the SLA is provably met before Q3 gate.
-
-- Acceptance: `k6` or `vegeta` test script in `tests/load/`. P99 latency <2 ms at 10k RPS.
-- Risk: LOW.
-- Depends on: TASK-903.
-
----
-
-**TASK-907 | WebSocket Support in Gateway**  
-`[PENDING]` `Token-Impact: 3` `Target: Jules`
-
-> **As a** client application,  
-> **I want** the gateway to proxy WebSocket connections to WASM services,  
-> **so that** real-time bidirectional communication is supported without a separate path.
-
-- Acceptance: WS upgrade handshake proxied correctly. 1000-message round-trip test passes.
-- Risk: MEDIUM.
-- Depends on: TASK-902.
-
----
-
-**TASK-908 | Gateway Rate Limiting**  
-`[PENDING]` `Token-Impact: 2` `Target: GitHub Copilot`
-
-> **As a** platform operator,  
-> **I want** configurable per-IP rate limits enforced at the gateway,  
-> **so that** individual clients cannot exhaust host resources.
-
-- Acceptance: Requests beyond limit receive `429 Too Many Requests`. Limit configurable in `config.yaml`. Test: burst + sustained load.
-- Risk: LOW.
-- Depends on: TASK-902.
-
----
-
-**TASK-909 | Routing Configuration Guide**  
-`[BLOCKED]` `Token-Impact: 1` `Target: Antigravity / Doc Generator`
-
-> **As a** new platform engineer,  
-> **I want** documentation covering path routing, header routing, blue/green, and WebSocket configuration,  
-> **so that** the gateway is operable without reading source code.
-
-- Acceptance: `/docs/gateway-routing.md` with examples for every routing mode. Reviewed by a non-author.
-- Risk: LOW.
-- Depends on: TASK-907, TASK-908.
-
----
-
-## PHASE-3b — Full ZHO
-
----
-
-**TASK-400 | Autonomous Feedback Loop Architecture**  
-`[BLOCKED]` `Token-Impact: 5` `Target: Claude Pro`
-
-> **As a** Ghost Ops system,  
-> **I want** a formal design for the self-optimization loop (metrics → re-prompt → shadow → hot-swap),  
-> **so that** the system can improve itself without human intervention.
-
-- Acceptance: Architecture RFC in `/docs/architecture/decisions.md`. API, DB schema, and auth designed. Reviewed by two humans before implementation begins.
-- Risk: HIGH — EU AI Act Article 14 (human oversight) must be accounted for in design.
-- Depends on: TASK-804 (state sync), EPIC 500 (observer).
-
----
-
-**TASK-1003 | Expand Log Retention Policies**  
-`[PENDING]` `Token-Impact: 2` `Target: Jules`
-
-> **As a** platform operator,  
-> **I want** configurable TTL for streaming logs per service,  
-> **so that** storage costs are controlled without losing audit trails.
-
-- Acceptance: `log_retention_days` per-service config. Expiry enforced on schedule. Test: logs purged after TTL.
-- Risk: LOW.
-- Depends on: none.
-
----
-
-**TASK-1004 | Enhance Log Filtering UI**  
-`[BLOCKED]` `Token-Impact: 3` `Target: Claude Pro`
-
-> **As a** support engineer,  
-> **I want** UI components for filtering logs by level, service, and time range,  
-> **so that** root-cause analysis time is reduced from minutes to seconds.
-
-- Acceptance: Filter panel design approved. Component renders without UI framework debt.
-- Risk: MEDIUM.
-- Depends on: TASK-1003.
-
----
-
-**TASK-1005 | Integrate External Auth Providers**  
-`[PENDING]` `Token-Impact: 4` `Target: Claude Pro` `[HIGH-RISK]`
-
-> **As a** platform administrator,  
-> **I want** OAuth2/OIDC authentication for gateway API access,  
-> **so that** user identity is federated and credentials are never stored locally.
-
-- Acceptance: Auth middleware in `pkg/api/middleware_auth.go`. Tested against a real OIDC provider (e.g., Keycloak). EU AI Act Article 13 transparency requirements documented.
-- Risk: HIGH — credential handling, EU AI Act applies.
-- Depends on: TASK-708.
-
----
-
-**TASK-1006 | Optimize Runtime Memory Allocation**  
-`[PENDING]` `Token-Impact: 3` `Target: Jules`
-
-> **As a** runtime host,  
-> **I want** Wazero memory pooling and reuse across invocations,  
-> **so that** per-invocation GC pressure is reduced and p99 latency improves.
-
-- Acceptance: Benchmark in `pkg/runtime/benchmark_test.go`. Memory alloc/op reduced ≥30% vs baseline. No regression in existing tests.
-- Risk: MEDIUM.
-- Depends on: none.
-
----
-
-## Vaulted (Complete)
-
-| EPIC / Task | Title | Shipped |
+| Day | Theme | Closes |
 |---|---|---|
-| EPIC 500 | Observer Agent & Metric Thresholds | v0.5.0 |
-| EPIC 701 | Capability-Based Security (701.1–701.4) | v0.6.0 |
-| EPIC 901 | HTTP Gateway — Path + Header Routing | v0.6.0 |
-| TASK 320 | Sidecar Proxy Pattern | v0.5.0 |
-| TASK 321 | mTLS Between Services | v0.5.0 |
-| TASK 331 | Resource-Aware Scheduling | v0.5.0 |
-| TASK 1000–1002 | Log Streaming + Anomaly Detection | v0.5.0 |
-| TASK 1200 | Priority Queue for Evolution Engine | v0.5.0 |
+| D1 | Repo cleanup, doc flatten | BUG-031..039, 048..049, 052, 058..059, 064 |
+| D2 | CI Adversarial Triad live | BUG-030, BUG-062, TASK-1011 (CI half) |
+| D3 | ADR — TASK-400 feedback loop architecture | TASK-400 |
+| D4 | ADR — TASK-800 Etcd vs Redis | TASK-800 |
+| D5 | ADRs — Rust ABI (TASK-600), Python WASM (TASK-605) | TASK-600, TASK-605 |
+| D6 | Hardened Dockerfile + atomic store writes + fsync | BUG-051, BUG-053, BUG-057, TASK-1020 |
+| D7 | Backlog reconciliation, EPIC-701 demote, TASK-901.1 backfill | BUG-038, BUG-039, EPIC-701 status |
+| D8 | Wire `CheckNetworkEgress` into `rpc()` | BUG-021, TASK-702 |
+| D9 | Wire FS jail + new `read_file` host fn | BUG-022, TASK-703 |
+| D10 | Article 13 header + source tag + `inspect --show-source` | BUG-023, TASK-1010, TASK-1109 |
+| D11 | Article 15 — gosec/govulncheck in synthesis | BUG-024, TASK-1011 |
+| D12 | Audit-log secret masking + JSONL store | BUG-026, BUG-044, TASK-1014 |
+| D13 | LLM timeout + sanitized errors | BUG-025, BUG-029, TASK-1015 |
+| D14 | LRU cache + compiler env hygiene | BUG-042, BUG-043, TASK-1017, TASK-1018 |
+| D15 | Re-prompt subscriber + event-bus dropped-event metric + ctx-aware Subscribe | BUG-028, BUG-054, BUG-055, TASK-1013 |
+| D16 | Article 14 shadow-mode timer | BUG-027, TASK-1012 |
+| D17 | Health-check → re-prompt edge | BUG-045, TASK-400.4 |
+| D18 | Reconcile error visibility + store read cache | BUG-040, BUG-056, TASK-1019 |
+| D19 | Buffer truncation hardening + blueprint schema validation | BUG-041, BUG-061 |
+| D20 | Demo scaffold (`make demo`, blueprints, injector + probe endpoints) | TASK-1100..1103, TASK-1107 |
+| D21 | PR template + CODEOWNERS + ADR linter | BUG-050 |
+| D22 | Etcd client setup behind flag | TASK-801 |
+| D23 | Etcd statestore adapter | TASK-802 |
+| D24 | Distributed leader election | TASK-803 |
+| D25 | Gateway rate limiting | TASK-908 |
+| D26 | Gateway dynamic route reconfig | TASK-902 |
+| D27 | Gateway load test (<2 ms p99) | TASK-906 |
+| D28 | Race + leak hunt (`go test -race -count=20`, goleak) | hardening |
+| D29 | Demo walkthrough script + CLI polish + doc freeze | TASK-1104, TASK-1108, TASK-1110 |
+| D30 | v0.6.0 tag + recorded demo + pitch one-pager | TASK-1105, §1 polish |
+
+### Daily Discipline (every day)
+
+1. Pull main; branch `<type>/<task-or-bug-id>`.
+2. Open draft PR with the day's exit gate as the checklist.
+3. Implement <300 LOC + tests.
+4. `make lint && make test && make audit` (D2 onwards).
+5. Push; CI must be green.
+6. Mark this BACKLOG row `DONE` with date.
+7. Merge before EOD.
 
 ---
 
-*V-Score (Self-Reported): 4.6 / 5.0 — All tasks carry Token-Impact + Target Engine. Flat hierarchy maintained.*
+## §7 P3 — Phase-2 (Distribution + Hardening)
+
+| ID | Title | Day | Status |
+|---|---|---|---|
+| TASK-800 | Etcd integration strategy ADR | D4 | BLOCKED→D4 |
+| TASK-801 | Etcd client setup behind `STORE_BACKEND=etcd` flag | D22 | OPEN |
+| TASK-802 | Etcd statestore adapter (CRUD against existing protocol) | D23 | OPEN |
+| TASK-803 | Distributed leader election (only leader runs reconcile) | D24 | OPEN |
+| TASK-908 | Gateway rate limiting (per-IP token bucket) | D25 | OPEN |
+| TASK-902 | Gateway dynamic route reconfiguration (atomic pointer swap) | D26 | OPEN |
+| TASK-906 | Gateway load test — establish <2 ms p99 overhead baseline | D27 | OPEN |
+| TASK-1018 | Compiler env hygiene — minimal env to `go build` subprocess | D14 | OPEN |
+| TASK-1017 | LRU cache for LLM provider (replace random eviction) | D14 | OPEN |
+| TASK-1020 | Hardened Dockerfile (non-root, EXPOSE, HEALTHCHECK, multi-arch) | D6 | OPEN |
+| TASK-708 | Secret Management integration (Vault/AWS SM) | post-D30 | OPEN |
+| TASK-804 | State synchronization protocol | post-D30 | OPEN |
+| TASK-805 | Partition tolerance testing | post-D30 | OPEN |
+| TASK-807 | Node auto-discovery | post-D30 | OPEN |
+| TASK-808 | Graceful node draining | post-D30 | OPEN |
+| TASK-704 | Automated vulnerability scanning | n/a | DUPLICATE-of-TASK-1011 |
+
+---
+
+## §8 P4 — Phase-3 (Multi-Language Guests — design only this month)
+
+| ID | Title | Day | Status |
+|---|---|---|---|
+| TASK-600 | Rust Guest SDK design ADR | D5 | BLOCKED→D5 |
+| TASK-605 | Python (WASM) Guest SDK design ADR (CPython vs MicroPython) | D5 | BLOCKED→D5 |
+| TASK-401 | (DELETE) duplicates TASK-600..609 | — | DUPLICATE |
+| TASK-601 | Implement Rust Guest SDK base | Q3 | OPEN |
+| TASK-602 | Rust Guest SDK logger | Q3 | OPEN |
+| TASK-603 | Rust compiler evolution engine | Q3 | OPEN |
+| TASK-604 | Test Rust compiler engine | Q3 | OPEN |
+| TASK-606 | Python Guest SDK base | Q3 | OPEN |
+| TASK-607 | Python evolution engine | Q3 | OPEN |
+| TASK-608 | Update examples with Rust/Python | Q3 | OPEN |
+| TASK-609 | Cross-language interop testing | Q3 | OPEN |
+
+---
+
+## §9 P5 — Good-to-haves (post-Phase-1)
+
+| ID | Title | Day | Status |
+|---|---|---|---|
+| TASK-901.1 | (BACKFILL) document/define routing-rules format | D7 | OPEN |
+| TASK-903 | Blue/green deployment (traffic weights 90/10) | Q3 | OPEN |
+| TASK-907 | WebSocket support in gateway | Q3 | OPEN |
+| TASK-1003 | Configurable log retention TTL | Q3 | OPEN |
+| TASK-1004 | Log filtering UI | Q4 | BLOCKED |
+| TASK-1005 | OAuth2 external auth providers (HIGH-RISK) | Q4 | BLOCKED |
+| TASK-1006 | Wazero memory pool optimization | Q4 | OPEN |
+| TASK-209 | Cluster setup guide | Q3 | OPEN |
+| TASK-709 | Security architecture guide | Q3 | BLOCKED |
+| TASK-909 | Routing configuration guide | Q3 | BLOCKED |
+
+---
+
+## §10 New Bugs / Change Requests
+
+When you find a new bug, add it as the next `BUG-NNN` directly under the right
+severity heading in §3. **Never** open a parallel doc.
+
+When you propose a new task, add it under the right priority section (§4..§9)
+with a Day target. If it slips past D30, move it to §9.
+
+---
+
+## §11 Vaulted (shipped — kept brief)
+
+| ID | Title | Shipped | Notes |
+|---|---|---|---|
+| EPIC-500 | Observer Agent & metric thresholds | v0.5.0 | Partial — re-prompt edge dead, see BUG-028 |
+| EPIC-901 | HTTP Gateway path + header routing | v0.6.0 | Minimal — see §9 for missing pieces |
+| TASK-320 | Sidecar proxy pattern | v0.5.0 | |
+| TASK-321 | mTLS between services | v0.5.0 | |
+| TASK-331 | Resource-aware scheduling (bin-pack) | v0.5.0 | |
+| TASK-1000..1002 | Log streaming + anomaly detection prompt | v0.5.0 | |
+| TASK-1200 | Evolution engine priority queue | v0.4.0 | |
+| TASK-1358 | Remove `/cluster/health` API | v0.5.0 | |
+| BUG-001..020 | First bug-hunt sprint (17 fixed, 3 confirmed non-bugs) | 2026-04-22 | |
+
+> **EPIC-701** (Capability-Based Security) was previously listed as vaulted at
+> v0.6.0 but **demoted** here — see BUG-021/022. It will re-vault once D8+D9 land.
+
+### Detailed historical release notes (was `docs/release/release-notes.md`)
+
+**v0.5.0** — Observer Agent + metric thresholds (EPIC-500), Sidecar Proxy +
+mTLS (TASK-320/321), Resource-aware scheduler (TASK-331), Log streaming for AI
+analysis (TASK-1000..1002), Removed undocumented `/cluster/health` (TASK-1358).
+
+**v0.4.0** — Architecture diagrams, code-gen evals, OTLP exporter, trace-log
+correlation, evolution priority queue, prompt-injection defenses, security
+chaos testing, audit logging for state changes, cluster health dashboard data.
+
+**v0.3.0** — Service Mesh Lite (Retry / Circuit Breaker / Rate Limit), Redis
+distributed lock (`SET NX`), OpenTelemetry tracing middleware, in-memory event
+bus, API validation middleware (`MaxBytes`, `ContentType`, `Recover`),
+`ghost-dev` hot-reload, pre-commit hooks, end-to-end integration tests, async
+WASM module instantiation, LRU module cache, health-check active-state
+verification, `POST /services/{id}/invoke`, CLI subcommands (`init`, `service
+list/inspect/logs`, `config show`), Wazero CPU+memory limits, secure log
+capture, `AppError` standardization, Viper-backed config with hot-reload,
+OpenAPI 3.0 spec, LLM token-usage metrics, dependency graph cycle detection,
+`gosec` initial pass, RuntimeHost benchmarks (~0.08 ms overhead).
+
+(Earlier version detail is preserved in git history; not material to current
+priorities.)
+
+---
+
+*This file is the only Markdown SSOT for execution. The companion is
+`STANDARDS.md` (engineering rules). README links here. Anything else is noise.*

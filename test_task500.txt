@@ -1,9 +1,0 @@
-We need to implement Tasks 500 to 503 from docs/backlog.md:
-- TASK 500: Define Metric Thresholds For Optimization
-- TASK 501: Implement Observer Agent
-- TASK 502: Trigger Re-Prompt On Latency Spike
-- TASK 503: Trigger Re-Prompt On Error Rate Spike
-
-This means we need to add an `ObserverAgent` that constantly monitors metrics, compares them to defined thresholds, and uses the `EventBus` to emit events like `EventRePromptRequired` when latency spikes or error rates spike.
-
-Let's look at the available metrics...

@@ -1,63 +1,63 @@
 # Ghost Ops
-> **"Dark Software"**: Code that writes itself, runs itself, and fixes itself.
-> **North Star:** Zero-Human Operations (ZHO). The system patches, optimizes, and evolves itself.
-> ![Version](https://img.shields.io/badge/version-v0.5.0-blue)
+> **Code that writes itself, runs itself, and fixes itself.**
+> **North Star:** Zero-Human Operations — the system patches, optimizes, and evolves itself.
+> ![Version](https://img.shields.io/badge/version-v0.5.2-blue)
 
-## The Hook
-- **Value Prop:** Zero-Human Operations. Code that writes itself, runs itself, and fixes itself.
-- **Context:** Autonomous Architecture & Documentation Engine.
-- **Quick Start:**
-  - Mock Mode: `./ghost-ops -engine mock`
-  - Local/Docker: `./run.sh --start`
+## Docs (flat — only two files)
 
-## Pulse-Table
-| Milestone | Ver | Phase | Status | Debt% |
-| :--- | :--- | :--- | :--- | :--- |
-| AUTONOMY | v0.5.0 | 3 | ACTIVE | 0% |
-| CAPABILITY | v0.6.0 | 1 | PLANNING | 0% |
+- **[`docs/BACKLOG.md`](./docs/BACKLOG.md)** — THE single source of truth.
+  Vision, DoD, bugs, tasks, demo scenario, 30-day plan, vaulted history.
+  Read top-to-bottom: highest priority first, nice-to-haves last.
+- **[`docs/STANDARDS.md`](./docs/STANDARDS.md)** — engineering rules
+  (Adversarial Triad, EU AI Act mappings, naming, CI gates).
 
-## Visual-Index
-- [Vision & Architecture](./docs/architecture/vision.md)
-- [Backlog](./docs/planning/backlog.md)
-- [Map](./docs/planning/map.md)
-- [Release Notes](./docs/release/release-notes.md)
-- [Metrics](./docs/release/metrics.md)
-- [Rules: Habits](./docs/rules/habits.md)
-- [Rules: Hygiene](./docs/rules/hygiene.md)
-- [Rules: Decisions](./docs/architecture/decisions.md)
-- [Standards: Ultra-Lean](./docs/rules/standards.md)
-- [Engineering](./docs/engineering/README.md)
+Anything else is noise.
 
-## Quick Start Details
-Closing the loop between Intent, Code, and Runtime.
-- **Goal:** Intent -> Code -> WASM -> Runtime -> Feedback.
-- **Key Deliverables:** AI Evolution Engine, Shadow Mode, persistent state, basic CLI.
+## Quick Start
 
 ### Build
 ```bash
 make build
 ```
 
-### Run (Mock Mode)
-Run with the mock engine (no API key needed, returns dummy WASM):
+### Mock mode (no API key)
 ```bash
 ./ghost-ops -engine mock
 ```
 
-### Initialization
-Initialize a new project with default configuration and blueprints:
-```bash
-./ghost-ops init
-```
-
-### Run (AI Mode)
+### AI mode
 ```bash
 export OPENAI_API_KEY=your-key
 ./ghost-ops -engine ai -blueprints ./blueprints/blueprints.json
 ```
 
-### CLI Commands
-- `ghost-ops service list`: List all running services.
-- `ghost-ops service inspect <id>`: Inspect service details.
-- `ghost-ops service logs <id>`: View logs for a service.
-- `ghost-ops config show`: Show current configuration.
+### Init a new project
+```bash
+./ghost-ops init
+```
+
+### Demo (Phase-1, target D20+)
+```bash
+make demo
+# follow docs/BACKLOG.md §5.2 — 9 scripted steps, ~5 min
+```
+
+## CLI
+
+- `ghost-ops service list` — list running services
+- `ghost-ops service inspect <id>` — service details
+- `ghost-ops service logs <id>` — service output
+- `ghost-ops config show` — current config
+- `ghost-ops audit tail` — append-only audit trail (Phase-1 D29+)
+
+## Status
+
+| Phase | Theme | Status |
+|---|---|---|
+| 0 | Hygiene | DONE |
+| 1 | Self-healing loop | **IN PROGRESS — target 2026-06-02** |
+| 2 | Distribution + security | Planned (Q3) |
+| 3 | Multi-language guests (Rust, Python) | Design only this month (Q3 implementation) |
+| 4 | Full ZHO autonomy | 2027 |
+
+See [`docs/BACKLOG.md`](./docs/BACKLOG.md) §6 for the day-by-day plan.
