@@ -5,6 +5,7 @@ import (
 	"encoding/json"
 	"fmt"
 	"os"
+	"path/filepath"
 	"sync"
 
 	"ghost-ops/pkg/protocol"
@@ -86,12 +87,56 @@ func (s *JSONFileStore) load() (*storeData, error) {
 	return sd, nil
 }
 
+// save writes the store atomically: marshal → write to temp file in the same
+// directory → fsync → rename over the target. A crash between steps leaves
+// either the old file or the new one, never a half-written one (BUG-053).
+// The fsync ensures durability across power loss (BUG-057).
 func (s *JSONFileStore) save(sd *storeData) error {
 	data, err := json.MarshalIndent(sd, "", "  ")
 	if err != nil {
 		return err
 	}
-	return os.WriteFile(s.path, data, 0600)
+
+	dir := filepath.Dir(s.path)
+	tmp, err := os.CreateTemp(dir, ".store-*.tmp")
+	if err != nil {
+		return fmt.Errorf("create temp: %w", err)
+	}
+	tmpName := tmp.Name()
+	// On any error path below, clean up the temp file. Rename consumes it on
+	// success, so a stat-miss after Rename is fine.
+	defer func() {
+		if _, statErr := os.Stat(tmpName); statErr == nil {
+			_ = os.Remove(tmpName)
+		}
+	}()
+
+	if err := os.Chmod(tmpName, 0600); err != nil {
+		_ = tmp.Close()
+		return fmt.Errorf("chmod temp: %w", err)
+	}
+	if _, err := tmp.Write(data); err != nil {
+		_ = tmp.Close()
+		return fmt.Errorf("write temp: %w", err)
+	}
+	if err := tmp.Sync(); err != nil {
+		_ = tmp.Close()
+		return fmt.Errorf("fsync temp: %w", err)
+	}
+	if err := tmp.Close(); err != nil {
+		return fmt.Errorf("close temp: %w", err)
+	}
+	if err := os.Rename(tmpName, s.path); err != nil {
+		return fmt.Errorf("rename temp: %w", err)
+	}
+	// Best-effort directory fsync so the rename is durable. Failures here
+	// don't poison the write — the data is on disk; only the dirent flush is
+	// uncertain — so log via the returned error only when truly fatal.
+	if d, derr := os.Open(dir); derr == nil {
+		_ = d.Sync()
+		_ = d.Close()
+	}
+	return nil
 }
 
 // GetService retrieves a service record by ID.

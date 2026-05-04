@@ -26,7 +26,7 @@
 | BUG-024 | Synthesized code never scanned with `gosec`/`govulncheck` (EU AI Act Art 15) | `pkg/evolution/{ai_engine,compiler}.go` | D11 | OPEN |
 | BUG-027 | Shadow-mode timer absent — no Article 14 ≥5-min gate; promotion is instant or never | `pkg/registry/registry.go:272` | D16 | OPEN |
 | BUG-028 | ZHO loop is broken — `EventRePromptRequired` has no subscriber; no re-evolve happens | `pkg/observer/metric_observer.go` + `pkg/registry/` | D15 | OPEN |
-| BUG-053 | `JSONFileStore.save()` is non-atomic — crash mid-write corrupts the entire state file | `pkg/store/json_store.go:89` | D6 | OPEN |
+| BUG-053 | `JSONFileStore.save()` is non-atomic — crash mid-write corrupts the entire state file | `pkg/store/json_store.go:89` | D6 | DONE-this-PR |
 | BUG-054 | `EventBus.Publish()` silently drops events when subscriber buffer full — re-prompts vanish under load | `pkg/event/bus.go:39-43` | D15 | OPEN |
 
 ### HIGH
@@ -42,7 +42,7 @@
 | BUG-045 | Health check unloads unhealthy services without emitting `EventRePromptRequired` — feedback edge dead on this side too | `pkg/registry/registry.go:247` | D17 | OPEN |
 | BUG-055 | `EventBus.Subscribe()` ignores `ctx` — no way to cancel; channel leaks if subscriber goroutine exits | `pkg/event/bus.go:50` | D15 | OPEN |
 | BUG-056 | `JSONFileStore` re-reads + re-parses the entire file on every read API — O(file) per Get/List under lock | `pkg/store/json_store.go:97-115` | D18 | OPEN |
-| BUG-057 | `JSONFileStore.save()` does not `fsync` — power-cut after `WriteFile` returns can lose the write | `pkg/store/json_store.go:89` | D6 | OPEN |
+| BUG-057 | `JSONFileStore.save()` does not `fsync` — power-cut after `WriteFile` returns can lose the write | `pkg/store/json_store.go:89` | D6 | DONE-this-PR |
 
 ### MEDIUM
 
