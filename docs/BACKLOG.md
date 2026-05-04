@@ -36,7 +36,7 @@
 | BUG-025 | OpenAI error path leaks request body (and embedded prompts) into stderr logs | `pkg/llm/openai.go` | D13 | OPEN |
 | BUG-026 | Audit logger emits raw `details` map without secret masking — STANDARDS §2.3 violation | `pkg/logging/audit.go:8` | D12 | OPEN |
 | BUG-029 | LLM provider has no per-request timeout — stalled provider starves the scheduler | `pkg/llm/{openai,ollama}.go` | D13 | OPEN |
-| BUG-030 | CI does not enforce STANDARDS §6 — missing `-race`, coverage gate, `gosec`, `govulncheck`, `gofmt -l` | `.github/workflows/ci.yml` | D2 | OPEN |
+| BUG-030 | CI does not enforce STANDARDS §6 — missing `-race`, coverage gate, `gosec`, `govulncheck`, `gofmt -l` | `.github/workflows/ci.yml` | D2 | DONE-this-PR (govulncheck advisory until BUG-024) |
 | BUG-042 | `compiler.go` inherits the host's full env into `go build` — `OPENAI_API_KEY` etc. leak into subprocess | `pkg/evolution/compiler.go:31` | D14 | OPEN |
 | BUG-044 | `Audit()` events not persisted — `slog` only; no append-only file, ISO 8.4 evidence missing | `pkg/logging/audit.go` | D12 | OPEN |
 | BUG-045 | Health check unloads unhealthy services without emitting `EventRePromptRequired` — feedback edge dead on this side too | `pkg/registry/registry.go:247` | D17 | OPEN |
@@ -75,7 +75,7 @@
 | BUG-052 | `docs/release/metrics.md` was a single line — folded into §11 | n/a | D1 | DONE-this-PR |
 | BUG-060 | `examples/blueprints/hello-compiler.json` is the only example blueprint — too thin for stakeholder demo | `examples/blueprints/` | D20 | OPEN |
 | BUG-061 | No `examples/blueprints/` schema validation in `intent.NewFileIntentSource` — bad JSON crashes startup | `pkg/intent/file_source.go` | D19 | OPEN |
-| BUG-062 | `Makefile` has no `audit`, `demo`, `gosec`, `govulncheck`, or `coverage` targets | `Makefile` | D2 | OPEN |
+| BUG-062 | `Makefile` has no `audit`, `demo`, `gosec`, `govulncheck`, or `coverage` targets | `Makefile` | D2 | DONE-this-PR |
 | BUG-064 | Multiple Markdown SSOT files (VISION, DEMO, SPRINT-30D, AUDIT-2026-05-04, ROADMAP, CHANGELOG) — folded into this file | docs/ | D1 | DONE-this-PR |
 
 > **Bug-fix exit gate (Phase-1):** Every CRITICAL + HIGH closed. MEDIUMs may slip
