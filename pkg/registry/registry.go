@@ -491,9 +491,9 @@ func (r *Registry) RollbackService(ctx context.Context, serviceID string) error 
 	}
 
 	logging.Audit(ctx, "rollback_service", map[string]interface{}{
-		"service_id":           serviceID,
-		"rolled_back_version":  rolledBackVersion,
-		"kept_active_version":  existing.ActiveVersion,
+		"service_id":          serviceID,
+		"rolled_back_version": rolledBackVersion,
+		"kept_active_version": existing.ActiveVersion,
 	})
 
 	return nil

@@ -8,29 +8,74 @@ on:
 
 jobs:
   build:
+    name: Build · Lint · Test · Security
     runs-on: ubuntu-latest
+    timeout-minutes: 15
     steps:
-    - uses: actions/checkout@v4
+      - uses: actions/checkout@v4
 
-    - name: Set up Go
-      uses: actions/setup-go@v5
-      with:
-        go-version: '1.24.3'
+      - name: Set up Go
+        uses: actions/setup-go@v5
+        with:
+          go-version: '1.24.3'
+          cache: true
 
-    - name: Verify dependencies
-      run: go mod verify
+      - name: Verify dependencies
+        run: go mod verify
 
-    - name: Vet
-      run: go vet ./...
+      - name: gofmt (no diffs)
+        run: |
+          out=$(gofmt -l .)
+          if [ -n "$out" ]; then
+            echo "::error::gofmt found unformatted files:"
+            echo "$out"
+            exit 1
+          fi
 
-    - name: Install Staticcheck
-      run: go install honnef.co/go/tools/cmd/staticcheck@latest
+      - name: go vet
+        run: go vet ./...
 
-    - name: Staticcheck
-      run: staticcheck ./...
+      - name: Install staticcheck
+        run: go install honnef.co/go/tools/cmd/staticcheck@latest
 
-    - name: Test
-      run: go test -v ./...
+      - name: staticcheck
+        run: staticcheck ./...
 
-    - name: Build
-      run: go build -v ./...
+      - name: Install gosec
+        run: go install github.com/securego/gosec/v2/cmd/gosec@latest
+
+      - name: gosec (high severity, high confidence)
+        # -no-fail keeps the gate advisory until existing findings are triaged
+        # (BUG-024 ratchet); upgrade to fail-on-high once green.
+        run: gosec -severity high -confidence high -fmt text -no-fail ./...
+
+      - name: Install govulncheck
+        run: go install golang.org/x/vuln/cmd/govulncheck@latest
+
+      - name: govulncheck
+        # Advisory until BACKLOG BUG-024 lands the synthesis-pipeline gate;
+        # output is visible in CI logs but does not block merge yet.
+        continue-on-error: true
+        run: govulncheck ./...
+
+      - name: Test (race + coverage)
+        run: go test -race -count=1 -coverprofile=coverage.out -covermode=atomic ./...
+
+      - name: Coverage gate (>=60%)
+        # Phase-1 ratchet: start at the current floor (≈65%), then raise
+        # toward STANDARDS §6 target of 95% over the 30-day plan. Bumping
+        # this number is a deliberate PR — see BACKLOG.md §6 for owner.
+        run: |
+          pct=$(go tool cover -func=coverage.out | tail -1 | awk '{print $3}' | tr -d '%')
+          echo "Total coverage: $pct%"
+          awk -v p="$pct" 'BEGIN { if (p+0 < 60) { exit 1 } }'
+
+      - name: Upload coverage artefact
+        if: always()
+        uses: actions/upload-artifact@v4
+        with:
+          name: coverage
+          path: coverage.out
+
+      - name: Build
+        run: go build -v ./...

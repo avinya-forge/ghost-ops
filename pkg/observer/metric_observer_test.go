@@ -16,8 +16,8 @@ func (m *MockSnapshotter) Snapshot() map[string]interface{} {
 	return m.MockSnapshot
 }
 
-func (m *MockSnapshotter) Counter(name string, value int64, tags map[string]string) {}
-func (m *MockSnapshotter) Gauge(name string, value float64, tags map[string]string) {}
+func (m *MockSnapshotter) Counter(name string, value int64, tags map[string]string)     {}
+func (m *MockSnapshotter) Gauge(name string, value float64, tags map[string]string)     {}
 func (m *MockSnapshotter) Histogram(name string, value float64, tags map[string]string) {}
 
 func TestExtractServiceID(t *testing.T) {
@@ -118,7 +118,7 @@ func TestMetricObserver_AnalyzeMetrics_Promotion(t *testing.T) {
 			"invoke_error{service_id=svc-promote,type=execution_error}": int64(2),
 			"invoke_success{service_id=svc-promote}":                    int64(18),
 			// Shadow errors = 0, success = 6 -> Total 6 -> Error rate 0%
-			"invoke_error{service_id=svc-promote,type=shadow}": int64(0),
+			"invoke_error{service_id=svc-promote,type=shadow}":   int64(0),
 			"invoke_success{service_id=svc-promote,type=shadow}": int64(6),
 		},
 	}

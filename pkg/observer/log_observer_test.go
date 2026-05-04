@@ -44,7 +44,7 @@ func (m *MockMetricsCollector) Counter(name string, value int64, tags map[string
 	m.Counters[name] += value
 }
 
-func (m *MockMetricsCollector) Gauge(name string, value float64, tags map[string]string) {}
+func (m *MockMetricsCollector) Gauge(name string, value float64, tags map[string]string)     {}
 func (m *MockMetricsCollector) Histogram(name string, value float64, tags map[string]string) {}
 
 func TestLogObserver_Sanitize(t *testing.T) {

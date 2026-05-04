@@ -67,16 +67,16 @@ type WazeroRuntimeHost struct {
 	runtime        wazero.Runtime
 	modules        map[string]api.Module        // Key: uniqueName (serviceID-version)
 	requests       map[string]chan Request      // Key: uniqueName
-	closedChs      map[string]chan struct{}      // Key: uniqueName; closed by UnloadVersion
+	closedChs      map[string]chan struct{}     // Key: uniqueName; closed by UnloadVersion
 	currentReq     map[string]Request           // Key: uniqueName
 	activeVersions map[string]string            // Key: serviceID, Value: uniqueName
 	shadowVersions map[string]string            // Key: serviceID, Value: uniqueName
 	logBuffers     map[string]*ThreadSafeBuffer // Key: uniqueName
 
 	// Compiled Module Cache
-	compiledCache  map[string]wazero.CompiledModule // Key: hash of WASM bytes
-	cacheOrder     []string                         // LRU order (oldest first)
-	compiledRefs   map[string]int                   // goroutines currently in InstantiateModule per hash
+	compiledCache   map[string]wazero.CompiledModule // Key: hash of WASM bytes
+	cacheOrder      []string                         // LRU order (oldest first)
+	compiledRefs    map[string]int                   // goroutines currently in InstantiateModule per hash
 	evictedCompiled map[string]wazero.CompiledModule // evicted but still in-flight; closed when refs hit 0
 
 	mu           sync.RWMutex

@@ -6,9 +6,9 @@ import "context"
 type EventType string
 
 const (
-	EventServiceDeployed  EventType = "service_deployed"
-	EventServiceFailed    EventType = "service_failed"
-	EventServiceUnhealthy EventType = "service_unhealthy"
+	EventServiceDeployed   EventType = "service_deployed"
+	EventServiceFailed     EventType = "service_failed"
+	EventServiceUnhealthy  EventType = "service_unhealthy"
 	EventAnomalyDetected   EventType = "anomaly_detected"
 	EventRePromptRequired  EventType = "reprompt_required"
 	EventPromotionRequired EventType = "promotion_required"

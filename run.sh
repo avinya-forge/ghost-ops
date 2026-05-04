@@ -1,102 +1,43 @@
 #!/usr/bin/env bash
-# run.sh - Self-Evolving Master Script
-# Execution Modes: --start, --test, --backlog, --sync (skills.sh)
+# run.sh - Ghost Ops dev convenience wrapper
+# Modes: --start  (boot mock-mode binary)
+#        --test   (lint + test)
+#        --ci     (vet + staticcheck + test + build, mirrors .github/workflows/ci.yml)
+#        --audit  (delegates to `make audit`)
 
-set +e # non-blocking mode
+set -euo pipefail
 
-# 1. SYNC & ACTIVE-POPULATE
-mkdir -p docs/planning docs/architecture docs/engineering
-if [ ! -f docs/engineering/README.md ]; then
-  echo "# Engineering Documentation" > docs/engineering/README.md
-fi
-
-
-# Idempotent file-tree alignment
-sync_file_tree() {
-  echo "Syncing file tree..."
-  mkdir -p docs/planning docs/architecture docs/engineering
-  for file in docs/planning/roadmap.md docs/architecture/system_design.md docs/engineering/conventions.md; do
-    if [ ! -f "$file" ]; then
-      touch "$file"
-      echo "# ${file##*/}" > "$file"
-      echo "Created $file"
-    fi
-  done
-}
-
-# Function to log blockers non-blockingly
-log_blocker() {
-  local reason="$1"
-  echo "[RESOLVE] $reason" >> docs/planning/backlog.md
-  echo "Logged blocker: $reason"
-}
-
-case "$1" in
+case "${1:-}" in
   --start)
-    echo "Starting environment..."
-    make run || log_blocker "make run failed during --start"
+    echo "Starting Ghost Ops (mock engine)..."
+    make run
     ;;
   --test)
     echo "Running tests & linting..."
-    make lint || log_blocker "make lint failed during --test"
-    make test || log_blocker "make test failed during --test"
-    ;;
-  --backlog)
-    echo "Auditing backlog tags..."
-    grep -E "EPIC|DEBT" docs/planning/backlog.md || log_blocker "No EPIC or DEBT found in backlog"
-    echo "Recursive expansion: expanding EPICS..."
-    for epic in $(grep -oE 'EPIC [0-9]+' docs/planning/backlog.md | awk '{print $2}'); do
-      echo "Expanding EPIC $epic:"
-      grep -E "TASK $epic(\.[0-9]+)*:" docs/planning/backlog.md || log_blocker "No sub-tasks found for EPIC $epic"
-    done
-    ;;
-  --sync|--skills)
-    echo "Syncing agentic patterns..."
-    sync_file_tree
-    npx skills add vercel-labs/agent-skills -y || log_blocker "npx skills add vercel-labs/agent-skills failed"
-    echo "Parsing pending atomic tasks..."
-    grep -E "\[ \] TASK" docs/planning/backlog.md > docs/planning/active_tasks.txt || true
-    echo "Exported pending tasks to docs/planning/active_tasks.txt"
+    make lint
+    make test
     ;;
   --ci)
     echo "Running CI checks..."
-    echo "Running go vet..."
     go vet ./...
-
-    if command -v staticcheck &> /dev/null
-    then
-        echo "Running staticcheck..."
-        staticcheck ./...
+    if command -v staticcheck >/dev/null 2>&1; then
+      echo "Running staticcheck..."
+      staticcheck ./...
     else
-        echo "staticcheck could not be found, skipping..."
+      echo "staticcheck not found — install: go install honnef.co/go/tools/cmd/staticcheck@latest"
     fi
-
     echo "Running go test..."
-    go test -v ./...
-
+    go test -race -count=1 ./...
     echo "Running go build..."
     go build -v ./...
-
-    echo "CI checks passed!"
+    echo "CI checks passed."
     ;;
   --audit)
-    echo "Running AUDIT..."
-    grep -E "TASK|DEBT" docs/planning/backlog.md || true
-    ;;
-  --verify)
-    echo "Running VERIFY (Lint/Test)..."
-    bash "$0" --ci
-    ;;
-  --expand)
-    STEP=$2
-    if [ -z "$STEP" ]; then
-      echo "Error: STEP parameter is required for expand."
-      exit 1
-    fi
-    echo "Running EXPAND for $STEP..."
-    grep -A 2 -E "TASK $STEP|TASK $STEP\." docs/planning/backlog.md || true
+    echo "Running audit..."
+    make audit
     ;;
   *)
-    echo "Usage: $0 {--start|--test|--backlog|--sync|--skills|--ci|--audit|--verify|--expand}"
+    echo "Usage: $0 {--start|--test|--ci|--audit}"
+    exit 1
     ;;
 esac
