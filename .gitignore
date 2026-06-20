@@ -17,3 +17,6 @@ ghost-dev
 skills/
 skills-lock.json
 parse_backlog.py
+
+# Track agents configuration and skills
+!.agents/
