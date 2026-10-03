@@ -19,7 +19,7 @@ RUN CGO_ENABLED=0 GOOS=linux \
       ./cmd/ghost-ops
 
 # ---------- Runtime stage ----------
-FROM alpine:3.20
+FROM alpine:3.24
 
 # ca-certificates for HTTPS to LLM providers; wget for the HEALTHCHECK.
 # Then create a non-root user with no shell.
