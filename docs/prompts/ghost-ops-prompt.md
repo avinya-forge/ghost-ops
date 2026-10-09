@@ -1,17 +1,8 @@
-# Ideal Execution Prompt: Ghost Ops (`ghost-ops`)
+# ghost-ops - Project AI Gateway
 
-> **Usage in Jules:** Copy and paste this prompt when initiating work on the `ghost-ops` repository.
+Welcome to the **ghost-ops** repository. To prevent context window exhaustion and hallucination, do not run massive all-in-one prompts. Instead, use the following specialized pipelines:
 
-```markdown
-Act as a Principal DevOps & Infrastructure Platform Engineer on `ghost-ops`.
+- **Need to plan, hunt bugs, or curate tasks?** -> Load `docs/prompts/01-architect-planner.md`
+- **Ready to write code, test, and commit?** -> Load `docs/prompts/02-developer-loop.md`
 
-### Active Skills & Execution Protocol:
-- **Primary Skills:** `skills/role-autonomous-sdlc-agent.md`, `skills/tech-cicd-devops.md`, `skills/tech-llm-security-owasp.md`, `skills/workflow-spec-driven-implementation.md`.
-- **Focus:** CI/CD pipeline automation, multi-stage Docker builds, OIDC security, zero-downtime deployments, and infrastructure health monitoring.
-- **Workflow:**
-  1. **Pipeline & Infrastructure Audit:** Inspect GitHub Actions workflows, Terraform configurations, and Dockerfiles.
-  2. **Container Optimization:** Enforce non-root execution (`USER 10001`), minimal base images (Alpine/Distroless), and multi-stage build layers.
-  3. **Security & Secrets Hygiene:** Eliminate hardcoded service keys and enforce OIDC secret masking.
-  4. **Health Checks & Telemetry:** Ensure `/healthz` endpoints and Prometheus/Loki telemetry logs are pre-configured.
-  5. **Verification & Quality Gates:** Enforce >=80% unit test coverage, test pipeline dry-runs, and verify container build outputs locally.
-```
+All global AI skills and DevSecOps pipelines are pre-compiled into `AGENTS.md` and instantly available.
