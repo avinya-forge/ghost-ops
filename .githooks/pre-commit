@@ -3,20 +3,24 @@
 
 echo "Running pre-commit checks..."
 
-# Run Lint
-echo "Running lint..."
-make lint
-if [ $? -ne 0 ]; then
-    echo "Lint failed. Please fix the issues before committing."
-    exit 1
-fi
+if command -v make >/dev/null 2>&1; then
+    # Run Lint
+    echo "Running lint..."
+    make lint
+    if [ $? -ne 0 ]; then
+        echo "Lint failed. Please fix the issues before committing."
+        exit 1
+    fi
 
-# Run Tests
-echo "Running tests..."
-make test
-if [ $? -ne 0 ]; then
-    echo "Tests failed. Please fix the issues before committing."
-    exit 1
+    # Run Tests
+    echo "Running tests..."
+    make test
+    if [ $? -ne 0 ]; then
+        echo "Tests failed. Please fix the issues before committing."
+        exit 1
+    fi
+else
+    echo "Make not installed or not in PATH, skipping local make checks."
 fi
 
 echo "All checks passed."

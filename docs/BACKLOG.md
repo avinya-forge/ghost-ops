@@ -4,7 +4,15 @@
 > demo, then 30-day plan, then vaulted history.
 > **North star (the why):** [`VISION.md`](./VISION.md).
 > **Engineering rules (the how):** [`STANDARDS.md`](./STANDARDS.md).
-> Anything not in this file is not work.
+> 
+## 🌌 6–8 Month Strategic Roadmap & Horizon Plan
+
+| Horizon | Core Strategic Milestone | Lead Focus | Key Deliverables |
+|:---:|:---|:---|:---|
+| **Month 1–2** | **EU AI Act & Capability Security Enforcement** | Security & Sandboxing | Art 13 disclosure headers, `gosec`/`govulncheck` compile gates, network egress / FS jail enforcement |
+| **Month 3–4** | **Observer Agent & Autonomous Shadow Loop** | Self-Healing Resilience | Art 14 5-min shadow testing, re-prompt event bus wiring, automated canary traffic promotion |
+| **Month 5–6** | **Distributed State & Etcd Cluster Coordination** | Scalability & Fault Tolerance | Etcd state store adapter, distributed leader election, atomic gateway route swapping |
+| **Month 7–8** | **Multi-Language Guest SDKs & Enterprise Gateway** | Rust/Python Guest & Edge Proxy | Rust/MicroPython WASM guests, IP token bucket rate limiting, automated cluster draining |
 
 ---
 
