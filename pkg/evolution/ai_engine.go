@@ -40,6 +40,9 @@ func (e *AIEvolutionEngine) Evolve(ctx context.Context, blueprint protocol.Bluep
 		e.collector.Counter("llm_tokens_total", int64(usage.TotalTokens), map[string]string{"type": "total", "service_id": blueprint.ServiceID})
 	}
 
+	// Inject required // ghost-ops:generated tag (EU AI Act Art 13)
+	sourceCode = "// ghost-ops:generated\n\n" + sourceCode
+
 	// 2. Compile Source Code
 	wasmBytes, err := CompileGo(ctx, sourceCode)
 	if err != nil {

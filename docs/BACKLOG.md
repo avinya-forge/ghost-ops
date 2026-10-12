@@ -18,12 +18,12 @@
 
 ## EPIC: Security & AI Act Compliance (P0)
 
-- [ ] **BUG-023**: `X-Ghost-Ops-Synthesized` disclosure header never emitted (EU AI Act Art 13) (`OPEN`)
+- [x] **BUG-023**: `X-Ghost-Ops-Synthesized` disclosure header never emitted (EU AI Act Art 13) (`DONE`)
 - [ ] **BUG-024**: Synthesized code never scanned with `gosec`/`govulncheck` (EU AI Act Art 15) (`OPEN`)
 - [ ] **BUG-026**: Audit logger emits raw `details` map without secret masking — STANDARDS §2.3 violation (`OPEN`)
 - [ ] **BUG-050**: `ai-skills.json` declares mandatory human review but no PR template / CODEOWNERS enforces it (`OPEN`)
-- [ ] **TASK-1010.1**: Implement `X-Ghost-Ops-Synthesized` header middleware for EU AI Act Art 13 (`OPEN`)
-- [ ] **TASK-1010.2**: Inject `// ghost-ops:generated` source tag into synthesized code (`OPEN`)
+- [x] **TASK-1010.1**: Implement `X-Ghost-Ops-Synthesized` header middleware for EU AI Act Art 13 (`DONE`)
+- [x] **TASK-1010.2**: Inject `// ghost-ops:generated` source tag into synthesized code (`DONE`)
 - [ ] **TASK-1011.1**: Wire `gosec` scanner into evolution engine compile pipeline (`OPEN`)
 - [ ] **TASK-1011.2**: Wire `govulncheck` scanner into evolution engine compile pipeline (`OPEN`)
 - [ ] **TASK-1011.3**: Update CI to enforce `gosec` and `govulncheck` strict passing (`OPEN`)

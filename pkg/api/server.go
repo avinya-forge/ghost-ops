@@ -34,8 +34,10 @@ func NewServer(r *registry.Registry, c protocol.MetricsCollector, maxBodySize in
 	invokeMiddleware := func(h http.HandlerFunc) http.HandlerFunc {
 		return TracingMiddleware(
 			RecoverMiddleware(
-				MaxBytesMiddleware(maxBodySize)(
-					validateServiceIDMiddleware(h),
+				SynthesizedMiddleware(
+					MaxBytesMiddleware(maxBodySize)(
+						validateServiceIDMiddleware(h),
+					),
 				),
 			),
 		)
