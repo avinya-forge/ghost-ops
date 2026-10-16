@@ -3,6 +3,7 @@ package evolution
 import (
 	"context"
 	"fmt"
+	"strings"
 
 	"ghost-ops/pkg/protocol"
 )
@@ -30,6 +31,11 @@ func (e *AIEvolutionEngine) Evolve(ctx context.Context, blueprint protocol.Bluep
 	sourceCode, usage, err := e.llm.GenerateCode(ctx, blueprint)
 	if err != nil {
 		return nil, fmt.Errorf("failed to generate code from intent: %w", err)
+	}
+
+	// Inject the // ghost-ops:generated tag at the very beginning of the source code if not already present.
+	if !strings.HasPrefix(sourceCode, "// ghost-ops:generated") {
+		sourceCode = "// ghost-ops:generated\n" + sourceCode
 	}
 
 	// Record token usage metrics

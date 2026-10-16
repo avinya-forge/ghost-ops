@@ -45,17 +45,14 @@ jobs:
         run: go install github.com/securego/gosec/v2/cmd/gosec@latest
 
       - name: gosec (high severity, high confidence)
-        # -no-fail keeps the gate advisory until existing findings are triaged
-        # (BUG-024 ratchet); upgrade to fail-on-high once green.
-        run: gosec -severity high -confidence high -fmt text -no-fail ./...
+        # BUG-024 ratchet closed; fails on high severity findings.
+        run: gosec -severity high -confidence high -fmt text ./...
 
       - name: Install govulncheck
         run: go install golang.org/x/vuln/cmd/govulncheck@latest
 
       - name: govulncheck
-        # Advisory until BACKLOG BUG-024 lands the synthesis-pipeline gate;
-        # output is visible in CI logs but does not block merge yet.
-        continue-on-error: true
+        # BACKLOG BUG-024 lands the synthesis-pipeline gate; blocks merge on failure.
         run: govulncheck ./...
 
       - name: Test (race + coverage)

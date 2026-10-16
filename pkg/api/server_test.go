@@ -220,3 +220,23 @@ func TestServer_Healthz(t *testing.T) {
 		t.Errorf("Expected 'OK', got '%s'", body)
 	}
 }
+
+func TestServer_Invoke_SynthesizedHeader(t *testing.T) {
+	store := &MockStateStore{records: make(map[string]protocol.ServiceRecord)}
+	collector := telemetry.NewInMemoryCollector()
+	reg := registry.NewRegistry(store, &MockEvolutionEngine{}, &MockIntentSource{}, &MockRuntimeHost{}, collector, nil, config.RegistryConfig{})
+	server := NewServer(reg, collector, 1024*1024)
+
+	req := httptest.NewRequest(http.MethodPost, "/services/svc-1/invoke", nil)
+	w := httptest.NewRecorder()
+
+	server.ServeHTTP(w, req)
+
+	if w.Code != http.StatusOK {
+		t.Errorf("Expected status 200, got %d", w.Code)
+	}
+
+	if w.Header().Get("X-Ghost-Ops-Synthesized") != "true" {
+		t.Errorf("Expected X-Ghost-Ops-Synthesized header to be 'true', got '%s'", w.Header().Get("X-Ghost-Ops-Synthesized"))
+	}
+}

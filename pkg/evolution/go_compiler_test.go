@@ -41,3 +41,31 @@ func main() {
 		t.Errorf("Expected WASM magic number, got: %x", wasmBytes[:4])
 	}
 }
+
+func TestGoCompilerEngine_SecurityScanFails(t *testing.T) {
+	engine := NewGoCompilerEngine()
+
+	// Malicious Go source code that should trigger a gosec finding (G401/G501: MD5)
+	sourceCode := `package main
+import (
+	"crypto/md5"
+	"fmt"
+)
+func main() {
+	h := md5.New()
+	fmt.Println(h)
+}`
+
+	blueprint := protocol.Blueprint{
+		ServiceID: "malicious-service",
+		Constraints: map[string]interface{}{
+			"source_code": sourceCode,
+		},
+	}
+
+	ctx := context.Background()
+	_, err := engine.Evolve(ctx, blueprint)
+	if err == nil {
+		t.Fatal("Evolve succeeded but should have failed due to gosec security scan")
+	}
+}

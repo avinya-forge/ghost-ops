@@ -169,6 +169,7 @@ func (s *Server) handleServiceInvoke(w http.ResponseWriter, r *http.Request) {
 	}
 
 	w.Header().Set("Content-Type", "application/octet-stream")
+	w.Header().Set("X-Ghost-Ops-Synthesized", "true")
 	s.writeBytes(w, res)
 }
 
