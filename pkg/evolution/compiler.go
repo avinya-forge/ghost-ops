@@ -43,7 +43,8 @@ func CompileGo(ctx context.Context, sourceCode string) ([]byte, error) {
 		}
 	}
 	goModContent := fmt.Sprintf("module generated\n\ngo 1.22\n\nrequire ghost-ops v0.0.0\nreplace ghost-ops => %s\n", repoRoot)
-	if err := os.WriteFile(filepath.Join(tmpDir, "go.mod"), []byte(goModContent), 0644); err != nil {
+	// #nosec G306 -- go.mod is explicitly written into the temp dir
+	if err := os.WriteFile(filepath.Clean(filepath.Join(tmpDir, "go.mod")), []byte(goModContent), 0600); err != nil {
 		return nil, fmt.Errorf("failed to write go.mod: %w", err)
 	}
 
