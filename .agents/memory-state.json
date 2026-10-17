@@ -1,24 +1,24 @@
 {
-  "last_updated": "2026-06-03T19:49:00Z",
-  "project": "Vishwa-Vani",
+  "last_updated": "2026-10-17T12:00:00Z",
+  "project": "ghost-ops",
   "architecture": {
-    "framework": "Next.js 16, React 19",
-    "patterns": ["Server Components", "Tailwind 4", "SQLite WASM", "TypeScript strict"],
-    "data": ["JSON shards", "SQLite lake files", "NVF 1.0 format"]
+    "framework": "Go, Wazero WASM Sandbox, Wazero Memory Pools",
+    "patterns": ["Zero-Human Operations (ZHO)", "Autonomous Evolution Loop", "Capability-Based Security (FS/Net Jails)", "Shadow Mode Canary"],
+    "compliance": ["EU AI Act Art 13/14/15", "gosec/govulncheck compile gates", "Audit Trail JSONL Secret Masking"]
   },
   "current_sprint": {
-    "priority_gate": "STABILITY GATE - EPIC 7",
+    "priority_gate": "GATEKEEPER [0-Hygiene-Error | Wazero-Jail-Pass]",
     "active_tasks": [
-      "BUG-069",
-      "BUG-070",
-      "BUG-071"
+      "BUG-021: Network egress capability enforcement in rpc() host fn",
+      "BUG-022: FS jail check enforcement in LoadModule / read_file",
+      "BUG-027: Shadow-mode timer and traffic comparator implementation"
     ]
   },
   "memory_pointers": {
-    "rules": ".agents/rules/code-style-guide.md",
-    "backlog": "docs/backlog.md",
+    "backlog": "docs/BACKLOG.md",
     "release_notes": "docs/release-notes.md",
-    "vision": "docs/vision.md",
-    "blueprint": "docs/architecture/blueprint.md"
+    "vision": "docs/VISION.md",
+    "standards": "docs/STANDARDS.md",
+    "jules": "JULES.md"
   }
 }
