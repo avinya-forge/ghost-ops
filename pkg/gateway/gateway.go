@@ -50,6 +50,8 @@ func (g *Gateway) ServeHTTP(w http.ResponseWriter, r *http.Request) {
 		return
 	}
 
+	// Add EU AI Act disclosure header
+	w.Header().Set("X-Ghost-Ops-Synthesized", "true")
 	w.WriteHeader(http.StatusOK)
 	w.Write(res)
 }
