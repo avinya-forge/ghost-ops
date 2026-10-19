@@ -18,15 +18,14 @@
 
 ## EPIC: Security & AI Act Compliance (P0)
 
-- [x] **BUG-023**: `X-Ghost-Ops-Synthesized` disclosure header never emitted (EU AI Act Art 13) (`DONE`)
 - [ ] **BUG-024**: Synthesized code never scanned with `gosec`/`govulncheck` (EU AI Act Art 15) (`OPEN`)
 - [ ] **BUG-026**: Audit logger emits raw `details` map without secret masking — STANDARDS §2.3 violation (`OPEN`)
 - [ ] **BUG-050**: `ai-skills.json` declares mandatory human review but no PR template / CODEOWNERS enforces it (`OPEN`)
-- [x] **TASK-1010.1**: Implement `X-Ghost-Ops-Synthesized` header middleware for EU AI Act Art 13 (`DONE`)
-- [x] **TASK-1010.2**: Inject `// ghost-ops:generated` source tag into synthesized code (`DONE`)
 - [ ] **TASK-1011.1**: Wire `gosec` scanner into evolution engine compile pipeline (`OPEN`)
 - [ ] **TASK-1011.2**: Wire `govulncheck` scanner into evolution engine compile pipeline (`OPEN`)
 - [ ] **TASK-1011.3**: Update CI to enforce `gosec` and `govulncheck` strict passing (`OPEN`)
+- [ ] **TASK-1011.4**: Modify `pkg/evolution/compiler.go` to strictly block compilation if `gosec` scan fails with high severity findings (`OPEN`)
+- [ ] **TASK-1011.5**: Modify `pkg/evolution/compiler.go` to strictly block compilation if `govulncheck` scan fails (`OPEN`)
 - [ ] **TASK-1014.1**: Implement secret masking algorithm in audit logger (`OPEN`)
 - [ ] **TASK-1014.2**: Implement JSONL persistence for audit logs (`OPEN`)
 - [ ] **TASK-1014.3**: Implement log rotation policy for JSONL audit logs (`OPEN`)

@@ -2,15 +2,13 @@
 
 ## v0.6.1 (Current Sprint)
 
-### Security & AI Act Compliance
 - [x] BUG-030: CI does not enforce STANDARDS §6 — missing `-race`, coverage gate, `gosec`, `govulncheck`, `gofmt -l`
 - [x] BUG-051: Dockerfile runs as root, `WORKDIR /root/`, no `EXPOSE`, no `HEALTHCHECK`
-
-### State Management
+- [x] BUG-023: `X-Ghost-Ops-Synthesized` disclosure header never emitted (EU AI Act Art 13)
+- [x] TASK-1010.1: Implement `X-Ghost-Ops-Synthesized` header middleware for EU AI Act Art 13
+- [x] TASK-1010.2: Inject `// ghost-ops:generated` source tag into synthesized code
 - [x] BUG-053: `JSONFileStore.save()` is non-atomic — crash mid-write corrupts the entire state file
 - [x] BUG-057: `JSONFileStore.save()` does not `fsync` — power-cut after `WriteFile` returns can lose the write
-
-### General / Tech Debt
 - [x] BUG-032: Duplicate Backlog SSOT — legacy `docs/planning/backlog.md` removed
 - [x] BUG-033: Duplicate Roadmap stub `docs/planning/roadmap.md` (1 line) removed
 - [x] BUG-034: Duplicate STANDARDS — `docs/rules/standards.md` shadow of SSOT removed
@@ -30,14 +28,12 @@
 
 ## v0.6.0
 
-### HTTP Gateway
 - [x] EPIC-901: HTTP Gateway path + header routing (Minimal)
 
 ---
 
 ## v0.5.0
 
-### Microservices
 - [x] TASK-320: Sidecar proxy pattern
 - [x] TASK-321: mTLS between services
 - [x] TASK-331: Resource-aware scheduling (bin-pack)
@@ -48,7 +44,6 @@
 
 ## v0.4.0
 
-### Infrastructure
 - [x] TASK-1200: Evolution engine priority queue
 - [x] Architecture diagrams, code-gen evals, OTLP exporter, trace-log correlation, evolution priority queue, prompt-injection defenses, security chaos testing, audit logging for state changes, cluster health dashboard data.
 
@@ -56,7 +51,6 @@
 
 ## v0.3.0
 
-### Core Engine
 - [x] Service Mesh Lite (Retry / Circuit Breaker / Rate Limit)
 - [x] Redis distributed lock (`SET NX`)
 - [x] OpenTelemetry tracing middleware
