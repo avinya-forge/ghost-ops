@@ -493,12 +493,15 @@ func (h *WazeroRuntimeHost) LoadModule(ctx context.Context, serviceID, version s
 			WithStderr(logBuf).
 			WithFSConfig(fsConfig)
 
-		_, err := h.runtime.InstantiateModule(h.lifecycleCtx, compiled, config)
+		mod, err := h.runtime.InstantiateModule(h.lifecycleCtx, compiled, config)
 		if err != nil {
 			slog.Error("Failed to instantiate module", "unique_name", uniqueName, "error", err)
 			h.collector.Counter("module_load_failure", 1, map[string]string{"service_id": serviceID, "version": version})
 		} else {
 			h.collector.Counter("module_load_success", 1, map[string]string{"service_id": serviceID, "version": version})
+			h.mu.Lock()
+			h.modules[uniqueName] = mod
+			h.mu.Unlock()
 		}
 	}()
 
@@ -721,11 +724,7 @@ func (h *WazeroRuntimeHost) UnloadVersion(ctx context.Context, serviceID, versio
 	}
 
 	// Ensure module is closed using runtime reference if possible
-	if mod := h.runtime.Module(uniqueName); mod != nil {
-		if err := mod.Close(ctx); err != nil {
-			slog.Warn("Failed to close module via runtime", "unique_name", uniqueName, "error", err)
-		}
-	} else if mod, exists := h.modules[uniqueName]; exists {
+	if mod, exists := h.modules[uniqueName]; exists {
 		// Fallback
 		mod.Close(ctx)
 	}
