@@ -20,7 +20,8 @@ func CompileGo(ctx context.Context, sourceCode string) ([]byte, error) {
 	defer os.RemoveAll(tmpDir)
 
 	inputFile := filepath.Join(tmpDir, "main.go")
-	// #nosec G306 -- we are explicitly generating source code in a temp dir
+	/* #nosec G306 */ // we are explicitly generating source code in a temp dir
+	/* #nosec G703 */ // the filename is safely constructed from MkdirTemp and Join
 	if err := os.WriteFile(filepath.Clean(inputFile), []byte(sourceCode), 0600); err != nil {
 		return nil, fmt.Errorf("failed to write source code: %w", err)
 	}
