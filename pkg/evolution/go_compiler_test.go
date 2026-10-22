@@ -3,6 +3,7 @@ package evolution
 import (
 	"bytes"
 	"context"
+	"os"
 	"testing"
 
 	"ghost-ops/pkg/protocol"
@@ -67,5 +68,27 @@ func main() {
 	_, err := engine.Evolve(ctx, blueprint)
 	if err == nil {
 		t.Fatal("Evolve succeeded but should have failed due to gosec security scan")
+	}
+}
+
+func TestCompileGo_MissingGosec(t *testing.T) {
+	// Temporarily remove gosec from PATH
+	oldPath := os.Getenv("PATH")
+	defer os.Setenv("PATH", oldPath)
+	os.Setenv("PATH", "")
+
+	sourceCode := `package main
+import "fmt"
+func main() {
+	fmt.Println("Hello")
+}`
+
+	_, err := CompileGo(context.Background(), sourceCode)
+	if err == nil {
+		t.Fatal("Expected error when gosec is not in PATH, got nil")
+	}
+
+	if err.Error() != "gosec not found in PATH" {
+		t.Fatalf("Expected 'gosec not found in PATH', got '%v'", err)
 	}
 }

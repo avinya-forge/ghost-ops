@@ -20,7 +20,8 @@ func CompileGo(ctx context.Context, sourceCode string) ([]byte, error) {
 	defer os.RemoveAll(tmpDir)
 
 	inputFile := filepath.Join(tmpDir, "main.go")
-	// #nosec G306 -- we are explicitly generating source code in a temp dir
+	/* #nosec G306 */ // we are explicitly generating source code in a temp dir
+	/* #nosec G703 */ // the filename is safely constructed from MkdirTemp and Join
 	if err := os.WriteFile(filepath.Clean(inputFile), []byte(sourceCode), 0600); err != nil {
 		return nil, fmt.Errorf("failed to write source code: %w", err)
 	}
@@ -50,12 +51,13 @@ func CompileGo(ctx context.Context, sourceCode string) ([]byte, error) {
 
 	// Run gosec
 	// For production, check if `gosec` is in PATH.
-	if _, err := exec.LookPath("gosec"); err == nil {
-		gosecCmd := exec.CommandContext(ctx, "gosec", "-quiet", "-exclude", "G703", "./...")
-		gosecCmd.Dir = tmpDir
-		if output, err := gosecCmd.CombinedOutput(); err != nil {
-			return nil, fmt.Errorf("gosec security scan failed: %v, output: %s", err, string(output))
-		}
+	if _, err := exec.LookPath("gosec"); err != nil {
+		return nil, fmt.Errorf("gosec not found in PATH")
+	}
+	gosecCmd := exec.CommandContext(ctx, "gosec", "-quiet", "-exclude", "G703", "./...")
+	gosecCmd.Dir = tmpDir
+	if output, err := gosecCmd.CombinedOutput(); err != nil {
+		return nil, fmt.Errorf("gosec security scan failed: %v, output: %s", err, string(output))
 	}
 
 	// Download dependencies to resolve them for govulncheck
@@ -80,17 +82,18 @@ func CompileGo(ctx context.Context, sourceCode string) ([]byte, error) {
 	}
 
 	// Run govulncheck on the source code
-	if _, err := exec.LookPath("govulncheck"); err == nil {
-		govulnCmd := exec.CommandContext(ctx, "govulncheck", "./...")
-		govulnCmd.Dir = tmpDir
-		govulnCmd.Env = append(os.Environ(), "GOOS=wasip1", "GOARCH=wasm")
+	if _, err := exec.LookPath("govulncheck"); err != nil {
+		return nil, fmt.Errorf("govulncheck not found in PATH")
+	}
+	govulnCmd := exec.CommandContext(ctx, "govulncheck", "./...")
+	govulnCmd.Dir = tmpDir
+	govulnCmd.Env = append(os.Environ(), "GOOS=wasip1", "GOARCH=wasm")
 
-		if output, err := govulnCmd.CombinedOutput(); err != nil {
-			// To prevent tests from failing on go1.24.3 standard library vulnerabilities
-			// we skip failing on test environments via GO_ENV.
-			if os.Getenv("GO_ENV") != "testing" {
-				return nil, fmt.Errorf("govulncheck execution failed: %v, output: %s", err, string(output))
-			}
+	if output, err := govulnCmd.CombinedOutput(); err != nil {
+		// To prevent tests from failing on go1.24.3 standard library vulnerabilities
+		// we skip failing on test environments via GO_ENV.
+		if os.Getenv("GO_ENV") != "testing" {
+			return nil, fmt.Errorf("govulncheck execution failed: %v, output: %s", err, string(output))
 		}
 	}
 
