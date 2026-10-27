@@ -32,10 +32,22 @@ func CompileGo(ctx context.Context, sourceCode string) ([]byte, error) {
 	// after initializing a module that can resolve it.
 	repoRoot := "/app"
 	if wd, err := os.Getwd(); err == nil {
-		repoRoot = wd
+		// Traverse up to find go.mod if not in /app
+		current := wd
+		for {
+			if _, err := os.Stat(filepath.Join(current, "go.mod")); err == nil {
+				repoRoot = current
+				break
+			}
+			parent := filepath.Dir(current)
+			if parent == current {
+				break
+			}
+			current = parent
+		}
 	}
 
-	modContent := fmt.Sprintf("module generated\n\ngo 1.24\n\nreplace ghost-ops => %s\n", repoRoot)
+	modContent := fmt.Sprintf("module generated\n\ngo 1.26\n\nreplace ghost-ops => %s\n", repoRoot)
 	if err := os.WriteFile(filepath.Join(tmpDir, "go.mod"), []byte(modContent), 0600); err != nil {
 		return nil, fmt.Errorf("failed to write go.mod: %w", err)
 	}

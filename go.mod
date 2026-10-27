@@ -1,6 +1,6 @@
 module ghost-ops
 
-go 1.24.3
+go 1.26.10
 
 require (
 	github.com/alicebob/miniredis/v2 v2.36.1
