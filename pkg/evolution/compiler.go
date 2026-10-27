@@ -20,7 +20,8 @@ func CompileGo(ctx context.Context, sourceCode string) ([]byte, error) {
 	defer os.RemoveAll(tmpDir)
 
 	inputFile := filepath.Join(tmpDir, "main.go")
-	/* #nosec G306 */ // we are explicitly generating source code in a temp dir
+	outputFile := filepath.Join(tmpDir, "out.wasm")
+
 	/* #nosec G703 */ // the filename is safely constructed from MkdirTemp and Join
 	if err := os.WriteFile(filepath.Clean(inputFile), []byte(sourceCode), 0600); err != nil {
 		return nil, fmt.Errorf("failed to write source code: %w", err)
@@ -29,28 +30,29 @@ func CompileGo(ctx context.Context, sourceCode string) ([]byte, error) {
 	// Create a minimal go.mod for govulncheck
 	// Since generated code may import "ghost-ops/...", we need to replace it or run govulncheck
 	// after initializing a module that can resolve it.
-	// Easiest is to run `go mod init generated` and `go mod edit -replace ghost-ops=...` if needed.
-	// But simply replacing go.work / go.mod to point to the actual repo root is better.
-
 	repoRoot := "/app"
-	if _, err := os.Stat("/app/go.mod"); err != nil {
-		pwd, _ := os.Getwd()
-		// Walk up to find the root
-		for dir := pwd; dir != "/"; dir = filepath.Dir(dir) {
-			if _, err := os.Stat(filepath.Join(dir, "go.mod")); err == nil {
-				repoRoot = dir
+	if wd, err := os.Getwd(); err == nil {
+		// Traverse up to find go.mod if not in /app
+		current := wd
+		for {
+			if _, err := os.Stat(filepath.Join(current, "go.mod")); err == nil {
+				repoRoot = current
 				break
 			}
+			parent := filepath.Dir(current)
+			if parent == current {
+				break
+			}
+			current = parent
 		}
 	}
-	goModContent := fmt.Sprintf("module generated\n\ngo 1.22\n\nrequire ghost-ops v0.0.0\nreplace ghost-ops => %s\n", repoRoot)
-	// #nosec G306 -- go.mod is explicitly written into the temp dir
-	if err := os.WriteFile(filepath.Clean(filepath.Join(tmpDir, "go.mod")), []byte(goModContent), 0600); err != nil {
+
+	modContent := fmt.Sprintf("module generated\n\ngo 1.26\n\nreplace ghost-ops => %s\n", repoRoot)
+	if err := os.WriteFile(filepath.Join(tmpDir, "go.mod"), []byte(modContent), 0600); err != nil {
 		return nil, fmt.Errorf("failed to write go.mod: %w", err)
 	}
 
 	// Run gosec
-	// For production, check if `gosec` is in PATH.
 	if _, err := exec.LookPath("gosec"); err != nil {
 		return nil, fmt.Errorf("gosec not found in PATH")
 	}
@@ -66,14 +68,11 @@ func CompileGo(ctx context.Context, sourceCode string) ([]byte, error) {
 	if err := modTidyCmd.Run(); err != nil {
 		// Log the error but continue, as it might just be a missing dependency
 		// or network issue, which go build will likely catch anyway.
-		// A strict implementation might fail here.
-		fmt.Printf("go mod tidy warning: %v\n", err)
 	}
 
-	outputFile := filepath.Join(tmpDir, "output.wasm")
-
-	// Run go build
+	// Compile to WASM
 	cmd := exec.CommandContext(ctx, "go", "build", "-o", outputFile, inputFile)
+	cmd.Dir = tmpDir
 	cmd.Env = append(os.Environ(), "GOOS=wasip1", "GOARCH=wasm")
 
 	// Capture output for debugging
@@ -100,7 +99,7 @@ func CompileGo(ctx context.Context, sourceCode string) ([]byte, error) {
 	// Read output WASM
 	wasmBytes, err := os.ReadFile(outputFile)
 	if err != nil {
-		return nil, fmt.Errorf("failed to read output WASM: %w", err)
+		return nil, fmt.Errorf("failed to read WASM output: %w", err)
 	}
 
 	return wasmBytes, nil
