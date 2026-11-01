@@ -4,7 +4,7 @@ go 1.26.10
 
 require (
 	github.com/alicebob/miniredis/v2 v2.36.1
-	github.com/fsnotify/fsnotify v1.9.0
+	github.com/fsnotify/fsnotify v1.10.1
 	github.com/redis/go-redis/v9 v9.18.0
 	github.com/spf13/pflag v1.0.10
 	github.com/spf13/viper v1.21.0
