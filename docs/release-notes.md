@@ -3,8 +3,22 @@
 ## v0.6.1 (Current Sprint)
 
 ### Security & AI Act Compliance
+- [x] **BUG-023**: `X-Ghost-Ops-Synthesized` disclosure header never emitted (EU AI Act Art 13)
+- [x] **BUG-024**: Synthesized code never scanned with `gosec`/`govulncheck` (EU AI Act Art 15)
+- [x] **BUG-026**: Audit logger emits raw `details` map without secret masking — STANDARDS §2.3 violation
+- [x] **BUG-050**: `ai-skills.json` declares mandatory human review but no PR template / CODEOWNERS enforces it
+- [x] **TASK-1010.1**: Implement `X-Ghost-Ops-Synthesized` header middleware for EU AI Act Art 13
+- [x] **TASK-1010.2**: Inject `// ghost-ops:generated` source tag into synthesized code
+- [x] **TASK-1011.1**: Wire `gosec` scanner into evolution engine compile pipeline
+- [x] **TASK-1011.2**: Wire `govulncheck` scanner into evolution engine compile pipeline
+- [x] **TASK-1011.3**: Update CI to enforce `gosec` and `govulncheck` strict passing
+
 - [x] BUG-030: CI does not enforce STANDARDS §6 — missing `-race`, coverage gate, `gosec`, `govulncheck`, `gofmt -l`
 - [x] BUG-051: Dockerfile runs as root, `WORKDIR /root/`, no `EXPOSE`, no `HEALTHCHECK`
+
+### Observer Agent & Autonomous Feedback Loop
+- [x] **BUG-054**: `EventBus.Publish()` silently drops events when subscriber buffer full — re-prompts vanish under load
+- [x] **BUG-055**: `EventBus.Subscribe()` ignores `ctx` — no way to cancel; channel leaks if subscriber goroutine exits
 
 ### State Management
 - [x] BUG-053: `JSONFileStore.save()` is non-atomic — crash mid-write corrupts the entire state file
