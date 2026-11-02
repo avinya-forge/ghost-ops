@@ -5,6 +5,7 @@
 > **North star (the why):** [`VISION.md`](./VISION.md).
 > **Engineering rules (the how):** [`STANDARDS.md`](./STANDARDS.md).
 > 
+
 ## 🌌 6–8 Month Strategic Roadmap & Horizon Plan
 
 | Horizon | Core Strategic Milestone | Lead Focus | Key Deliverables |
@@ -17,16 +18,6 @@
 ---
 
 ## EPIC: Security & AI Act Compliance (P0)
-
-- [x] **BUG-023**: `X-Ghost-Ops-Synthesized` disclosure header never emitted (EU AI Act Art 13) (`DONE`)
-- [x] **BUG-024**: Synthesized code never scanned with `gosec`/`govulncheck` (EU AI Act Art 15) (`DONE`)
-- [x] **BUG-026**: Audit logger emits raw `details` map without secret masking — STANDARDS §2.3 violation (`DONE`)
-- [x] **BUG-050**: `ai-skills.json` declares mandatory human review but no PR template / CODEOWNERS enforces it (`DONE`)
-- [x] **TASK-1010.1**: Implement `X-Ghost-Ops-Synthesized` header middleware for EU AI Act Art 13 (`DONE`)
-- [x] **TASK-1010.2**: Inject `// ghost-ops:generated` source tag into synthesized code (`DONE`)
-- [x] **TASK-1011.1**: Wire `gosec` scanner into evolution engine compile pipeline (`DONE`)
-- [x] **TASK-1011.2**: Wire `govulncheck` scanner into evolution engine compile pipeline (`DONE`)
-- [x] **TASK-1011.3**: Update CI to enforce `gosec` and `govulncheck` strict passing (`DONE`)
 - [ ] **TASK-1014.1**: Implement secret masking algorithm in audit logger (`OPEN`)
 - [ ] **TASK-1014.2**: Implement JSONL persistence for audit logs (`OPEN`)
 - [ ] **TASK-1014.3**: Implement log rotation policy for JSONL audit logs (`OPEN`)
@@ -38,7 +29,6 @@
 - [ ] **TASK-708.2**: Implement Secret Management integration client for Ghost Ops (`OPEN`)
 
 ## EPIC: Capability-Based Security (P0)
-
 - [ ] **BUG-021**: Network egress capability never enforced in `rpc()` host fn — `CheckNetworkEgress` is dead code (`OPEN`)
 - [ ] **BUG-022**: FS jail check decorative; only `wazero.WithDirMount` is wired — `CheckFSJail` is dead code (`OPEN`)
 - [ ] **TASK-702.1**: Implement network egress policy validation logic (`OPEN`)
@@ -47,12 +37,9 @@
 - [ ] **TASK-703.2**: Implement new `read_file` host function gated strictly by `CheckFSJail` (`OPEN`)
 
 ## EPIC: Observer Agent & Autonomous Feedback Loop (P1)
-
 - [ ] **BUG-027**: Shadow-mode timer absent — no Article 14 ≥5-min gate; promotion is instant or never (`OPEN`)
 - [ ] **BUG-028**: ZHO loop is broken — `EventRePromptRequired` has no subscriber; no re-evolve happens (`OPEN`)
 - [ ] **BUG-045**: Health check unloads unhealthy services without emitting `EventRePromptRequired` — feedback edge dead on this side too (`OPEN`)
-- [x] **BUG-054**: `EventBus.Publish()` silently drops events when subscriber buffer full — re-prompts vanish under load (`DONE`)
-- [x] **BUG-055**: `EventBus.Subscribe()` ignores `ctx` — no way to cancel; channel leaks if subscriber goroutine exits (`DONE`)
 - [ ] **BUG-040**: Reconcile loop returns `(true, nil)` on evolve failure — silent success (`OPEN`)
 - [ ] **TASK-1012.1**: Implement shadow-mode timer (EU AI Act Art 14 compliance) (`OPEN`)
 - [ ] **TASK-1012.2**: Implement shadow-mode traffic comparator and telemetry observer (`OPEN`)
@@ -65,7 +52,6 @@
 - [ ] **TASK-1019.2**: Add OpenTelemetry trace correlation for reconcile errors (`OPEN`)
 
 ## EPIC: LLM Resilience (P1)
-
 - [ ] **BUG-025**: OpenAI error path leaks request body (and embedded prompts) into stderr logs (`OPEN`)
 - [ ] **BUG-029**: LLM provider has no per-request timeout — stalled provider starves the scheduler (`OPEN`)
 - [ ] **BUG-042**: `compiler.go` inherits the host's full env into `go build` — `OPENAI_API_KEY` etc. leak into subprocess (`OPEN`)
@@ -77,7 +63,6 @@
 - [ ] **TASK-1018.1**: Isolate and sanitize environment variables passed to `go build` subprocess (`OPEN`)
 
 ## EPIC: Stakeholder Demo (P2)
-
 - [ ] **BUG-060**: `examples/blueprints/hello-compiler.json` is the only example blueprint — too thin for stakeholder demo (`OPEN`)
 - [ ] **BUG-061**: No `examples/blueprints/` schema validation in `intent.NewFileIntentSource` — bad JSON crashes startup (`OPEN`)
 - [ ] **TASK-1100.1**: Implement `make demo` Makefile target (`OPEN`)
@@ -95,7 +80,6 @@
 - [ ] **TASK-1110**: Implement `ghost-ops service list --watch` streaming CLI table (`OPEN`)
 
 ## EPIC: State Management (P2)
-
 - [ ] **BUG-056**: `JSONFileStore` re-reads + re-parses the entire file on every read API — O(file) per Get/List under lock (`OPEN`)
 - [ ] **BUG-044**: `Audit()` events not persisted — `slog` only; no append-only file, ISO 8.4 evidence missing (`OPEN`)
 - [ ] **TASK-800.1**: Write Etcd integration strategy ADR (`OPEN`)
@@ -114,7 +98,6 @@
 - [ ] **TASK-1006.2**: Optimize Wazero memory pool object recycling (`OPEN`)
 
 ## EPIC: HTTP Gateway (P3)
-
 - [ ] **TASK-908.1**: Implement Gateway rate limiting token bucket logic (`OPEN`)
 - [ ] **TASK-908.2**: Integrate per-IP token bucket limits into Gateway router (`OPEN`)
 - [ ] **TASK-902**: Implement Gateway dynamic route reconfiguration via atomic pointer swap (`OPEN`)
@@ -125,7 +108,6 @@
 - [ ] **TASK-907**: Implement WebSocket upgrade support in gateway (`OPEN`)
 
 ## EPIC: Multi-Language SDKs (P3)
-
 - [ ] **TASK-600.1**: Write Rust Guest SDK design ADR (`OPEN`)
 - [ ] **TASK-605.1**: Write Python (WASM) Guest SDK design ADR (CPython vs MicroPython) (`OPEN`)
 - [ ] **TASK-601.1**: Implement Rust Guest SDK host-ABI bindings (`OPEN`)
@@ -141,7 +123,6 @@
 - [ ] **TASK-609**: Implement cross-language SDK interop integration test suite (`OPEN`)
 
 ## EPIC: General / Tech Debt (P3)
-
 - [ ] **BUG-031**: 2.9 MB `ghost-dev` binary committed at repo root (`OPEN`)
 - [ ] **BUG-037**: Version drift — README says v0.5.0, VERSION says 0.5.1, `.system_state` says 0.5.2 (`OPEN`)
 - [ ] **BUG-041**: `nextCommand()` truncates method names silently when caller buffer < name length (`OPEN`)
